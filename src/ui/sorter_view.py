@@ -12,7 +12,7 @@ from ..ui.manager import UIManager
 def render_sorter_view(db_manager: DBManager):
     st.header("🗂️ Auto Organizer")
     
-    tab1, tab2, tab3 = st.tabs(["🧠 Custom Learning", "📂 Physical Sorter", "✨ Super Intelligence"])
+    tab1, tab2, tab3, tab4 = st.tabs(["🧠 Custom Learning", "📂 Physical Sorter", "✨ Super Intelligence", "🗣️ Semantic Actions"])
     
     # --- Tab 1: Learning ---
     with tab1:
@@ -301,3 +301,48 @@ def render_sorter_view(db_manager: DBManager):
                 conn.close()
                 st.success(f"Successfully updated AI tags for {updated_count} files!")
                 st.rerun()
+
+    # --- Tab 4: Semantic Actions ---
+    with tab4:
+        st.subheader("Organize with Natural Language")
+        st.write("Tell the AI what you want to do (e.g., 'Move 2023 photos to Archive' or 'スクショをtrashに移動').")
+        
+        col_sa1, col_sa2 = st.columns(2)
+        with col_sa1:
+            dest_root_sa = st.text_input("Destination Root Folder", value="C:/SortedMedia", key="dest_root_sa")
+            operation_sa = st.selectbox("Operation Mode", ["dry_run", "copy", "move"], key="operation_sa")
+            model_name_sa = st.selectbox("LLM Model", ["mistral-nemo", "gemma2", "llama3.1", "qwen2.5"], key="model_sa")
+            
+        with col_sa2:
+            prompt_sa = st.text_area("Your Command", placeholder="例: スクショっぽい画像は全部『trash』フォルダに移動して", height=100)
+            execute_btn = st.button("🪄 Execute Semantic Action")
+            
+        if execute_btn and prompt_sa:
+            from ..core.semantic_actions import SemanticEngine
+            from ..core.sorter import PhysicalSorter, SortLog
+            
+            engine = SemanticEngine(model_name=model_name_sa)
+            logger_sa = SortLog()
+            sorter_sa = PhysicalSorter(logger_sa)
+            
+            with st.spinner(f"Analyzing command with {model_name_sa}..."):
+                if not engine.ping():
+                    st.error(f"Cannot connect to Ollama or model '{model_name_sa}' is missing. Please ensure Ollama is running locally (`ollama serve`).")
+                else:
+                    result = engine.parse_and_execute(prompt_sa, dest_root_sa, operation_sa, db_manager, sorter_sa, logger_sa)
+                    
+                    if result.get("success"):
+                        st.success(result["message"])
+                        with st.expander("LLM Tool Call Details (Debug)"):
+                            st.json(result.get("args_used", {}))
+                        
+                        if result.get("logs"):
+                            with st.expander("Operation Logs"):
+                                for log_line in result["logs"]:
+                                    st.text(log_line)
+                                    
+                        if operation_sa in ["copy", "move"] and result.get("processed", 0) > 0:
+                            st.info(f"Undo script generated at: {logger_sa.undo_script}")
+                    else:
+                        st.error(result.get("error", "Unknown error occurred."))
+

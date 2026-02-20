@@ -128,6 +128,77 @@ def render_gallery():
             
     conn.close()
 
+    # --- VLM Chat Panel (Sidebar) ---
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 💬 Chat with Gallery")
+    
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = []
+    
+    # Render chat history
+    chat_container = st.sidebar.container(height=300)
+    with chat_container:
+        for msg in st.session_state.chat_history:
+            st.chat_message(msg["role"]).write(msg["content"])
+            
+    # Chat Input
+    chat_prompt = st.sidebar.chat_input("Ask about the gallery or a specific image...")
+    if chat_prompt:
+        st.session_state.chat_history.append({"role": "user", "content": chat_prompt})
+        st.sidebar.chat_message("user").write(chat_prompt)
+        
+        # Decide if asking about a specific image or the whole gallery
+        with st.sidebar.chat_message("assistant"):
+            with st.spinner("Thinking..."):
+                if st.session_state.get('editing_id'):
+                    # Context is the selected image
+                    try:
+                        conn = sqlite3.connect(db_mgr.sqlite_path)
+                        conn.row_factory = sqlite3.Row
+                        c = conn.cursor()
+                        c.execute("SELECT file_path FROM files WHERE id = ?", (st.session_state['editing_id'],))
+                        row = c.fetchone()
+                        conn.close()
+                        
+                        if row and os.path.exists(row['file_path']):
+                            from PIL import Image
+                            vlm_engine = UIManager.get_vlm_engine()
+                            
+                            file_path = row['file_path']
+                            try:
+                                # Try opening as image first
+                                img = Image.open(file_path).convert("RGB")
+                            except Exception:
+                                # If it fails, assume it's a video and grab a frame
+                                try:
+                                    import decord
+                                    vr = decord.VideoReader(file_path)
+                                    mid_frame = vr[len(vr)//2].asnumpy()
+                                    img = Image.fromarray(mid_frame).convert("RGB")
+                                except ImportError:
+                                    st.error("decord is required for video VQA")
+                                    img = None
+                                except Exception as e:
+                                    st.error(f"Failed to extract frame from video: {e}")
+                                    img = None
+
+                            if img is not None:
+                                answer = vlm_engine.ask_image(img, chat_prompt)
+                                st.write(answer)
+                                st.session_state.chat_history.append({"role": "assistant", "content": answer})
+                        else:
+                            st.write("Could not load the selected media for analysis.")
+                    except Exception as e:
+                        st.error(f"Error analyzing media: {e}")
+                else:
+                    st.write("Please select an image/video (click 'Edit Tags') to ask a question about it, or use the main search bar to filter the gallery.")
+                    st.session_state.chat_history.append({"role": "assistant", "content": "Please select an image/video (click 'Edit Tags') to ask a question about it..."})
+    
+    # Add a button to clear chat
+    if len(st.session_state.chat_history) > 0 and st.sidebar.button("Clear Chat"):
+         st.session_state.chat_history = []
+         st.rerun()
+
     if not results:
         st.info("No images found. Try running a scan or changing your query.")
         return

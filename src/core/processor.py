@@ -161,7 +161,9 @@ class Processor:
                     import decord
                     vr = decord.VideoReader(item.file_path)
                     mid_frame = vr[len(vr)//2].asnumpy()
-                    item.character_tags, item.series_tags = self.char_tagger.tag_image(Image.fromarray(mid_frame))
+                    res = self.inference.process_image(Image.fromarray(mid_frame))
+                    item.character_tags = res['char_tags']
+                    item.series_tags = res['series_tags']
                 except:
                     pass
 
@@ -279,37 +281,29 @@ class Processor:
                         loaded_indices.append(idx)
 
                 if pil_images:
-                    # CLIP Batch
-                    clip_vecs = self.ai_engine.extract_clip_features_batch(pil_images)
+                    # Run Orchestrated Inference Batch (CLIP, Faces, Style, Char Tag)
+                    batch_results = self.inference.process_batch(pil_images)
                     
-                    # Auto Tagging Batch
+                    # Auto Tagging Batch (needs clip vecs)
+                    clip_vecs = np.array([res['clip'] for res in batch_results])
                     suggested_tags_list = self.auto_tagger.suggest_tags(clip_vecs)
-                    
-                    # Character Tagging Batch
-                    char_results_list = self.char_tagger.tag_batch(pil_images)
-                    
-                    # InsightFace (Seq optimized)
-                    # Convert to BGR List
-                    # Note: converting PIL to numpy can be done in parallel logic or loop
-                    import numpy as np
-                    bgr_images = [np.array(img)[:, :, ::-1] for img in pil_images]
-                    face_results_list = self.ai_engine.extract_face_features_batch(bgr_images)
                     
                     # Match results back
                     for j, real_idx in enumerate(loaded_indices):
                         item = items[real_idx]
                         item.tags = suggested_tags_list[j] # Assign tags
                         
-                        # Character Tags
-                        c_tags, s_tags = char_results_list[j]
-                        item.character_tags = c_tags
-                        item.series_tags = s_tags
+                        res = batch_results[j]
                         
-                        clip_v = clip_vecs[j].tolist()
+                        # Character Tags
+                        item.character_tags = res['char_tags']
+                        item.series_tags = res['series_tags']
+                        
+                        clip_v = res['clip'].tolist() if hasattr(res['clip'], 'tolist') else res['clip']
                         
                         faces_data = []
                         f_vecs = []
-                        for f in face_results_list[j]:
+                        for f in res['faces']:
                              f_vecs.append(f['embedding'].tolist())
                              faces_data.append(FaceData(
                                 embedding=f['embedding'].tolist(),

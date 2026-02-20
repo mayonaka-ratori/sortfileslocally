@@ -1,6 +1,7 @@
 
 import streamlit as st
 from ..core.ai_models import AIEngine
+from ..core.vlm_engine import VLMEngine
 from ..data.db_manager import DBManager
 from ..core.processor import Processor
 
@@ -14,6 +15,12 @@ class UIManager:
     def get_ai_engine() -> AIEngine:
         """Cached singleton for AIEngine (Heavy Load)."""
         return AIEngine()
+
+    @staticmethod
+    @st.cache_resource(show_spinner="Loading VLM Engine...")
+    def get_vlm_engine() -> VLMEngine:
+        """Cached singleton for VLMEngine."""
+        return VLMEngine()
 
     @staticmethod
     @st.cache_resource
