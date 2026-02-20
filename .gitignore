@@ -1,0 +1,33 @@
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# Data
+data/db/*.db
+data/db/*.index
+data/inputs/
+data/logs/
+
+# Next.js
+web/.next/
+web/node_modules/
+web/out/
+web/build/
+web/.DS_Store
+web/*.pem
+web/npm-debug.log*
+web/yarn-debug.log*
+web/yarn-error.log*
+web/.pnpm-debug.log*
+web/.env*
+web/.vercel
+
+# IDE
+.vscode/
+.idea/
+
+data/models/

@@ -1,0 +1,139 @@
+ご要望、承りました。
+この資料さえあれば、どのような開発者（またはAI）であっても、現状を完全に把握し、即座に最適解のコードを出力できるレベルの**「LocalCurator Prime 開発仕様書 v1.1 (Master Specification)」**を作成しました。
+
+このテキストをコピーして保存し、今後の開発の指針としてください。
+
+---
+
+# LocalCurator Prime - Development Specification v1.1
+
+**Project Name:** LocalCurator Prime  
+**Version:** 1.1.0  
+**Last Updated:** 2026-01-12  
+**Target Architecture:** Windows Native / NVIDIA GPU Accelerated  
+**Status:** Environment Setup Complete / Core Logic Implementation Phase
+
+---
+
+## 1. Project Overview & Objectives
+**目的:**
+ローカル環境に保存された大量の非構造化メディア（画像・動画）を、最新のAI技術を用いて解析し、「作品・ジャンル」および「キャラクター」に基づいて体系的に整理・移動させるデスクトップアプリケーション。
+
+**コアコンセプト:**
+1.  **Privacy First:** 全データ処理をローカルマシン内で完結。外部通信一切なし。
+2.  **Performance:** NVIDIA RTX 4070 SuperのTensor Coreを最大限活用し、数万ファイルの処理を実用的な時間内で完了させる。
+3.  **Human-in-the-Loop:** AIはあくまで「提案」を行い、最終決定権はユーザーが持つ。ただし、AIの提案精度を高めることでユーザーの手間を最小化する。
+
+## 2. System Environment (Frozen)
+本プロジェクトは以下の固定された環境下で動作を保証する。
+
+*   **OS:** Windows 11 (64-bit)
+*   **CPU:** Intel/AMD x64 Architecture
+*   **GPU:** NVIDIA GeForce RTX 4070 Super (VRAM 12GB)
+*   **Driver:** NVIDIA Game Ready Driver / Studio Driver (Latest 2025/2026 build)
+*   **Python Runtime:** Python 3.10.x (Selected for maximum stability with PyTorch 2.x)
+*   **CUDA Toolkit:** CUDA 12.1 (Compatible with PyTorch Stable)
+
+## 3. Directory Structure
+プロジェクトのルートディレクトリは `LocalCuratorPrime/` とする。
+
+```text
+LocalCuratorPrime/
+├── .gitignore               # Git除外設定 (venv, __pycache__, inputs, outputs)
+├── requirements.txt         # 依存ライブラリ一覧
+├── app.py                   # アプリケーションエントリーポイント (Streamlit起動)
+├── src/                     # ソースコード
+│   ├── __init__.py
+│   ├── check_device.py      # 環境診断スクリプト
+│   ├── core/                # バックエンドロジック
+│   │   ├── __init__.py
+│   │   ├── ai_models.py     # CLIP, InsightFace, Decordのラッパー
+│   │   ├── scanner.py       # ファイル探索、ハッシュ計算、DB登録
+│   │   ├── processor.py     # バッチ処理管理
+│   │   └── sorter.py        # ファイル移動・コピー実行
+│   ├── data/                # データモデル・DB操作
+│   │   ├── __init__.py
+│   │   ├── db_manager.py    # SQLite/Pickle操作
+│   │   └── schemas.py       # データクラス定義 (Pydantic/Dataclass)
+│   └── ui/                  # フロントエンドコンポーネント (Streamlit)
+│       ├── __init__.py
+│       ├── sidebar.py
+│       ├── gallery_view.py
+│       └── components.py
+└── data/                    # 実行時データ保存領域
+    ├── inputs/              # 【ユーザー環境依存】入力フォルダ（テスト用）
+    ├── outputs/             # 【ユーザー環境依存】出力フォルダ
+    ├── models/              # AIモデルキャッシュ (InsightFace等)
+    └── db/                  # メタデータ保存用 (vectors.index, app.db)
+```
+
+## 4. Technology Stack & Configuration Details
+
+### A. Core AI Engine
+*   **Vision-Language Model:** `OpenCLIP`
+    *   **Model:** `ViT-L-14` (Vision Transformer Large, Patch 14)
+    *   **Pretrained Weights:** `laion2b_s32b_b82k` (大規模データセットで学習済み)
+    *   **Usage:** 画像全体および動画キーフレームの「意味」を768次元ベクトル化。ジャンル分類、作品推定に使用。
+*   **Face Analysis:** `InsightFace`
+    *   **Model Pack:** `buffalo_l` (Detection: SCRFD-10G / Recognition: ArcFace-R100)
+    *   **Execution Provider:** `CUDAExecutionProvider` (ONNX Runtime GPU)
+    *   **Usage:** 画像内の顔検出、512次元顔特徴ベクトル抽出。キャラクタークラスタリングに使用。
+*   **Video Decoding:** `Decord`
+    *   **Context:** `decord.gpu(0)`
+    *   **Logic:** 動画全体をデコードせず、`VideoReader`を用いてシークし、指定タイムスタンプ（例: 20%, 50%, 80%）のフレームのみをVRAM上で直接取得。
+
+### B. Data & Search
+*   **Vector Database:** `FAISS` (Facebook AI Similarity Search)
+    *   **Index Type:** `IndexFlatIP` (Inner Product / Cosine Similarity)。数万件規模であれば総当たりでもGPUなら一瞬であるため、精度重視でFlatインデックスを採用。
+    *   **Dimension:** 768 (CLIP) + 512 (Face)
+*   **Metadata Storage:** `SQLite` or `Pickle` (Pandas DataFrame)
+    *   ファイルパス、ハッシュ値、処理ステータス、ユーザーが付与したタグを管理。
+
+### C. User Interface
+*   **Framework:** `Streamlit`
+*   **Reason:** PythonのみでインタラクティブなGUIを構築可能。`st.image` によるグリッド表示、`st.cache_resource` によるモデルのメモリ常駐が容易。
+
+## 5. Implementation Requirements (Functional)
+
+### 1. Robust File Scanning (Scanner)
+*   **再帰的探索:** 指定フォルダ以下の全サブフォルダを走査。
+*   **破損チェック:** `PIL.Image.open().verify()` および `try-except` ブロックで破損ファイルを検出し、スキップリストに登録。アプリをクラッシュさせない。
+*   **重複排除:** ファイルのMD5ハッシュを計算し、既にDBにある場合は解析をスキップ。
+
+### 2. Video Processing Strategy
+動画ファイルは処理が重いため、以下の戦略をとる。
+*   **Keyframe Extraction:** 動画1本につき、最大3枚のキーフレーム（`Start+10s`, `Middle`, `End-10s`）を抽出。
+*   **Vector Aggregation:** 3枚のCLIPベクトルを平均化し、その動画の代表ベクトルとする。顔情報は3枚すべての検出結果をプールする。
+
+### 3. Clustering Logic (Auto-Grouping)
+*   **DBSCAN / HDBSCAN:** 顔ベクトル（512次元）に対し、密度ベースのクラスタリングを適用。
+*   **Unknown Handling:** 類似度が閾値（例: Cosine Sim > 0.6）を超えない顔は「Unknown」として分類。
+
+### 4. Interactive Sorting (Review & Move)
+*   **Confidence Score:** AIの判定には必ず確信度（Score）を持たせる。
+*   **Thresholding:** ユーザー設定（例: 80%）以上の確信度があるものは「自動移動候補」、それ未満は「確認待ち」としてUIに区別して表示。
+*   **Undo Capability:** ファイル移動ログを保持し、直前の操作を取り消せるようにする。
+
+## 6. Development Roadmap & Current Status
+
+### Phase 1: Environment Setup (✅ Completed)
+*   Python 3.10 Environment Created.
+*   CUDA 12.1 / PyTorch GPU Verified.
+*   Necessary Libraries Installed (`torch`, `insightface`, `open_clip`, `decord`, `streamlit`).
+
+### Phase 2: Core Logic Implementation (🚧 CURRENT TASK)
+*   **Task 2.1:** `src/core/ai_models.py` - AIモデルローダーの実装。
+*   **Task 2.2:** `test_engine.py` - 画像入力からベクトル出力までの疎通確認。
+*   **Task 2.3:** 動画処理ロジックの実装（Decord活用）。
+
+### Phase 3: Backend & Data Management (Next)
+*   Scanning module & SQLite/Pandas integration.
+*   Vector Search logic using FAISS.
+
+### Phase 4: UI Development (Future)
+*   Streamlit Dashboard construction.
+
+---
+
+この定義書に基づき、現在は **Phase 2: Core Logic Implementation** の段階にあります。
+直近のタスクは、AIモデルをメモリにロードし、画像・動画から特徴量を抽出するPythonクラスの実装です。
