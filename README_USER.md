@@ -1,70 +1,89 @@
-# LocalCurator Prime 取扱説明書
+# LocalCurator Prime 取扱説明書 / User Manual
 
-LocalCurator Primeは、AI（CLIPおよびInsightFace）を活用して、PC内の大量の画像や動画を自動で整理、検索、クリーンアップするためのデスクトップ・メディア管理ツールです。
+LocalCurator Primeは、AI（VLMおよび音声認識）を活用して、PC内の大量の画像や動画を自動で整理、文脈検索、そしてチャットで内容を分析するための次世代ローカル・メディア管理ツールです。
+LocalCurator Prime is a next-generation local media management tool that utilizes AI (Vision-Language Models and Speech Recognition) to automatically organize, semantically search, and analyze your massive local image and video collections.
 
 ---
 
-## 1. 起動方法
+## 1. 起動方法 / How to Start
 
-ターミナル（PowerShell等）を開き、プロジェクトフォルダに移動して以下のコマンドを実行してください。
+WebブラウザベースのモダンなUIを採用しています。バックエンド（AIエンジン）とフロントエンド（UI）の両方を起動する必要があります。
+This application uses a modern web-browser based UI. You need to start both the backend (AI Engine) and frontend (UI).
 
+### バックエンド (FastAPI / AI Engine)
+ターミナルを開き、プロジェクトフォルダで以下を実行します。
+Open a terminal, navigate to the project folder, and run:
 ```powershell
-streamlit run app.py
+# Pythonの仮想環境を有効化 (任意) / Activate venv (optional)
+# .\venv\Scripts\activate
+
+cd server
+python main.py
 ```
 
-ブラウザが自動的に開き、アプリケーション画面が表示されます。
+### フロントエンド (Next.js / Web UI)
+別のターミナルを開き、`web` フォルダに移動して以下を実行します。
+Open a new terminal, navigate to the `web` folder, and run:
+```powershell
+cd web
+npm run dev
+```
+
+起動後、ブラウザで `http://localhost:3000` にアクセスしてください。
+After starting, open your browser and navigate to `http://localhost:3000`.
 
 ---
 
-## 2. 基本操作フロー
+## 2. 基本操作フロー / Basic Workflow
 
-### ステップ1：スキャン
-1. 左側のサイドバーにある **「Target Folder Path」** に、整理したい画像・動画が入っているフォルダのパスを入力します。
-2. **「Start Scanning」** ボタンをクリックします。
-3. AIが各ファイルを解析し、内容（意味）や顔、メタデータをデータベースに登録します。
-    * *ヒント: RTX 4070 Superの性能を活かしたバッチ処理により、高速に解析が進みます。*
+### ステップ1：スキャン / Step 1: Scan
+1. 左側のサイドバー上部にある **「Folder Scanner」** に、整理したい画像・動画が入っているフォルダのパスを入力します。
+   In the **Folder Scanner** section near the top of the left sidebar, enter the path to the folder containing your media.
+2. **「Start Scan」** ボタンをクリックします。プログレスバーでリアルタイムの進捗や残り時間（ETA）が確認できます。
+   Click the **Start Scan** button. You can monitor the real-time progress and ETA via the progress bar.
+3. AIが各ファイル（動画含む）を解析し、内容、タグ、音声などをデータベースに登録します。
+   The AI will analyze each file (including videos) and register its contents, tags, and audio transcriptions to the database.
 
-### ステップ2：検索と閲覧（Gallery）
-1. **View Mode** で 「Gallery」 を選択します。
-2. 上部の検索バーに **「海辺を走る犬」** や **「青い服を着た女性」** など、言葉を入力してEnterを押します。
-3. 文脈を理解したAIが、類似度の高い順にメディアを表示します。
-
----
-
-## 3. 主要機能の紹介
-
-### 👥 Face Clusters（人物図鑑）
-* **概要:** 写真に写っている人物をAIが自動で判別し、同一人物ごとにグループ化します。
-* **操作:** 「Run Face Clustering」を押すと、全写真の顔データを解析し、「Person #1」「Person #2」としてまとめます。クリックするとその人が写っている写真だけが表示されます。
-
-### 🧹 Cleaner（重複クリーナー）
-* **概要:** 内容が似ている画像や動画を検出し、不要な方を削除してディスク容量を節約します。
-* **特徴:** 
-    * 似た構図の連写や、解像度・ファイルサイズが異なる重複ファイルを検出。
-    * **スマート提案:** 解像度が高い方を自動的に「残す方」として推奨します。
-    * **ビデオ対応:** 同じシーンかつ「動画の長さ」が近いものだけを正確に抽出します。
-* **操作:** 「Scan for Duplicates」を実行し、推奨アクションを確認して「Keep」を選択します。削除されたファイルは `.trash` フォルダへ移動されます。
-
-### 🗂️ Auto Organizer（自動整理機能）
-このプロジェクトの核心機能です。
-1. **Custom Learning（AIへの教育）**:
-    * 「Landscape」「Portrait」など、自分が仕分けたい名前のフォルダを作り、数枚のサンプル画像を入れます。
-    * 「Train Classifier」を実行すると、AIがあなたの好みの分類基準を学習します。
-2. **Physical Sorter（物理移動）**:
-    * 学習したAIカテゴリや、撮影日（年）、ファイル形式に基づいて、実際にファイルを物理的にフォルダ分けします。
-    * **安全性:** 「Dry Run」でシミュレーション、「Copy」で複製、「Move」で移動を選択できます。
-    * **Undo機能:** 処理後に生成される `undo_...bat` ファイルを実行すれば、いつでも整理前の状態に戻せます。
+### ステップ2：検索と閲覧 / Step 2: Search and Browse
+1. 画面上部の検索バーに **「海辺を沈む夕日」** や **「雨の中で笑う女の子」** など、自然言語を入力してEnterを押します。
+   In the top search bar, enter natural language queries like **"sunset at the beach"** or **"girl laughing in the rain"** and press Enter.
+2. 文脈を理解したAIが、類似度の高い順にメディアを表示します。動画の音声やシーン解説にヒットした場合は、対象の「スニペット（抜粋）」が表示されます。
+   The AI understands the context and displays media in order of semantic similarity. If a video's audio or scene description matches, a text snippet of the exact moment will be displayed.
 
 ---
 
-## 4. プロフェッショナルな使い方のコツ
+## 3. 主要機能の紹介 / Key Features
 
-* **タグの自動付与:** スキャン時にAIが「ポートレート」「スクリーンショット」「アニメ」などのタグを自動推論しています。これらも検索の助けになります。
-* **高性能GPU:** NVIDIA GPU (RTX 4070 Super) を搭載した環境であれば、数千枚のメディアも数分で整理可能です。
+### 🔍 Semantic Search（セマンティック検索）
+* **概要 / Overview:** ファイル名や手付けのタグではなく、「意味」や「文脈」で検索します。動画内のセリフやアクションも検索対象です。
+  Search by "meaning" or "context" rather than exact filenames or manual tags. Dialogue and actions inside videos are also searchable.
+
+### 🎬 Video Understanding（動画・音声理解）
+* **概要 / Overview:** 動画からキーフレームを抽出してAIが状況を説明（Moondream2）し、音声は文字起こし（Whisper）してデータベース化します。動画にカーソルを合わせると自動でプレビュー再生されます。
+  Extracts keyframes from videos for AI scene description (Moondream2), and transcribes audio (Whisper). Hover over a video thumbnail to instantly preview it.
+
+### 🏷️ Auto Tagging & Filtering（自動タグ付けとフィルタ）
+* **概要 / Overview:** キャラクター名、シリーズ名、一般タグなどを自動推論。左側のサイドバーで「画像のみ / 動画のみ」やキャラクターごとの絞り込みがワンクリックで行えます。
+  Automatically infers character names, series, and general tags. Use the left sidebar to filter down by "Images only / Videos only" or by specific characters with a single click.
+
+### 💬 Chat with Media（メディアとの対話）
+* **概要 / Overview:** ギャラリー内の画像をクリックして右側のチャットパネルを開くと、AIに「この画像には何が描かれていますか？」「このテキストを翻訳して」など直接質問が可能です。
+  Click an image to open the right chat panel and directly ask the AI questions like "What is drawn in this image?" or "Translate this text for me."
 
 ---
 
-## 5. 注意事項
+## 4. プロフェッショナルな使い方のコツ / Pro Tips
 
-* すべての処理は**ローカルPC内**で完結しており、外部サーバーにデータが送信されることはありません。
-* 物理移動（Move）を行う際は、必ずバックアップを取るか、まずは「Copy」または「Dry Run」で動作を確認することを推奨します。
+* **Force Reprocess (強制再スキャン):** 以前スキャンしたフォルダでも、アプリの新機能（動画の音声解析など）を適用したい場合は、スキャン画面の `Force Reprocess` にチェックを入れてスキャンしてください。
+  If you want to apply new AI features (like video audio analysis) to a previously scanned folder, check the `Force Reprocess` box before scanning.
+* **高性能GPU / High-Performance GPU:** NVIDIA GPU (RTX 4070 Super等) を搭載した環境であれば、数千枚のメディアや動画のディープラーニング解析も極めて高速に完了します。
+  With an NVIDIA GPU (e.g., RTX 4070 Super), deep learning analysis of thousands of images and videos completes extremely fast.
+
+---
+
+## 5. 注意事項 / Important Notes
+
+* すべての処理は**ローカル環境**で完結しており、外部サーバーにデータや画像が送信されることはありません（完全オフライン＆プライバシー保護）。
+  All processing is done completely **locally**. No data or images are ever sent to external servers (Fully offline & Privacy-first).
+* 初回起動時はAIモデルのダウンロード（約6GB〜）が行われるため、ネットワーク環境によっては起動に時間がかかります。
+  On the first run, AI models (approx. 6GB+) will be downloaded, so startup may take some time depending on your network speed.

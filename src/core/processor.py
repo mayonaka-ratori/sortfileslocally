@@ -127,6 +127,8 @@ class Processor:
                 
                 item.duration = res['duration']
                 item.fps = res['fps']
+                item.audio_transcription = res.get('audio_transcription', [])
+                item.frame_descriptions = res.get('frame_descriptions', [])
                 item.width = 0 # TODO: Get from decord if needed
                 item.height = 0
                 item.is_processed = True
@@ -403,6 +405,37 @@ class Processor:
                         item.width = 0 
                         item.height = 0
                         item.is_processed = True
+                        
+                        # Sequential fallback for Video Understanding in Batch Mode
+                        from .video_processor import VideoProcessor
+                        import tempfile
+                        import subprocess
+                        import os
+                        audio_transcription = []
+                        try:
+                            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp_audio:
+                                tmp_path = tmp_audio.name
+                            cmd = ['ffmpeg', '-y', '-i', item.file_path, '-vn', '-acodec', 'pcm_s16le', '-ar', '16000', '-ac', '1', tmp_path]
+                            if subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0:
+                                audio_transcription = self.ai_engine.transcribe_audio(tmp_path)
+                            if os.path.exists(tmp_path):
+                                os.remove(tmp_path)
+                        except:
+                            pass
+                        item.audio_transcription = audio_transcription
+                        
+                        frame_descriptions = []
+                        if hasattr(self.video_processor, 'vlm_engine'):
+                            try:
+                                for f_idx, frame_np in enumerate(res['frames']):
+                                    pil_img = Image.fromarray(frame_np)
+                                    action_text = self.video_processor.vlm_engine.ask_image(pil_img, "Describe the main action or subject in this image in one short sentence.")
+                                    if not action_text.startswith("Error"):
+                                        ts = res['indices'][f_idx] / res['fps'] if res['fps'] > 0 else 0
+                                        frame_descriptions.append({'timestamp': ts, 'text': action_text})
+                            except Exception as e:
+                                print(f"Batch VLM Error: {e}")
+                        item.frame_descriptions = frame_descriptions
                         
                         outputs = video_outputs[v_idx]
                         

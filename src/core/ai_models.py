@@ -5,7 +5,13 @@ import open_clip
 import numpy as np
 from PIL import Image
 from insightface.app import FaceAnalysis
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union, Dict, Any
+
+try:
+    from faster_whisper import WhisperModel
+    HAS_WHISPER = True
+except ImportError:
+    HAS_WHISPER = False
 
 class AIEngine:
     _instance = None
@@ -53,9 +59,7 @@ class AIEngine:
         except Exception as e:
             print(f"Failed to load InsightFace model: {e}")
             raise e
-            
-        self._initialized = True
-        
+
         # --- 3. Pre-compute Text Features for Style Classification ---
         # "Anime" vs "Photo"
         self.style_prompts = ["anime illustration", "digital art", "sketch", "manga", "comic", "monochrome illustration", "lineart", "japanese comic"]
@@ -74,6 +78,12 @@ class AIEngine:
              self.photo_embs /= self.photo_embs.norm(dim=-1, keepdim=True)
              self.photo_mean = self.photo_embs.mean(dim=0, keepdim=True)
              self.photo_mean /= self.photo_mean.norm(dim=-1, keepdim=True)
+
+        # --- 4. Whisper Model ---
+        # NOTE: Whisper (ctranslate2) is run in a subprocess to avoid DLL conflicts
+        # with onnxruntime-gpu. No model is loaded here.
+
+        self._initialized = True
 
     def classify_style(self, image: Image.Image) -> str:
         """
@@ -194,3 +204,76 @@ class AIEngine:
         for img in images_np:
             batch_results.append(self.extract_face_features(img))
         return batch_results
+
+    def transcribe_audio(self, audio_path: str) -> List[Dict[str, Any]]:
+        """
+        Transcribe audio file using Whisper.
+        Isolated to a subprocess to prevent ctranslate2/onnxruntime DLL conflicts.
+        Returns: [{'start': float, 'end': float, 'text': str}, ...]
+        """
+        if not HAS_WHISPER:
+            print("faster-whisper not installed.")
+            return []
+
+        if not os.path.exists(audio_path):
+            print(f"Audio file not found for transcription: {audio_path}")
+            return []
+
+        try:
+            import tempfile, subprocess, json, sys
+            
+            # Create a tiny Python script to run Whisper isolated from the main process
+            script_code = '''
+import sys, json
+try:
+    from faster_whisper import WhisperModel
+    model = WhisperModel('base', device='cpu', compute_type='int8')
+    segs, info = model.transcribe(sys.argv[1], beam_size=5)
+    out = [{'start': s.start, 'end': s.end, 'text': s.text.strip()} for s in segs]
+    print(json.dumps(out))
+except Exception as e:
+    import traceback
+    traceback.print_exc(file=sys.stderr)
+    print(json.dumps({'error': str(e)}))
+'''
+            # Windows requires the absolute audio path and correct escaping
+            abs_audio_path = os.path.abspath(audio_path).replace('\\', '/')
+            
+            with tempfile.NamedTemporaryFile(suffix='.py', delete=False, mode='w', encoding='utf-8') as f:
+                f.write(script_code)
+                script_path = f.name
+                
+            cmd = [sys.executable, script_path, abs_audio_path]
+            # Suppress console window on windows
+            creationflags = 0
+            if os.name == 'nt':
+                creationflags = subprocess.CREATE_NO_WINDOW
+                
+            res = subprocess.run(cmd, capture_output=True, text=True, creationflags=creationflags)
+            
+            if os.path.exists(script_path):
+                os.remove(script_path)
+                
+            if res.returncode != 0:
+                print(f"Whisper subprocess failed: {res.stderr}")
+                return []
+                
+            try:
+                # Find the JSON array line as ctranslate2 might print warnings
+                lines = res.stdout.strip().splitlines()
+                json_str = lines[-1] if lines else "[]"
+                
+                # Check if it returned an error dictionary
+                result_data = json.loads(json_str)
+                if isinstance(result_data, dict) and 'error' in result_data:
+                    print(f"Whisper Error: {result_data['error']}")
+                    return []
+                    
+                return result_data
+            except Exception as e:
+                print(f"Failed to parse Whisper output: {e}\nSTDOUT: {res.stdout}")
+                return []
+                
+        except Exception as e:
+            print(f"Error executing transcribe_audio: {e}")
+            return []

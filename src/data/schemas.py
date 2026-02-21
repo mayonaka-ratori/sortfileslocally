@@ -24,6 +24,8 @@ class MediaItem:
     character_tags: List[str] = field(default_factory=list)
     series_tags: List[str] = field(default_factory=list)
     error_msg: Optional[str] = None
+    audio_transcription: Optional[List[Dict[str, Any]]] = None
+    frame_descriptions: Optional[List[Dict[str, Any]]] = None
     
     def to_dict(self):
         return asdict(self)

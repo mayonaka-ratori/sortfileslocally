@@ -5,21 +5,18 @@ from PIL import Image
 import decord
 from decord import VideoReader, cpu, gpu
 from typing import List, Dict, Any, Union
+import tempfile
+import subprocess
 from .ai_models import AIEngine
+from .vlm_engine import VLMEngine
 
 class VideoProcessor:
     def __init__(self):
         self.ai_engine = AIEngine()
+        self._vlm_engine = None  # lazy-loaded on first use
         # Determine device for decord
-        # Try to use GPU if available
-        try:
-            # Test if GPU context works
-            _ = decord.gpu(0)
-            self.ctx = decord.gpu(0)
-            print("VideoProcessor: Using GPU for decoding.")
-        except Exception:
-            self.ctx = decord.cpu(0)
-            print("VideoProcessor: GPU decoding not available, using CPU.")
+        # Use CPU by default as decord GPU requires custom builds on windows
+        self.ctx = decord.cpu(0)
 
     def _get_frame_indices(self, vr: VideoReader) -> List[int]:
         """
@@ -118,12 +115,33 @@ class VideoProcessor:
         frame_count = len(vr)
         duration = frame_count / fps if fps > 0 else 0
         
+        # Extract Audio and Transcribe
+        audio_transcription = []
+        try:
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp_audio:
+                tmp_audio_path = tmp_audio.name
+            
+            # Extract audio at 16kHz for whisper
+            cmd = ['ffmpeg', '-y', '-i', video_path, '-vn', '-acodec', 'pcm_s16le', '-ar', '16000', '-ac', '1', tmp_audio_path]
+            # Use subprocess to run ffmpeg, supressing output
+            result = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            if result.returncode == 0:
+                audio_transcription = self.ai_engine.transcribe_audio(tmp_audio_path)
+            
+            if os.path.exists(tmp_audio_path):
+                os.remove(tmp_audio_path)
+        except Exception as e:
+            print(f"Failed to process audio for {video_path}: {e}")
+            if 'tmp_audio_path' in locals() and os.path.exists(tmp_audio_path):
+                os.remove(tmp_audio_path)
+        
         # Extract Frames
         indices = self._get_frame_indices(vr)
         frames = vr.get_batch(indices).asnumpy() # (N, H, W, C)
         
         clip_embeddings = []
         all_faces = []
+        frame_descriptions = []
         
         for i, frame_np in enumerate(frames):
             # frame_np is numpy array (RGB or BGR depending on decord?)
@@ -145,6 +163,20 @@ class VideoProcessor:
                 face['timestamp'] = timestamp
                 all_faces.append(face)
 
+            # 3. Action Recognition (Moondream VLM) - lazy-load VLMEngine
+            try:
+                if self._vlm_engine is None:
+                    from .vlm_engine import VLMEngine as _VLMEngine
+                    self._vlm_engine = _VLMEngine()
+                action_text = self._vlm_engine.ask_image(pil_img, "Describe the main action or subject in this image in one short sentence.")
+                if not action_text.startswith("Error"):
+                    frame_descriptions.append({
+                        'timestamp': timestamp,
+                        'text': action_text
+                    })
+            except Exception as e:
+                print(f"VLM prediction failed for frame: {e}")
+
         # Average CLIP embeddings
         if clip_embeddings:
             avg_clip_embedding = np.mean(clip_embeddings, axis=0)
@@ -158,5 +190,7 @@ class VideoProcessor:
             'fps': fps,
             'frame_count': frame_count,
             'clip_embedding': avg_clip_embedding, # (768,)
-            'faces': all_faces # List of dicts
+            'faces': all_faces, # List of dicts
+            'audio_transcription': audio_transcription,
+            'frame_descriptions': frame_descriptions
         }

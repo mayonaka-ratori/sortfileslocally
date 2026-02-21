@@ -47,42 +47,62 @@ def get_thumbnail(file_id: int, size: int = 300, db: DBManager = Depends(get_db_
         raise HTTPException(status_code=404, detail="File lost from disk")
         
     try:
-        # For simplicity, open with PIL and resize
-        # Note: This is synchronous, handled in threadpool by FastAPI (def)
-        # Large files might be slow.
-        # Ideally: generate thumbnail once and cache it on disk.
-        # But for now, on-the-fly.
+        # Check if requested size is reasonable
+        size = min(max(size, 100), 1080)
         
-        # If video, maybe extract frame?
-        # VideoProcessor.extract_frames is heavy.
-        # Provide placeholder for video or implement frame extraction later.
+        # Check Cache Directory
+        cache_dir = os.path.join(os.path.dirname(db.sqlite_path), ".thumbnails")
+        os.makedirs(cache_dir, exist_ok=True)
+        cache_path = os.path.join(cache_dir, f"{file_id}_{size}.jpg")
+        
+        if os.path.exists(cache_path):
+            return FileResponse(cache_path, media_type="image/jpeg")
+        
+        img = None
         
         if media_type == 'video':
-            # For now return placeholder or try to extract ONE frame if possible
-            # Just return a generic icon or fail gracefully?
-            # Or try to open with cv2?
-            # Let's try simple frame extraction if `decord` is available.
-            # But that's heavy.
-            # Let's return local placeholder logic if possible, or just fail for now.
-            # Actually, let's just create a blank image with text "VIDEO"
-            img = Image.new('RGB', (size, size), color='black')
-            # Text drawing requires font, let's just make it colored.
-            pass # TODO: Video thumbnail
-            
+            try:
+                import decord
+                # Attempt to extract the mid frame
+                vr = decord.VideoReader(path)
+                mid_frame = vr[len(vr)//2].asnumpy()
+                img = Image.fromarray(mid_frame).convert("RGB")
+            except Exception as e:
+                print(f"Video Thumbnail Error for {path}: {e}")
+                # Fallback to a black image if video decoding fails
+                img = Image.new('RGB', (size, size), color=(20, 20, 20))
         else:
-            img = Image.open(path)
-            img.thumbnail((size, size)) # Preserves aspect ratio
-            
-        # Save to BytesIO
-        buf = io.BytesIO()
-        img.save(buf, format="JPEG", quality=80)
-        buf.seek(0)
-        
-        return StreamingResponse(buf, media_type="image/jpeg")
-        
+            try:
+                img = Image.open(path)
+                # Convert to RGB to ensure JPEG compatibility
+                if img.mode != 'RGB':
+                    img = img.convert('RGB')
+            except Exception as e:
+                print(f"Image load Error for {path}: {e}")
+                # Fallback to a black image
+                img = Image.new('RGB', (size, size), color=(20, 20, 20))
+
+        if img is not None:
+             img.thumbnail((size, size)) # Preserves aspect ratio
+             
+             # Save to Cache and return it
+             try:
+                 rgb_img = img.convert('RGB')
+                 temp_path = f"{cache_path}.{os.getpid()}.tmp"
+                 rgb_img.save(temp_path, format="JPEG", quality=85)
+                 os.replace(temp_path, cache_path)
+                 return FileResponse(cache_path, media_type="image/jpeg")
+             except Exception as e:
+                 print(f"Failed to cache thumbnail: {e}")
+                 # Fallback to streaming memory
+                 buf = io.BytesIO()
+                 img.save(buf, format="JPEG", quality=85)
+                 buf.seek(0)
+                 return StreamingResponse(buf, media_type="image/jpeg")
+        else:
+             raise HTTPException(status_code=500, detail="Could not generate thumbnail")
+             
     except Exception as e:
         print(f"Thumbnail Error: {e}")
-        # Return 404 or a placeholder image?
-        # Let's return 500 or 404
         raise HTTPException(status_code=500, detail="Thumbnail generation failed")
 

@@ -1,4 +1,3 @@
-
 import sys
 import os
 from functools import lru_cache
@@ -7,6 +6,7 @@ from functools import lru_cache
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from src.core.ai_models import AIEngine
+from src.core.vlm_engine import VLMEngine
 from src.data.db_manager import DBManager
 from src.config import Config
 
@@ -15,6 +15,12 @@ def get_ai_engine() -> AIEngine:
     """Singleton for AI Engine."""
     print("Initializing AIEngine Singleton...")
     return AIEngine()
+
+@lru_cache()
+def get_vlm_engine() -> VLMEngine:
+    """Singleton for VLM Engine."""
+    print("Initializing VLMEngine Singleton...")
+    return VLMEngine()
 
 @lru_cache()
 def get_db_manager() -> DBManager:

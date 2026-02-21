@@ -44,6 +44,16 @@ class DBManager:
         if 'series_tags' not in columns:
             print("Migrating DB: Adding series_tags column")
             c.execute("ALTER TABLE files ADD COLUMN series_tags TEXT")
+
+        # Add audio_transcription if missing
+        if 'audio_transcription' not in columns:
+            print("Migrating DB: Adding audio_transcription column")
+            c.execute("ALTER TABLE files ADD COLUMN audio_transcription TEXT")
+
+        # Add frame_descriptions if missing
+        if 'frame_descriptions' not in columns:
+            print("Migrating DB: Adding frame_descriptions column")
+            c.execute("ALTER TABLE files ADD COLUMN frame_descriptions TEXT")
             
         conn.commit()
         conn.close()
@@ -71,7 +81,9 @@ class DBManager:
                 tags TEXT, -- JSON List
                 character_tags TEXT, -- JSON List
                 series_tags TEXT, -- JSON List
-                rating INTEGER DEFAULT 0
+                rating INTEGER DEFAULT 0,
+                audio_transcription TEXT, -- JSON List
+                frame_descriptions TEXT -- JSON List
             )
         ''')
         
@@ -138,8 +150,8 @@ class DBManager:
             # Upsert File Info
             # SQLite upsert syntax (ON CONFLICT)
             c.execute('''
-                INSERT INTO files (file_path, file_hash, file_size, media_type, created_at, modified_at, width, height, duration, is_processed, error_msg, tags, character_tags, series_tags)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO files (file_path, file_hash, file_size, media_type, created_at, modified_at, width, height, duration, is_processed, error_msg, tags, character_tags, series_tags, audio_transcription, frame_descriptions)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(file_path) DO UPDATE SET
                     file_hash=excluded.file_hash,
                     is_processed=excluded.is_processed,
@@ -147,12 +159,16 @@ class DBManager:
                     modified_at=excluded.modified_at,
                     tags=excluded.tags,
                     character_tags=excluded.character_tags,
-                    series_tags=excluded.series_tags
+                    series_tags=excluded.series_tags,
+                    audio_transcription=excluded.audio_transcription,
+                    frame_descriptions=excluded.frame_descriptions
             ''', (
                 item.file_path, item.file_hash, item.file_size, item.media_type, 
                 item.created_at, item.modified_at, item.width, item.height, item.duration,
                 1 if result.success else 0, item.error_msg, 
-                json.dumps(item.tags), json.dumps(item.character_tags), json.dumps(item.series_tags)
+                json.dumps(item.tags), json.dumps(item.character_tags), json.dumps(item.series_tags),
+                json.dumps(item.audio_transcription) if item.audio_transcription is not None else None,
+                json.dumps(item.frame_descriptions) if item.frame_descriptions is not None else None
             ))
             
             file_id = c.lastrowid
@@ -255,12 +271,14 @@ class DBManager:
                    item.file_path, item.file_hash, item.file_size, item.media_type,
                    item.created_at, item.modified_at, item.width, item.height, item.duration,
                    1 if r.success else 0, item.error_msg, 
-                   json.dumps(item.tags), json.dumps(item.character_tags), json.dumps(item.series_tags)
+                   json.dumps(item.tags), json.dumps(item.character_tags), json.dumps(item.series_tags),
+                   json.dumps(item.audio_transcription) if item.audio_transcription is not None else None,
+                   json.dumps(item.frame_descriptions) if item.frame_descriptions is not None else None
                 ))
             
             c.executemany('''
-                INSERT INTO files (file_path, file_hash, file_size, media_type, created_at, modified_at, width, height, duration, is_processed, error_msg, tags, character_tags, series_tags)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO files (file_path, file_hash, file_size, media_type, created_at, modified_at, width, height, duration, is_processed, error_msg, tags, character_tags, series_tags, audio_transcription, frame_descriptions)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(file_path) DO UPDATE SET
                     file_hash=excluded.file_hash,
                     is_processed=excluded.is_processed,
@@ -268,7 +286,9 @@ class DBManager:
                     modified_at=excluded.modified_at,
                     tags=excluded.tags,
                     character_tags=excluded.character_tags,
-                    series_tags=excluded.series_tags
+                    series_tags=excluded.series_tags,
+                    audio_transcription=excluded.audio_transcription,
+                    frame_descriptions=excluded.frame_descriptions
             ''', files_data)
             
             # Need to get IDs Back. 
