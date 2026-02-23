@@ -2,15 +2,19 @@
 import os
 import sys
 import traceback
+import logging
 from typing import List, Generator
 from PIL import Image
+import numpy as np
+
+logger = logging.getLogger(__name__)
 from .scanner import Scanner
 from .ai_models import AIEngine
 from .video_processor import VideoProcessor
 from ..data.db_manager import DBManager
 from ..data.schemas import MediaItem, VectorData, ProcessingResult, FaceData
+from ..data.scan_job_manager import ScanJobManager
 from .intelligence import AutoTagger
-from .character_tagger import CharacterTagger
 from ..config import Config
 from .preprocessing import ImageProcessor
 from .inference import InferenceOrchestrator
@@ -29,54 +33,110 @@ class Processor:
         self.auto_tagger = AutoTagger(self.ai_engine)
         # self.char_tagger removed (Migrated to InferenceOrchestrator)
         
-    def process_folder(self, root_dir: str, force_reprocess: bool = False, exclude_dirs: List[str] = None) -> Generator[dict, None, None]:
+    def process_folder(self, root_dir: str, force_reprocess: bool = False,
+                        exclude_dirs: List[str] = None,
+                        job_manager: ScanJobManager = None,
+                        job_id: int = None,
+                        resume_after_path: str = None) -> Generator[dict, None, None]:
         """
         Process all files in the directory.
         Yields status dictionaries.
+
+        Args:
+            job_manager: Optional ScanJobManager for persistent state.
+            job_id:      The job row ID (required if job_manager is set).
+            resume_after_path: If resuming, skip files up to and including this path.
         """
         import time
         start_time = time.time()
         
         # 1. Pre-scan for count
-        all_files = list(self.scanner.scan_directory(root_dir, exclude_dirs=exclude_dirs))
+        # We sort alphabetical to ensure consistent order for resume logic
+        all_files = sorted(self.scanner.scan_directory(root_dir, exclude_dirs=exclude_dirs))
         total_files = len(all_files)
         
-        count = 0
-        processed_new = 0
-        
-        for file_path in all_files:
-            count += 1
-            try:
-                item = self.scanner.inspect_file(file_path)
+        session_conn = None
+        try:
+            if job_manager and job_id:
+                # S4: Use a session connection to avoid churning SQLite handles per-file
+                import sqlite3
+                session_conn = sqlite3.connect(job_manager.sqlite_path, timeout=30)
+                session_conn.execute("PRAGMA journal_mode=WAL")
+                session_conn.row_factory = sqlite3.Row
+                job_manager.set_session_conn(session_conn)
                 
-                is_skip = not force_reprocess and self.db_manager.is_file_processed(item.file_path, item.file_hash)
-                
-                if not is_skip:
-                    result = self._process_item(item)
-                    self.db_manager.add_result(result)
-                    processed_new += 1
-                
-                # Yield progress
-                elapsed = time.time() - start_time
-                avg = elapsed / count
-                eta = (total_files - count) * avg
-                
-                yield {
-                    'current': count,
-                    'total': total_files,
-                    'newly_processed': processed_new,
-                    'filename': os.path.basename(file_path),
-                    'eta': eta,
-                    'elapsed': elapsed
-                }
-                
-            except Exception as e:
-                yield {'error': str(e), 'filename': os.path.basename(file_path)}
-                item.error_msg = str(e)
-                fail_result = ProcessingResult(item.file_path, False, item)
-                self.db_manager.add_result(fail_result)
+                job_manager.update_total(job_id, total_files)
+                job_manager.mark_running(job_id)
 
-        yield {'status': 'complete', 'processed': processed_new, 'scanned': count}
+            # Resume: skip files already processed in a prior run
+            skip_until_found = bool(resume_after_path)
+            
+            resume_skipped = 0  # Files skipped due to resume (prior run)
+            count = 0           # Files visited this session (for ETA)
+            processed_new = 0
+            
+            for file_path in all_files:
+                # Resume logic: skip files we already handled in a prior run
+                if skip_until_found:
+                    if file_path == resume_after_path:
+                        skip_until_found = False
+                    resume_skipped += 1
+                    if job_manager and job_id:
+                        job_manager.increment_skipped(job_id)
+                    continue
+
+                count += 1
+                item = None
+                try:
+                    item = self.scanner.inspect_file(file_path)
+                    
+                    is_skip = not force_reprocess and self.db_manager.is_file_processed(item.file_path, item.file_hash)
+                    
+                    if not is_skip:
+                        result = self._process_item(item)
+                        self.db_manager.add_result(result)
+                        processed_new += 1
+                        if job_manager and job_id:
+                            job_manager.increment_processed(job_id, file_path)
+                    else:
+                        if job_manager and job_id:
+                            job_manager.increment_skipped(job_id)
+                    
+                    # Yield progress
+                    elapsed = time.time() - start_time
+                    remaining_this_session = (total_files - resume_skipped) - count
+                    avg = elapsed / count if count > 0 else 0
+                    eta = remaining_this_session * avg
+                    
+                    yield {
+                        'current': resume_skipped + count,  # Overall position
+                        'total': total_files,
+                        'newly_processed': processed_new,
+                        'filename': os.path.basename(file_path),
+                        'eta': eta,
+                        'elapsed': elapsed
+                    }
+                    
+                except Exception as e:
+                    tb_str = traceback.format_exc()
+                    if job_manager and job_id:
+                        job_manager.log_error(job_id, file_path, str(e), tb_str)
+                    yield {'error': str(e), 'filename': os.path.basename(file_path)}
+                    if item is not None:
+                        item.error_msg = str(e)
+                        fail_result = ProcessingResult(item.file_path, False, item)
+                        self.db_manager.add_result(fail_result)
+
+            # Mark job complete
+            if job_manager and job_id:
+                job_manager.mark_completed(job_id)
+
+        finally:
+            if session_conn:
+                job_manager.set_session_conn(None)
+                session_conn.close()
+
+        yield {'status': 'complete', 'processed': processed_new, 'scanned': count, 'resume_skipped': resume_skipped}
 
     def _process_item(self, item: MediaItem) -> ProcessingResult:
         """Analyze a single item."""
@@ -98,10 +158,12 @@ class Processor:
                 
                 # Unpack Results
                 clip_vec = res['clip']
+                item.caption = res.get('caption', "")
                 raw_faces = res['faces']
                 # Update Metadata via Manager
                 MetadataManager.update_item_tags(
                     item, 
+                    new_tags=res.get('general_tags', []),
                     char_tags=res['char_tags'], 
                     series_tags=res['series_tags'], 
                     style=res['style']
@@ -129,6 +191,13 @@ class Processor:
                 item.fps = res['fps']
                 item.audio_transcription = res.get('audio_transcription', [])
                 item.frame_descriptions = res.get('frame_descriptions', [])
+                
+                if item.frame_descriptions:
+                    mid_idx = len(item.frame_descriptions) // 2
+                    item.caption = item.frame_descriptions[mid_idx].get('text', '')
+                else:
+                    item.caption = ""
+                    
                 item.width = 0 # TODO: Get from decord if needed
                 item.height = 0
                 item.is_processed = True
@@ -166,8 +235,8 @@ class Processor:
                     res = self.inference.process_image(Image.fromarray(mid_frame))
                     item.character_tags = res['char_tags']
                     item.series_tags = res['series_tags']
-                except:
-                    pass
+                except Exception as e:
+                    print(f"Failed character tagging for video {item.file_path}: {e}")
 
             return ProcessingResult(
                 file_path=item.file_path,
@@ -297,22 +366,22 @@ class Processor:
                         
                         res = batch_results[j]
                         
-                        # Character Tags
-                        item.character_tags = res['char_tags']
-                        item.series_tags = res['series_tags']
+                        item.caption = res.get('caption', "")
+                        
+                        # Use MetadataManager for consistent tag and style handling
+                        MetadataManager.update_item_tags(
+                            item,
+                            new_tags=suggested_tags_list[j] + res.get('general_tags', []),
+                            char_tags=res['char_tags'],
+                            series_tags=res['series_tags'],
+                            style=res['style']
+                        )
                         
                         clip_v = res['clip'].tolist() if hasattr(res['clip'], 'tolist') else res['clip']
                         
-                        faces_data = []
-                        f_vecs = []
-                        for f in res['faces']:
-                             f_vecs.append(f['embedding'].tolist())
-                             faces_data.append(FaceData(
-                                embedding=f['embedding'].tolist(),
-                                bbox=f['bbox'],
-                                det_score=f['det_score'],
-                                kps=f['kps']
-                            ))
+                        # Use MetadataManager for consistent face data creation
+                        faces_data = MetadataManager.create_face_data(res['faces'])
+                        f_vecs = [f.embedding for f in faces_data]
                             
                         vec_data = VectorData(clip_vector=clip_v, face_vectors=f_vecs)
                         item.is_processed = True
@@ -326,9 +395,7 @@ class Processor:
                         ))
 
             except Exception as e:
-                print(f"Batch Logic Error: {e}")
-                # Fallback for whole batch fail?
-                pass
+                logger.error(f"Batch Logic Error: {e}")
 
         # 2. Process Videos (Batch)
         video_indices = [i for i, x in enumerate(items) if x.media_type == 'video']
@@ -370,7 +437,7 @@ class Processor:
                     batch_results = self.inference.process_batch(all_frames)
                     
                     # 4. Aggregate results back to videos
-                    video_outputs = {v_idx: {'clips': [], 'faces': [], 'char_tags': [], 'series_tags': [], 'styles': []} for v_idx in range(len(vid_results))}
+                    video_outputs = {v_idx: {'clips': [], 'faces': [], 'general_tags': [], 'char_tags': [], 'series_tags': [], 'styles': []} for v_idx in range(len(vid_results))}
                     for global_idx, (v_idx, f_idx) in enumerate(batch_mapping):
                         res = batch_results[global_idx]
                         
@@ -388,8 +455,10 @@ class Processor:
                         video_outputs[v_idx]['faces'].extend(faces)
                         
                         # Tags
+                        g_t = res.get('general_tags', [])
                         c_t = res['char_tags']
                         s_t = res['series_tags']
+                        if g_t: video_outputs[v_idx]['general_tags'].extend(g_t)
                         if c_t: video_outputs[v_idx]['char_tags'].extend(c_t)
                         if s_t: video_outputs[v_idx]['series_tags'].extend(s_t)
                         
@@ -416,26 +485,36 @@ class Processor:
                             with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp_audio:
                                 tmp_path = tmp_audio.name
                             cmd = ['ffmpeg', '-y', '-i', item.file_path, '-vn', '-acodec', 'pcm_s16le', '-ar', '16000', '-ac', '1', tmp_path]
-                            if subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0:
+                            if subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=60).returncode == 0:
                                 audio_transcription = self.ai_engine.transcribe_audio(tmp_path)
                             if os.path.exists(tmp_path):
                                 os.remove(tmp_path)
-                        except:
-                            pass
+                        except subprocess.TimeoutExpired:
+                            logger.warning(f"ffmpeg timed out extracting audio for {item.file_path}")
+                            if os.path.exists(tmp_path):
+                                os.remove(tmp_path)
+                        except Exception as e:
+                            logger.error(f"Fallback sequential transcription error: {e}")
                         item.audio_transcription = audio_transcription
                         
                         frame_descriptions = []
-                        if hasattr(self.video_processor, 'vlm_engine'):
+                        if hasattr(self.video_processor, '_vlm_engine'):
                             try:
                                 for f_idx, frame_np in enumerate(res['frames']):
                                     pil_img = Image.fromarray(frame_np)
-                                    action_text = self.video_processor.vlm_engine.ask_image(pil_img, "Describe the main action or subject in this image in one short sentence.")
-                                    if not action_text.startswith("Error"):
+                                    action_text = self.video_processor._vlm_engine.generate_detailed_caption(pil_img)
+                                    if action_text is not None:
                                         ts = res['indices'][f_idx] / res['fps'] if res['fps'] > 0 else 0
                                         frame_descriptions.append({'timestamp': ts, 'text': action_text})
                             except Exception as e:
                                 print(f"Batch VLM Error: {e}")
                         item.frame_descriptions = frame_descriptions
+                        
+                        if item.frame_descriptions:
+                            mid_idx = len(item.frame_descriptions) // 2
+                            item.caption = item.frame_descriptions[mid_idx].get('text', '')
+                        else:
+                            item.caption = ""
                         
                         outputs = video_outputs[v_idx]
                         
@@ -458,6 +537,10 @@ class Processor:
                         auto_tags = self.auto_tagger.suggest_tags(np.array([avg_clip]))[0]
                         
                         # Update Metadata
+                        
+                        # Combine base auto tags (CLIP) with vision model tags
+                        auto_tags.extend(outputs.get('general_tags', []))
+                        
                         MetadataManager.update_item_tags(
                             item,
                             new_tags=auto_tags,
@@ -481,10 +564,8 @@ class Processor:
                         ))
 
             except Exception as e:
-                print(f"Video Batch Error: {e}")
-                # Fallback?
+                logger.error(f"Video Batch Error: {e}")
                 import traceback
-                traceback.print_exc()
-                pass
+                logger.error(traceback.format_exc())
             
         return results

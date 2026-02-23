@@ -1,32 +1,42 @@
 import React, { useState, useEffect } from "react";
-import { startScan, getScanStatus } from "@/lib/api";
+import { startScan, getScanStatus, getLatestScanJob, browseFolder, ScanStatus } from "@/lib/api";
 import { FolderSearch, AlertTriangle, AlertCircle, Play, Loader2, RefreshCw } from "lucide-react";
 
 export function ScanUI() {
     const [path, setPath] = useState("");
     const [forceReprocess, setForceReprocess] = useState(false);
 
-    const [status, setStatus] = useState<any>(null);
+    const [status, setStatus] = useState<ScanStatus | null>(null);
     const [error, setError] = useState("");
     const [starting, setStarting] = useState(false);
+    const [jobId, setJobId] = useState<number | null>(null);
 
     useEffect(() => {
         let timer: NodeJS.Timeout;
         const fetchStatus = async () => {
-            try {
-                const data = await getScanStatus();
-                setStatus(data);
-                // Poll faster when scan is active, slower when idle
-                timer = setTimeout(fetchStatus, data?.is_active ? 1000 : 8000);
-            } catch (err) {
-                console.error("Failed to fetch scan status", err);
-                timer = setTimeout(fetchStatus, 8000);
+            if (!jobId) {
+                try {
+                    const latestJob = await getLatestScanJob();
+                    if (latestJob && (latestJob.status === "running" || latestJob.status === "pending")) {
+                        setJobId(latestJob.id);
+                    }
+                } catch { }
+            } else {
+                try {
+                    const data = await getScanStatus(jobId);
+                    setStatus(data);
+                    timer = setTimeout(fetchStatus, data?.is_active ? 1000 : 8000);
+                    return;
+                } catch (err) {
+                    console.error("Failed to fetch scan status", err);
+                }
             }
+            timer = setTimeout(fetchStatus, 8000);
         };
 
         fetchStatus();
         return () => clearTimeout(timer);
-    }, []);
+    }, [jobId]);
 
     const handleStart = async () => {
         if (!path.trim()) return;
@@ -34,9 +44,12 @@ export function ScanUI() {
         setError("");
 
         try {
-            await startScan(path.trim(), forceReprocess);
-        } catch (err: any) {
-            setError(err.message || "Failed to start scan");
+            const res = await startScan(path.trim(), forceReprocess);
+            if (res.job?.id) {
+                setJobId(res.job.id);
+            }
+        } catch (err) {
+            setError((err as Error).message || "Failed to start scan");
         } finally {
             setStarting(false);
         }
@@ -58,14 +71,32 @@ export function ScanUI() {
 
             <div className="flex flex-col gap-2">
                 <label className="text-xs text-zinc-500 font-medium">Source Directory</label>
-                <input
-                    type="text"
-                    value={path}
-                    onChange={(e) => setPath(e.target.value)}
-                    placeholder="Enter directory path..."
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 focus:outline-none focus:border-indigo-500 transition-colors placeholder-zinc-700 font-mono text-xs text-zinc-300"
-                    disabled={status?.is_active}
-                />
+                <div className="flex gap-2">
+                    <input
+                        type="text"
+                        value={path}
+                        onChange={(e) => setPath(e.target.value)}
+                        placeholder="Enter directory path..."
+                        className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-3 py-2 focus:outline-none focus:border-indigo-500 transition-colors placeholder-zinc-700 font-mono text-xs text-zinc-300"
+                        disabled={status?.is_active}
+                    />
+                    <button
+                        onClick={async () => {
+                            try {
+                                const { path: selectedPath, cancelled } = await browseFolder();
+                                if (!cancelled && selectedPath) {
+                                    setPath(selectedPath);
+                                }
+                            } catch (err) {
+                                setError("Failed to open folder picker: " + (err as Error).message);
+                            }
+                        }}
+                        disabled={status?.is_active}
+                        className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-3 py-2 rounded text-xs font-medium transition-colors border border-zinc-700 disabled:opacity-50"
+                    >
+                        Browse
+                    </button>
+                </div>
             </div>
 
             <div className="flex items-center gap-2">

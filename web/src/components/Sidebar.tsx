@@ -1,7 +1,8 @@
 "use client"
 import React, { useEffect, useState } from "react"
+import Link from "next/link"
 import { fetchFilters } from "@/lib/api"
-import { LayoutGrid, Filter } from "lucide-react"
+import { LayoutGrid, Filter, Settings } from "lucide-react"
 import { ScanUI } from "./ScanUI"
 
 export interface FilterState {
@@ -119,6 +120,14 @@ export function Sidebar({ onFilterChange, isOpen, onClose }: SidebarProps) {
                             </select>
                         </div>
                     </div>
+                </div>
+
+                {/* Footer Link */}
+                <div className="mt-auto p-4 border-t border-zinc-800 bg-zinc-950/80 backdrop-blur z-10">
+                    <Link href="/settings" className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-800/50 transition-colors">
+                        <Settings className="w-4 h-4" />
+                        Settings
+                    </Link>
                 </div>
             </div>
         </>

@@ -1,0 +1,2 @@
+test_video_understanding.py Output:
+=== Video Understanding Pipeline Test ===  [1] Verifying DB column migration...   [DB columns] audio_transcription: True, frame_descriptions: True   PASS: New columns exist  [2] Generating test video via ffmpeg...   PASS: Created C:\Users\hosom\AppData\Local\Temp\tmpew_1hdya\test_video.mp4  [3] Testing VideoProcessor (audio + frame descriptions)...   [SKIP] Video tests skipped due to environment dependency: Unable to import dependency onnxruntime.   === Test Complete ===

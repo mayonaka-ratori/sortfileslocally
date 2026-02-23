@@ -1,0 +1,9 @@
+============================= test session starts =============================
+platform win32 -- Python 3.10.11, pytest-9.0.2, pluggy-1.6.0
+rootdir: C:\tools\organizefiles0112\LocalCuratorPrime
+plugins: anyio-4.12.1
+collected 4 items
+
+tests\test_exporter.py ....                                              [100%]
+
+============================== 4 passed in 0.05s ==============================

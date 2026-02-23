@@ -1,0 +1,2 @@
+2026-02-22 16:40:18.316514: DRY RUN: DRY_RUN data/test_sort_src\test_img.jpg -> data/test_sort_dst\CategoryA\test_img.jpg
+2026-02-22 16:40:18.324149: COPIED: data/test_sort_src\test_img.jpg -> data/test_sort_dst\CategoryA\test_img.jpg

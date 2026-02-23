@@ -1,10 +1,13 @@
 
 import os
 import hashlib
+import logging
 from typing import Iterator, List
 from ..data.schemas import MediaItem
 from datetime import datetime
 from ..config import Config
+
+logger = logging.getLogger(__name__)
 
 class Scanner:
     def __init__(self, allowed_extensions: List[str] = None):
@@ -37,9 +40,9 @@ class Scanner:
             # Build final hash
             data = f"{fingerprint}_{head.hex()}_{tail.hex()}"
             return hashlib.md5(data.encode()).hexdigest()
-        except Exception:
-            # Fallback to simple path-based hash if something goes wrong
-            return hashlib.md5(file_path.encode()).hexdigest()
+        except (IOError, OSError) as e:
+            logger.error(f"Hash calc failed for {file_path}: {e}")
+            return None
 
     def _get_media_type(self, ext: str) -> str:
         for m_type, exts in Config.ALLOWED_EXTENSIONS.items():
@@ -57,28 +60,31 @@ class Scanner:
                 if d and os.path.exists(d):
                     exclude_set.add(os.path.abspath(d))
 
-        for entry in os.scandir(root_dir):
-            if entry.is_dir(follow_symlinks=False):
-                # Skip .hidden folders
-                if entry.name.startswith('.'):
-                    continue
+        try:
+            for entry in os.scandir(root_dir):
+                if entry.is_dir(follow_symlinks=False):
+                    # Skip .hidden folders
+                    if entry.name.startswith('.'):
+                        continue
+                        
+                    full_path = os.path.abspath(entry.path)
                     
-                full_path = os.path.abspath(entry.path)
-                
-                # Check exclude
-                is_excluded = False
-                for ex in exclude_set:
-                     if full_path.startswith(ex):
-                         is_excluded = True
-                         break
-                if is_excluded:
-                    continue
-
-                yield from self.scan_directory(entry.path, exclude_dirs=exclude_dirs)
-            elif entry.is_file():
-                ext = os.path.splitext(entry.name)[1].lower()
-                if ext in self.allowed_extensions:
-                    yield entry.path
+                    # Check exclude
+                    is_excluded = False
+                    for ex in exclude_set:
+                         if full_path.startswith(ex):
+                             is_excluded = True
+                             break
+                    if is_excluded:
+                        continue
+    
+                    yield from self.scan_directory(entry.path, exclude_dirs=exclude_dirs)
+                elif entry.is_file():
+                    ext = os.path.splitext(entry.name)[1].lower()
+                    if ext in self.allowed_extensions:
+                        yield entry.path
+        except PermissionError as e:
+            logger.warning(f"Skipping inaccessible directory {root_dir}: {e}")
 
     def inspect_file(self, file_path: str) -> MediaItem:
         """Get basic file stats and create MediaItem."""

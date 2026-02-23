@@ -1,0 +1,416 @@
+============================= test session starts =============================
+platform win32 -- Python 3.10.11, pytest-9.0.2, pluggy-1.6.0 -- C:\tools\organizefiles0112\LocalCuratorPrime\venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\tools\organizefiles0112\LocalCuratorPrime
+plugins: anyio-4.12.1
+collecting ... collected 21 items
+
+tests/test_debug_unpacking.py::test_batch_unpacking PASSED               [  4%]
+tests/test_deduplication.py::test_deduplication_logic PASSED             [  9%]
+tests/test_deduplication_merge.py::test_metadata_merge PASSED            [ 14%]
+tests/test_engine.py::test_engine PASSED                                 [ 19%]
+tests/test_exporter.py::test_export_to_xmp_sidecar PASSED                [ 23%]
+tests/test_exporter.py::test_export_to_exif_jpeg PASSED                  [ 28%]
+tests/test_exporter.py::test_export_exif_unsupported_format PASSED       [ 33%]
+tests/test_exporter.py::test_export_batch_mixed PASSED                   [ 38%]
+tests/test_integration_export_dedup.py::test_integration_export_dedup_deletes_xmp FAILED [ 42%]
+tests/test_intelligence.py::test_auto_tagger PASSED                      [ 47%]
+tests/test_intelligence.py::test_face_clustering PASSED                  [ 52%]
+tests/test_pipeline.py::test_pipeline PASSED                             [ 57%]
+tests/test_scan_job_manager.py::test_scan_job_lifecycle PASSED           [ 61%]
+tests/test_semantic_actions.py::TestSemanticEngine::test_semantic_engine_parsing PASSED [ 66%]
+tests/test_setup.py::test_get_setup_settings PASSED                      [ 71%]
+tests/test_setup.py::test_post_setup_settings_valid FAILED               [ 76%]
+tests/test_setup.py::test_post_setup_settings_invalid_not_exist FAILED   [ 80%]
+tests/test_setup.py::test_post_setup_settings_invalid_not_dir FAILED     [ 85%]
+tests/test_sorter.py::test_sorter_safety PASSED                          [ 90%]
+tests/test_video_understanding.py::test_pipeline_with_video ERROR        [ 95%]
+tests/test_video_understanding.py::test_db_roundtrip ERROR               [100%]
+
+=================================== ERRORS ====================================
+_________________ ERROR at setup of test_pipeline_with_video __________________
+file C:\tools\organizefiles0112\LocalCuratorPrime\tests\test_video_understanding.py, line 55
+  def test_pipeline_with_video(video_path: str):
+E       fixture 'video_path' not found
+>       available fixtures: anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, capteesys, doctest_namespace, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, monkeypatch, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, subtests, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+C:\tools\organizefiles0112\LocalCuratorPrime\tests\test_video_understanding.py:55
+_____________________ ERROR at setup of test_db_roundtrip _____________________
+file C:\tools\organizefiles0112\LocalCuratorPrime\tests\test_video_understanding.py, line 79
+  def test_db_roundtrip(video_path: str):
+E       fixture 'video_path' not found
+>       available fixtures: anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, capteesys, doctest_namespace, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, monkeypatch, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, subtests, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+C:\tools\organizefiles0112\LocalCuratorPrime\tests\test_video_understanding.py:79
+================================== FAILURES ===================================
+__________________ test_integration_export_dedup_deletes_xmp __________________
+
+tmp_path = WindowsPath('C:/Users/hosom/AppData/Local/Temp/pytest-of-hosom/pytest-7/test_integration_export_dedup_0')
+
+    def test_integration_export_dedup_deletes_xmp(tmp_path):
+        # Setup test file
+        test_img_path = tmp_path / "test_dedup_export.jpg"
+        img = Image.new('RGB', (100, 100))
+        img.save(test_img_path, format='JPEG')
+    
+        img_path_str = str(test_img_path)
+    
+        # Needs db
+        from server.dependencies import get_db_manager
+        db = get_db_manager()
+    
+        import time
+>       item = MediaItem(file_path=img_path_str, media_type="image", file_size=100, file_hash="dummyhash", created_at=time.time(), modified_at=time.time(), tags=["tag1"], character_tags=[], series_tags=[], caption="")
+E       TypeError: MediaItem.__init__() missing 2 required positional arguments: 'created_at' and 'modified_at'
+
+tests\test_integration_export_dedup.py:23: TypeError
+_______________________ test_post_setup_settings_valid ________________________
+
+tmp_path = WindowsPath('C:/Users/hosom/AppData/Local/Temp/pytest-of-hosom/pytest-7/test_post_setup_settings_valid0')
+
+    def test_post_setup_settings_valid(tmp_path):
+        valid_dir = str(tmp_path)
+>       response = client.post("/setup/settings", json={"key": "custom_model_dir", "value": valid_dir})
+
+tests\test_setup.py:16: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+venv\lib\site-packages\starlette\testclient.py:546: in post
+    return super().post(
+venv\lib\site-packages\httpx\_client.py:1144: in post
+    return self.request(
+venv\lib\site-packages\starlette\testclient.py:445: in request
+    return super().request(
+venv\lib\site-packages\httpx\_client.py:825: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+venv\lib\site-packages\httpx\_client.py:914: in send
+    response = self._send_handling_auth(
+venv\lib\site-packages\httpx\_client.py:942: in _send_handling_auth
+    response = self._send_handling_redirects(
+venv\lib\site-packages\httpx\_client.py:979: in _send_handling_redirects
+    response = self._send_single_request(request)
+venv\lib\site-packages\httpx\_client.py:1014: in _send_single_request
+    response = transport.handle_request(request)
+venv\lib\site-packages\starlette\testclient.py:348: in handle_request
+    raise exc
+venv\lib\site-packages\starlette\testclient.py:345: in handle_request
+    portal.call(self.app, scope, receive, send)
+venv\lib\site-packages\anyio\from_thread.py:334: in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+C:\Users\hosom\AppData\Local\Programs\Python\Python310\lib\concurrent\futures\_base.py:458: in result
+    return self.__get_result()
+C:\Users\hosom\AppData\Local\Programs\Python\Python310\lib\concurrent\futures\_base.py:403: in __get_result
+    raise self._exception
+venv\lib\site-packages\anyio\from_thread.py:259: in _call_func
+    retval = await retval_or_awaitable
+venv\lib\site-packages\fastapi\applications.py:1134: in __call__
+    await super().__call__(scope, receive, send)
+venv\lib\site-packages\starlette\applications.py:107: in __call__
+    await self.middleware_stack(scope, receive, send)
+venv\lib\site-packages\starlette\middleware\errors.py:186: in __call__
+    raise exc
+venv\lib\site-packages\starlette\middleware\errors.py:164: in __call__
+    await self.app(scope, receive, _send)
+venv\lib\site-packages\starlette\middleware\cors.py:87: in __call__
+    await self.app(scope, receive, send)
+venv\lib\site-packages\starlette\middleware\exceptions.py:63: in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+venv\lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    raise exc
+venv\lib\site-packages\starlette\_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+venv\lib\site-packages\fastapi\middleware\asyncexitstack.py:18: in __call__
+    await self.app(scope, receive, send)
+venv\lib\site-packages\starlette\routing.py:716: in __call__
+    await self.middleware_stack(scope, receive, send)
+venv\lib\site-packages\starlette\routing.py:736: in app
+    await route.handle(scope, receive, send)
+venv\lib\site-packages\starlette\routing.py:290: in handle
+    await self.app(scope, receive, send)
+venv\lib\site-packages\fastapi\routing.py:119: in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+venv\lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    raise exc
+venv\lib\site-packages\starlette\_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+venv\lib\site-packages\fastapi\routing.py:105: in app
+    response = await f(request)
+venv\lib\site-packages\fastapi\routing.py:424: in app
+    raw_response = await run_endpoint_function(
+venv\lib\site-packages\fastapi\routing.py:314: in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+venv\lib\site-packages\starlette\concurrency.py:32: in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+venv\lib\site-packages\anyio\to_thread.py:63: in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+venv\lib\site-packages\anyio\_backends\_asyncio.py:2502: in run_sync_in_worker_thread
+    return await future
+venv\lib\site-packages\anyio\_backends\_asyncio.py:986: in run
+    result = context.run(func, *args)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+req = SettingItem(key='custom_model_dir', value='C:\\Users\\hosom\\AppData\\Local\\Temp\\pytest-of-hosom\\pytest-7\\test_post_setup_settings_valid0')
+
+    @router.post("/settings", response_model=SettingUpdateResponse)
+    def update_setting(req: SettingItem):
+        """Update a specific application setting."""
+        from server.dependencies import get_db_manager
+        db = get_db_manager()
+    
+        # Input Validation
+        if req.key == "custom_model_dir":
+            path = req.value.strip()
+            if not path:
+                # Handle empty as reset to default
+                db.set_setting(req.key, "")
+            else:
+>               if not os.path.exists(path):
+E               NameError: name 'os' is not defined
+
+server\routers\setup.py:137: NameError
+_________________ test_post_setup_settings_invalid_not_exist __________________
+
+    def test_post_setup_settings_invalid_not_exist():
+>       response = client.post("/setup/settings", json={"key": "custom_model_dir", "value": "/does/not/exist/ever123"})
+
+tests\test_setup.py:25: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+venv\lib\site-packages\starlette\testclient.py:546: in post
+    return super().post(
+venv\lib\site-packages\httpx\_client.py:1144: in post
+    return self.request(
+venv\lib\site-packages\starlette\testclient.py:445: in request
+    return super().request(
+venv\lib\site-packages\httpx\_client.py:825: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+venv\lib\site-packages\httpx\_client.py:914: in send
+    response = self._send_handling_auth(
+venv\lib\site-packages\httpx\_client.py:942: in _send_handling_auth
+    response = self._send_handling_redirects(
+venv\lib\site-packages\httpx\_client.py:979: in _send_handling_redirects
+    response = self._send_single_request(request)
+venv\lib\site-packages\httpx\_client.py:1014: in _send_single_request
+    response = transport.handle_request(request)
+venv\lib\site-packages\starlette\testclient.py:348: in handle_request
+    raise exc
+venv\lib\site-packages\starlette\testclient.py:345: in handle_request
+    portal.call(self.app, scope, receive, send)
+venv\lib\site-packages\anyio\from_thread.py:334: in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+C:\Users\hosom\AppData\Local\Programs\Python\Python310\lib\concurrent\futures\_base.py:458: in result
+    return self.__get_result()
+C:\Users\hosom\AppData\Local\Programs\Python\Python310\lib\concurrent\futures\_base.py:403: in __get_result
+    raise self._exception
+venv\lib\site-packages\anyio\from_thread.py:259: in _call_func
+    retval = await retval_or_awaitable
+venv\lib\site-packages\fastapi\applications.py:1134: in __call__
+    await super().__call__(scope, receive, send)
+venv\lib\site-packages\starlette\applications.py:107: in __call__
+    await self.middleware_stack(scope, receive, send)
+venv\lib\site-packages\starlette\middleware\errors.py:186: in __call__
+    raise exc
+venv\lib\site-packages\starlette\middleware\errors.py:164: in __call__
+    await self.app(scope, receive, _send)
+venv\lib\site-packages\starlette\middleware\cors.py:87: in __call__
+    await self.app(scope, receive, send)
+venv\lib\site-packages\starlette\middleware\exceptions.py:63: in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+venv\lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    raise exc
+venv\lib\site-packages\starlette\_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+venv\lib\site-packages\fastapi\middleware\asyncexitstack.py:18: in __call__
+    await self.app(scope, receive, send)
+venv\lib\site-packages\starlette\routing.py:716: in __call__
+    await self.middleware_stack(scope, receive, send)
+venv\lib\site-packages\starlette\routing.py:736: in app
+    await route.handle(scope, receive, send)
+venv\lib\site-packages\starlette\routing.py:290: in handle
+    await self.app(scope, receive, send)
+venv\lib\site-packages\fastapi\routing.py:119: in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+venv\lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    raise exc
+venv\lib\site-packages\starlette\_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+venv\lib\site-packages\fastapi\routing.py:105: in app
+    response = await f(request)
+venv\lib\site-packages\fastapi\routing.py:424: in app
+    raw_response = await run_endpoint_function(
+venv\lib\site-packages\fastapi\routing.py:314: in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+venv\lib\site-packages\starlette\concurrency.py:32: in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+venv\lib\site-packages\anyio\to_thread.py:63: in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+venv\lib\site-packages\anyio\_backends\_asyncio.py:2502: in run_sync_in_worker_thread
+    return await future
+venv\lib\site-packages\anyio\_backends\_asyncio.py:986: in run
+    result = context.run(func, *args)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+req = SettingItem(key='custom_model_dir', value='/does/not/exist/ever123')
+
+    @router.post("/settings", response_model=SettingUpdateResponse)
+    def update_setting(req: SettingItem):
+        """Update a specific application setting."""
+        from server.dependencies import get_db_manager
+        db = get_db_manager()
+    
+        # Input Validation
+        if req.key == "custom_model_dir":
+            path = req.value.strip()
+            if not path:
+                # Handle empty as reset to default
+                db.set_setting(req.key, "")
+            else:
+>               if not os.path.exists(path):
+E               NameError: name 'os' is not defined
+
+server\routers\setup.py:137: NameError
+__________________ test_post_setup_settings_invalid_not_dir ___________________
+
+tmp_path = WindowsPath('C:/Users/hosom/AppData/Local/Temp/pytest-of-hosom/pytest-7/test_post_setup_settings_inval0')
+
+    def test_post_setup_settings_invalid_not_dir(tmp_path):
+        test_file = tmp_path / "test.txt"
+        test_file.write_text("test")
+>       response = client.post("/setup/settings", json={"key": "custom_model_dir", "value": str(test_file)})
+
+tests\test_setup.py:32: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+venv\lib\site-packages\starlette\testclient.py:546: in post
+    return super().post(
+venv\lib\site-packages\httpx\_client.py:1144: in post
+    return self.request(
+venv\lib\site-packages\starlette\testclient.py:445: in request
+    return super().request(
+venv\lib\site-packages\httpx\_client.py:825: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+venv\lib\site-packages\httpx\_client.py:914: in send
+    response = self._send_handling_auth(
+venv\lib\site-packages\httpx\_client.py:942: in _send_handling_auth
+    response = self._send_handling_redirects(
+venv\lib\site-packages\httpx\_client.py:979: in _send_handling_redirects
+    response = self._send_single_request(request)
+venv\lib\site-packages\httpx\_client.py:1014: in _send_single_request
+    response = transport.handle_request(request)
+venv\lib\site-packages\starlette\testclient.py:348: in handle_request
+    raise exc
+venv\lib\site-packages\starlette\testclient.py:345: in handle_request
+    portal.call(self.app, scope, receive, send)
+venv\lib\site-packages\anyio\from_thread.py:334: in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+C:\Users\hosom\AppData\Local\Programs\Python\Python310\lib\concurrent\futures\_base.py:458: in result
+    return self.__get_result()
+C:\Users\hosom\AppData\Local\Programs\Python\Python310\lib\concurrent\futures\_base.py:403: in __get_result
+    raise self._exception
+venv\lib\site-packages\anyio\from_thread.py:259: in _call_func
+    retval = await retval_or_awaitable
+venv\lib\site-packages\fastapi\applications.py:1134: in __call__
+    await super().__call__(scope, receive, send)
+venv\lib\site-packages\starlette\applications.py:107: in __call__
+    await self.middleware_stack(scope, receive, send)
+venv\lib\site-packages\starlette\middleware\errors.py:186: in __call__
+    raise exc
+venv\lib\site-packages\starlette\middleware\errors.py:164: in __call__
+    await self.app(scope, receive, _send)
+venv\lib\site-packages\starlette\middleware\cors.py:87: in __call__
+    await self.app(scope, receive, send)
+venv\lib\site-packages\starlette\middleware\exceptions.py:63: in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+venv\lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    raise exc
+venv\lib\site-packages\starlette\_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+venv\lib\site-packages\fastapi\middleware\asyncexitstack.py:18: in __call__
+    await self.app(scope, receive, send)
+venv\lib\site-packages\starlette\routing.py:716: in __call__
+    await self.middleware_stack(scope, receive, send)
+venv\lib\site-packages\starlette\routing.py:736: in app
+    await route.handle(scope, receive, send)
+venv\lib\site-packages\starlette\routing.py:290: in handle
+    await self.app(scope, receive, send)
+venv\lib\site-packages\fastapi\routing.py:119: in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+venv\lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    raise exc
+venv\lib\site-packages\starlette\_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+venv\lib\site-packages\fastapi\routing.py:105: in app
+    response = await f(request)
+venv\lib\site-packages\fastapi\routing.py:424: in app
+    raw_response = await run_endpoint_function(
+venv\lib\site-packages\fastapi\routing.py:314: in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+venv\lib\site-packages\starlette\concurrency.py:32: in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+venv\lib\site-packages\anyio\to_thread.py:63: in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+venv\lib\site-packages\anyio\_backends\_asyncio.py:2502: in run_sync_in_worker_thread
+    return await future
+venv\lib\site-packages\anyio\_backends\_asyncio.py:986: in run
+    result = context.run(func, *args)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+req = SettingItem(key='custom_model_dir', value='C:\\Users\\hosom\\AppData\\Local\\Temp\\pytest-of-hosom\\pytest-7\\test_post_setup_settings_inval0\\test.txt')
+
+    @router.post("/settings", response_model=SettingUpdateResponse)
+    def update_setting(req: SettingItem):
+        """Update a specific application setting."""
+        from server.dependencies import get_db_manager
+        db = get_db_manager()
+    
+        # Input Validation
+        if req.key == "custom_model_dir":
+            path = req.value.strip()
+            if not path:
+                # Handle empty as reset to default
+                db.set_setting(req.key, "")
+            else:
+>               if not os.path.exists(path):
+E               NameError: name 'os' is not defined
+
+server\routers\setup.py:137: NameError
+============================== warnings summary ===============================
+<frozen importlib._bootstrap>:241
+  <frozen importlib._bootstrap>:241: DeprecationWarning: builtin type SwigPyPacked has no __module__ attribute
+
+<frozen importlib._bootstrap>:241
+  <frozen importlib._bootstrap>:241: DeprecationWarning: builtin type SwigPyObject has no __module__ attribute
+
+<frozen importlib._bootstrap>:241
+  <frozen importlib._bootstrap>:241: DeprecationWarning: builtin type swigvarlink has no __module__ attribute
+
+venv\lib\site-packages\huggingface_hub\file_download.py:949
+venv\lib\site-packages\huggingface_hub\file_download.py:949
+tests/test_engine.py::test_engine
+  C:\tools\organizefiles0112\LocalCuratorPrime\venv\lib\site-packages\huggingface_hub\file_download.py:949: FutureWarning: `resume_download` is deprecated and will be removed in version 1.0.0. Downloads always resume when possible. If you want to force a new download, use `force_download=True`.
+    warnings.warn(
+
+<frozen importlib._bootstrap>:283
+<frozen importlib._bootstrap>:283
+<frozen importlib._bootstrap>:283
+<frozen importlib._bootstrap>:283
+tests/test_engine.py::test_engine
+tests/test_engine.py::test_engine
+tests/test_engine.py::test_engine
+tests/test_engine.py::test_engine
+  <frozen importlib._bootstrap>:283: DeprecationWarning: the load_module() method is deprecated and slated for removal in Python 3.12; use exec_module() instead
+
+tests/test_debug_unpacking.py::test_batch_unpacking
+tests/test_engine.py::test_engine
+tests/test_pipeline.py::test_pipeline
+  C:\tools\organizefiles0112\LocalCuratorPrime\venv\lib\site-packages\onnxruntime\capi\onnxruntime_inference_collection.py:123: UserWarning: Specified provider 'CUDAExecutionProvider' is not in available provider names.Available providers: 'AzureExecutionProvider, CPUExecutionProvider'
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/test_integration_export_dedup.py::test_integration_export_dedup_deletes_xmp
+FAILED tests/test_setup.py::test_post_setup_settings_valid - NameError: name ...
+FAILED tests/test_setup.py::test_post_setup_settings_invalid_not_exist - Name...
+FAILED tests/test_setup.py::test_post_setup_settings_invalid_not_dir - NameEr...
+ERROR tests/test_video_understanding.py::test_pipeline_with_video
+ERROR tests/test_video_understanding.py::test_db_roundtrip
+======= 4 failed, 15 passed, 17 warnings, 2 errors in 60.16s (0:01:00) ========

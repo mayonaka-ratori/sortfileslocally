@@ -42,8 +42,11 @@ class MetadataManager:
         """Convert raw face dicts to FaceData schema."""
         face_vecs = []
         for f in raw_faces:
+            emb = f['embedding']
+            if hasattr(emb, 'tolist'):
+                emb = emb.tolist()
             face_vecs.append(FaceData(
-                embedding=f['embedding'].tolist(),
+                embedding=emb,
                 bbox=f['bbox'],
                 det_score=f['det_score'],
                 kps=f['kps'],

@@ -1,0 +1,33 @@
+?? Discovering tests in tests...
+Running test_debug_unpacking.py... ? PASS (34.51s)
+Running test_deduplication.py... ? FAIL (1.04s)
+Running test_engine.py... ? FAIL (13.91s)
+Running test_intelligence.py... ? PASS (20.37s)
+Running test_optimization.py... ? FAIL (88.20s)
+Running test_pipeline.py... ? FAIL (15.93s)
+Running test_scan_job_manager.py... ? PASS (0.81s)
+Running test_semantic_actions.py... ? PASS (0.96s)
+Running test_sorter.py... ? FAIL (0.10s)
+Running test_video_understanding.py... ? FAIL (9.19s)
+Running test_vlm_debug.py... ? FAIL (2.35s)
+Running test_vlm.py... ? PASS (9.61s)
+Running test_whisper_sub.py... ? PASS (8.61s)
+
+--- Test Summary ---
+
+[32;1mName                       [0m[32;1m Result[0m[32;1m Duration[0m
+[32;1m----                       [0m [32;1m------[0m [32;1m--------[0m
+test_debug_unpacking.py     ? PASS 34.51s
+test_deduplication.py       ? FAIL 1.04s
+test_engine.py              ? FAIL 13.91s
+test_intelligence.py        ? PASS 20.37s
+test_optimization.py        ? FAIL 88.20s
+test_pipeline.py            ? FAIL 15.93s
+test_scan_job_manager.py    ? PASS 0.81s
+test_semantic_actions.py    ? PASS 0.96s
+test_sorter.py              ? FAIL 0.10s
+test_video_understanding.py ? FAIL 9.19s
+test_vlm_debug.py           ? FAIL 2.35s
+test_vlm.py                 ? PASS 9.61s
+test_whisper_sub.py         ? PASS 8.61s
+

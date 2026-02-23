@@ -26,6 +26,7 @@ class MediaItem:
     error_msg: Optional[str] = None
     audio_transcription: Optional[List[Dict[str, Any]]] = None
     frame_descriptions: Optional[List[Dict[str, Any]]] = None
+    caption: Optional[str] = None
     
     def to_dict(self):
         return asdict(self)
@@ -58,6 +59,7 @@ class FaceData:
     det_score: float
     kps: Optional[List[List[int]]] = None
     timestamp: float = 0.0 # For video frames
+    person_name: Optional[str] = None
     
     def to_dict(self):
         return asdict(self)

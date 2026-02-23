@@ -6,12 +6,16 @@ sys.path.insert(0, '.')
 
 # Create test video
 tmp = tempfile.mktemp(suffix='.mp4')
-r = subprocess.run(
-    ['ffmpeg', '-y', '-f', 'lavfi', '-i', 'testsrc=duration=5:size=320x240:rate=10',
-     '-f', 'lavfi', '-i', 'sine=frequency=440:duration=5',
-     '-c:v', 'libx264', '-c:a', 'aac', '-shortest', tmp],
-    capture_output=True
-)
+try:
+    r = subprocess.run(
+        ['ffmpeg', '-y', '-f', 'lavfi', '-i', 'testsrc=duration=5:size=320x240:rate=10',
+         '-f', 'lavfi', '-i', 'sine=frequency=440:duration=5',
+         '-c:v', 'libx264', '-c:a', 'aac', '-shortest', tmp],
+        capture_output=True, timeout=60
+    )
+except subprocess.TimeoutExpired:
+    print("WARNING: ffmpeg subprocess timed out.", flush=True)
+    sys.exit(1)
 print('video created:', os.path.exists(tmp), 'ffmpeg rc:', r.returncode, flush=True)
 
 print('--- Importing VideoProcessor ---', flush=True)

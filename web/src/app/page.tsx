@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { MediaItem, fetchMedia, searchMedia } from "@/lib/api"
+import { useEffect, useState, useCallback } from "react"
+import { MediaItem, fetchMedia, searchMedia, searchByFace, reverseImageSearch } from "@/lib/api"
 import { GalleryGrid } from "@/components/GalleryGrid"
 import { ChatPanel } from "@/components/ChatPanel"
 import { Sidebar, FilterState } from "@/components/Sidebar"
@@ -19,14 +19,7 @@ export default function Home() {
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
-  useEffect(() => {
-    if (!currentSearch) {
-      setOffset(0)
-      loadMedia(0, filters)
-    }
-  }, [filters])
-
-  const loadMedia = async (currentOffset: number = 0, currentFilters = filters) => {
+  const loadMedia = useCallback(async (currentOffset: number = 0, currentFilters = filters) => {
     try {
       if (currentOffset === 0) {
         setLoading(true)
@@ -42,7 +35,7 @@ export default function Home() {
         setMedia(prev => [...prev, ...data])
       }
       setHasMore(data.length === limit)
-    } catch (err) {
+    } catch {
       setError("Failed to load gallery.")
     } finally {
       if (currentOffset === 0) {
@@ -51,17 +44,17 @@ export default function Home() {
         setIsLoadingMore(false)
       }
     }
-  }
+  }, [filters])
 
-  const handleLoadMore = () => {
+  const handleLoadMore = useCallback(() => {
     if (!currentSearch && hasMore && !loading && !isLoadingMore) {
       const nextOffset = offset + 50
       setOffset(nextOffset)
       loadMedia(nextOffset, filters)
     }
-  }
+  }, [currentSearch, hasMore, loading, isLoadingMore, offset, loadMedia, filters])
 
-  const handleSearch = async (query: string) => {
+  const handleSearch = useCallback(async (query: string) => {
     setCurrentSearch(query)
     if (!query.trim()) {
       setOffset(0)
@@ -70,6 +63,7 @@ export default function Home() {
     }
     try {
       setLoading(true)
+      setError("")
       const results = await searchMedia(query)
 
       // Client-side filtering of search results if filters are active
@@ -87,12 +81,83 @@ export default function Home() {
       setMedia(filteredResults)
       setSelectedItem(null) // Close chat on new search
       setHasMore(false) // Disable infinite scroll during semantic search
-    } catch (err) {
+    } catch {
       setError("Search failed.")
     } finally {
       setLoading(false)
     }
-  }
+  }, [filters, loadMedia])
+
+  const handleFaceSearch = useCallback(async (faceId: number) => {
+    setCurrentSearch(`Face Search: ID ${faceId}`)
+    try {
+      setLoading(true)
+      setError("")
+      const results = await searchByFace(faceId)
+
+      let filteredResults = results;
+      if (filters.media_type) {
+        filteredResults = filteredResults.filter(r => r.media_type === filters.media_type)
+      }
+      if (filters.character) {
+        filteredResults = filteredResults.filter(r => r.character_tags.includes(filters.character!))
+      }
+      if (filters.series) {
+        filteredResults = filteredResults.filter(r => r.series_tags.includes(filters.series!))
+      }
+
+      setMedia(filteredResults)
+      // We can keep ChatPanel open or close it
+      // Let's close it to show results
+      setSelectedItem(null)
+      setHasMore(false)
+    } catch {
+      setError("Face Search failed.")
+    } finally {
+      setLoading(false)
+    }
+  }, [filters])
+
+  const handleImageDrop = useCallback(async (file: File) => {
+    setCurrentSearch(`Reverse Search: ${file.name}`)
+    try {
+      setLoading(true)
+      setError("")
+      const results = await reverseImageSearch(file)
+
+      const mappedResults: MediaItem[] = results.map(r => ({
+        id: r.id,
+        file_path: r.file_path,
+        media_type: r.media_type,
+        width: r.width,
+        height: r.height,
+        duration: null,
+        caption: null,
+        tags: [],
+        character_tags: [],
+        series_tags: [],
+        favorite: false,
+        created_at: new Date().toISOString(),
+        processed_at: new Date().toISOString(),
+        snippet: `Similarity: ${(r.similarity * 100).toFixed(1)}%`
+      }))
+
+      setMedia(mappedResults)
+      setSelectedItem(null)
+      setHasMore(false)
+    } catch {
+      setError("Reverse image search failed.")
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!currentSearch) {
+      setOffset(0)
+      loadMedia(0, filters)
+    }
+  }, [filters, currentSearch, loadMedia])
 
   return (
     <main className="flex h-screen w-full bg-zinc-950 overflow-hidden font-sans">
@@ -123,6 +188,7 @@ export default function Home() {
             onLoadMore={handleLoadMore}
             hasMore={hasMore}
             onMenuClick={() => setIsSidebarOpen(true)}
+            onImageDrop={handleImageDrop}
           />
         )}
       </div>
@@ -132,6 +198,7 @@ export default function Home() {
         <ChatPanel
           item={selectedItem}
           onClose={() => setSelectedItem(null)}
+          onFaceSearch={handleFaceSearch}
         />
       )}
     </main>

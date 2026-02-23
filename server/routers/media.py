@@ -1,20 +1,24 @@
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse, StreamingResponse
+from pydantic import BaseModel
+from typing import List, Optional
 import os
 import io
+import json
+import sqlite3
 from PIL import Image
 
 from ..dependencies import get_db_manager
 from src.data.db_manager import DBManager
+from src.core.exporter import MetadataExporter, ExportableMetadata
 
 router = APIRouter(prefix="/media", tags=["media"])
 
 @router.get("/{file_id}/original")
 def get_original(file_id: int, db: DBManager = Depends(get_db_manager)):
     """Serve the original file."""
-    import sqlite3
-    conn = sqlite3.connect(db.sqlite_path)
+    conn = db._connect()
     c = conn.cursor()
     c.execute("SELECT file_path FROM files WHERE id = ?", (file_id,))
     row = c.fetchone()
@@ -32,8 +36,7 @@ def get_original(file_id: int, db: DBManager = Depends(get_db_manager)):
 @router.get("/{file_id}/thumbnail")
 def get_thumbnail(file_id: int, size: int = 300, db: DBManager = Depends(get_db_manager)):
     """Serve a resized thumbnail."""
-    import sqlite3
-    conn = sqlite3.connect(db.sqlite_path)
+    conn = db._connect()
     c = conn.cursor()
     c.execute("SELECT file_path, media_type FROM files WHERE id = ?", (file_id,))
     row = c.fetchone()
@@ -106,3 +109,100 @@ def get_thumbnail(file_id: int, size: int = 300, db: DBManager = Depends(get_db_
         print(f"Thumbnail Error: {e}")
         raise HTTPException(status_code=500, detail="Thumbnail generation failed")
 
+
+# ------------------------------------------------------------------ #
+# Metadata Export Endpoints
+# ------------------------------------------------------------------ #
+
+class ExportRequest(BaseModel):
+    file_ids: List[int]
+    mode: str = "xmp"   # "xmp" or "exif"
+
+class ExportAllRequest(BaseModel):
+    mode: str = "xmp"
+
+def _safe_parse(val) -> list:
+    if not val:
+        return []
+    try:
+        return json.loads(val)
+    except Exception:
+        return []
+
+
+@router.post("/export-metadata")
+def export_metadata(
+    req: ExportRequest,
+    db: DBManager = Depends(get_db_manager),
+):
+    """
+    Export AI-generated metadata (tags, caption) to original files.
+    Supports 'xmp' (sidecar) or 'exif' (JPEG only).
+    """
+    if req.mode not in ("xmp", "exif"):
+        raise HTTPException(status_code=400, detail="Mode must be 'xmp' or 'exif'")
+
+    if not req.file_ids:
+        return {"success": 0, "failed": 0, "errors": []}
+
+    conn = db._connect()
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+
+    placeholders = ','.join(['?'] * len(req.file_ids))
+    c.execute(f"""
+        SELECT id, file_path, tags, character_tags, series_tags, caption
+        FROM files WHERE id IN ({placeholders}) AND is_processed=1
+    """, req.file_ids)
+    rows = c.fetchall()
+    conn.close()
+
+    items = []
+    for r in rows:
+        items.append(ExportableMetadata(
+            file_path=r['file_path'],
+            tags=_safe_parse(r['tags']),
+            character_tags=_safe_parse(r['character_tags']),
+            series_tags=_safe_parse(r['series_tags']),
+            caption=r['caption'] or "",
+        ))
+
+    result = MetadataExporter.export_batch(items, mode=req.mode)
+    return result
+
+
+@router.post("/export-all")
+def export_all_metadata(
+    req: ExportAllRequest,
+    db: DBManager = Depends(get_db_manager),
+):
+    """
+    Export metadata for ALL processed files in the library.
+    This may take a while for large libraries.
+    """
+    if req.mode not in ("xmp", "exif"):
+        raise HTTPException(status_code=400, detail="Mode must be 'xmp' or 'exif'")
+
+    conn = db._connect()
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+
+    c.execute("""
+        SELECT id, file_path, tags, character_tags, series_tags, caption
+        FROM files WHERE is_processed=1
+    """)
+    rows = c.fetchall()
+    conn.close()
+
+    items = []
+    for r in rows:
+        items.append(ExportableMetadata(
+            file_path=r['file_path'],
+            tags=_safe_parse(r['tags']),
+            character_tags=_safe_parse(r['character_tags']),
+            series_tags=_safe_parse(r['series_tags']),
+            caption=r['caption'] or "",
+        ))
+
+    result = MetadataExporter.export_batch(items, mode=req.mode)
+    return result

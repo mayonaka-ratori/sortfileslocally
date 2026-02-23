@@ -124,7 +124,7 @@ class VideoProcessor:
             # Extract audio at 16kHz for whisper
             cmd = ['ffmpeg', '-y', '-i', video_path, '-vn', '-acodec', 'pcm_s16le', '-ar', '16000', '-ac', '1', tmp_audio_path]
             # Use subprocess to run ffmpeg, supressing output
-            result = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            result = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=60)
             if result.returncode == 0:
                 audio_transcription = self.ai_engine.transcribe_audio(tmp_audio_path)
             
@@ -163,13 +163,13 @@ class VideoProcessor:
                 face['timestamp'] = timestamp
                 all_faces.append(face)
 
-            # 3. Action Recognition (Moondream VLM) - lazy-load VLMEngine
+            # 3. Action Recognition (Florence-2 VLM) - lazy-load VLMEngine
             try:
                 if self._vlm_engine is None:
                     from .vlm_engine import VLMEngine as _VLMEngine
                     self._vlm_engine = _VLMEngine()
-                action_text = self._vlm_engine.ask_image(pil_img, "Describe the main action or subject in this image in one short sentence.")
-                if not action_text.startswith("Error"):
+                action_text = self._vlm_engine.generate_detailed_caption(pil_img)
+                if action_text is not None:
                     frame_descriptions.append({
                         'timestamp': timestamp,
                         'text': action_text

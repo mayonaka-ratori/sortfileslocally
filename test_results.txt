@@ -1,0 +1,110 @@
+============================= test session starts =============================
+platform win32 -- Python 3.10.11, pytest-9.0.2, pluggy-1.6.0
+rootdir: C:\tools\organizefiles0112\LocalCuratorPrime
+plugins: anyio-4.12.1
+collected 4 items
+
+tests\test_exporter.py FF.F                                              [100%]
+
+================================== FAILURES ===================================
+_________________________ test_export_to_xmp_sidecar __________________________
+
+temp_media = {'jpg': 'C:\\Users\\hosom\\AppData\\Local\\Temp\\pytest-of-hosom\\pytest-1\\test_export_to_xmp_sidecar0\\test.jpg', 'mp4': 'C:\\Users\\hosom\\AppData\\Local\\Temp\\pytest-of-hosom\\pytest-1\\test_export_to_xmp_sidecar0\\test.mp4'}
+
+    def test_export_to_xmp_sidecar(temp_media):
+        meta = ExportableMetadata(
+            file_path=temp_media["jpg"],
+            tags=["nature", "blue"],
+            character_tags=["Miku"],
+            series_tags=["Vocaloid"],
+            caption="A beautiful landscape"
+        )
+    
+        xmp_path = MetadataExporter.export_to_xmp_sidecar(meta)
+    
+        assert os.path.exists(xmp_path)
+>       assert xmp_path == temp_media["jpg"] + ".xmp"
+E       AssertionError: assert 'C:\\Users\\h...ar0\\test.xmp' == 'C:\\Users\\h...\test.jpg.xmp'
+E         
+E         Skipping 82 identical leading characters in diff, use -v to show
+E         - car0\test.jpg.xmp
+E         ?           ----
+E         + car0\test.xmp
+
+tests\test_exporter.py:35: AssertionError
+__________________________ test_export_to_exif_jpeg ___________________________
+
+temp_media = {'jpg': 'C:\\Users\\hosom\\AppData\\Local\\Temp\\pytest-of-hosom\\pytest-1\\test_export_to_exif_jpeg0\\test.jpg', 'mp4': 'C:\\Users\\hosom\\AppData\\Local\\Temp\\pytest-of-hosom\\pytest-1\\test_export_to_exif_jpeg0\\test.mp4'}
+
+    def test_export_to_exif_jpeg(temp_media):
+        meta = ExportableMetadata(
+            file_path=temp_media["jpg"],
+            tags=["tag1", "tag2"],
+            character_tags=[],
+            series_tags=[],
+            caption="EXIF caption"
+        )
+    
+        success = MetadataExporter.export_to_exif(meta)
+        assert success is True
+    
+        # Verify using piexif
+        import piexif
+        exif_dict = piexif.load(temp_media["jpg"])
+    
+        # Check description
+        assert exif_dict["0th"][piexif.ImageIFD.ImageDescription] == b"EXIF caption"
+    
+        # Check keywords (XPKeywords)
+        # XPKeywords is stored as UTF-16LE
+>       keywords = exif_dict["0th"][0x9C9E].decode("utf-16-le").strip("\x00")
+E       AttributeError: 'tuple' object has no attribute 'decode'
+
+tests\test_exporter.py:89: AttributeError
+___________________________ test_export_batch_mixed ___________________________
+
+temp_media = {'jpg': 'C:\\Users\\hosom\\AppData\\Local\\Temp\\pytest-of-hosom\\pytest-1\\test_export_batch_mixed0\\test.jpg', 'mp4': 'C:\\Users\\hosom\\AppData\\Local\\Temp\\pytest-of-hosom\\pytest-1\\test_export_batch_mixed0\\test.mp4'}
+
+    def test_export_batch_mixed(temp_media):
+        items = [
+            ExportableMetadata(
+                file_path=temp_media["jpg"],
+                tags=["j1"],
+                character_tags=[],
+                series_tags=[],
+                caption="c1"
+            ),
+            ExportableMetadata(
+                file_path=temp_media["mp4"],
+                tags=["m1"],
+                character_tags=[],
+                series_tags=[],
+                caption="c2"
+            )
+        ]
+    
+        # Mode EXIF: jpg should succeed with EXIF, mp4 should fallback to XMP
+        result = MetadataExporter.export_batch(items, mode="exif")
+    
+        assert result["success"] == 2
+        assert result["failed"] == 0
+    
+        # Check jpg has EXIF (or XMP fallback if EXIF failed partially, but here it should succeed)
+        # Actually MetadataExporter.export_batch calls export_to_exif, if False it calls export_to_xmp_sidecar.
+    
+        assert os.path.exists(temp_media["jpg"] + ".xmp") or result["success"] == 2
+        # In my test_export_to_exif_jpeg it succeeded, so for jpg it should be EXIF unless export_batch forces xmp.
+        # If mode="exif", it tries exif, if not ok, it does xmp.
+        # For mp4, export_to_exif returns False, so it should create .xmp
+>       assert os.path.exists(temp_media["mp4"] + ".xmp")
+E       AssertionError: assert False
+E        +  where False = <function exists at 0x0000017EAF482C20>(('C:\\Users\\hosom\\AppData\\Local\\Temp\\pytest-of-hosom\\pytest-1\\test_export_batch_mixed0\\test.mp4' + '.xmp'))
+E        +    where <function exists at 0x0000017EAF482C20> = <module 'ntpath' from 'C:\\Users\\hosom\\AppData\\Local\\Programs\\Python\\Python310\\lib\\ntpath.py'>.exists
+E        +      where <module 'ntpath' from 'C:\\Users\\hosom\\AppData\\Local\\Programs\\Python\\Python310\\lib\\ntpath.py'> = os.path
+
+tests\test_exporter.py:139: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_exporter.py::test_export_to_xmp_sidecar - AssertionError: a...
+FAILED tests/test_exporter.py::test_export_to_exif_jpeg - AttributeError: 'tu...
+FAILED tests/test_exporter.py::test_export_batch_mixed - AssertionError: asse...
+========================= 3 failed, 1 passed in 0.12s =========================

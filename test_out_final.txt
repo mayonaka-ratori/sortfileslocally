@@ -1,0 +1,113 @@
+============================= test session starts =============================
+platform win32 -- Python 3.10.11, pytest-9.0.2, pluggy-1.6.0 -- C:\tools\organizefiles0112\LocalCuratorPrime\venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\tools\organizefiles0112\LocalCuratorPrime
+plugins: anyio-4.12.1
+collecting ... collected 21 items
+
+tests/test_debug_unpacking.py::test_batch_unpacking PASSED               [  4%]
+tests/test_deduplication.py::test_deduplication_logic PASSED             [  9%]
+tests/test_deduplication_merge.py::test_metadata_merge PASSED            [ 14%]
+tests/test_engine.py::test_engine PASSED                                 [ 19%]
+tests/test_exporter.py::test_export_to_xmp_sidecar PASSED                [ 23%]
+tests/test_exporter.py::test_export_to_exif_jpeg PASSED                  [ 28%]
+tests/test_exporter.py::test_export_exif_unsupported_format PASSED       [ 33%]
+tests/test_exporter.py::test_export_batch_mixed PASSED                   [ 38%]
+tests/test_integration_export_dedup.py::test_integration_export_dedup_deletes_xmp FAILED [ 42%]
+tests/test_intelligence.py::test_auto_tagger PASSED                      [ 47%]
+tests/test_intelligence.py::test_face_clustering PASSED                  [ 52%]
+tests/test_pipeline.py::test_pipeline PASSED                             [ 57%]
+tests/test_scan_job_manager.py::test_scan_job_lifecycle PASSED           [ 61%]
+tests/test_semantic_actions.py::TestSemanticEngine::test_semantic_engine_parsing PASSED [ 66%]
+tests/test_setup.py::test_get_setup_settings PASSED                      [ 71%]
+tests/test_setup.py::test_post_setup_settings_valid PASSED               [ 76%]
+tests/test_setup.py::test_post_setup_settings_invalid_not_exist PASSED   [ 80%]
+tests/test_setup.py::test_post_setup_settings_invalid_not_dir PASSED     [ 85%]
+tests/test_sorter.py::test_sorter_safety PASSED                          [ 90%]
+tests/test_video_understanding.py::test_pipeline_with_video ERROR        [ 95%]
+tests/test_video_understanding.py::test_db_roundtrip ERROR               [100%]
+
+=================================== ERRORS ====================================
+_________________ ERROR at setup of test_pipeline_with_video __________________
+file C:\tools\organizefiles0112\LocalCuratorPrime\tests\test_video_understanding.py, line 55
+  def test_pipeline_with_video(video_path: str):
+E       fixture 'video_path' not found
+>       available fixtures: anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, capteesys, doctest_namespace, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, monkeypatch, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, subtests, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+C:\tools\organizefiles0112\LocalCuratorPrime\tests\test_video_understanding.py:55
+_____________________ ERROR at setup of test_db_roundtrip _____________________
+file C:\tools\organizefiles0112\LocalCuratorPrime\tests\test_video_understanding.py, line 79
+  def test_db_roundtrip(video_path: str):
+E       fixture 'video_path' not found
+>       available fixtures: anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, capteesys, doctest_namespace, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, monkeypatch, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, subtests, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+C:\tools\organizefiles0112\LocalCuratorPrime\tests\test_video_understanding.py:79
+================================== FAILURES ===================================
+__________________ test_integration_export_dedup_deletes_xmp __________________
+
+tmp_path = WindowsPath('C:/Users/hosom/AppData/Local/Temp/pytest-of-hosom/pytest-8/test_integration_export_dedup_0')
+
+    def test_integration_export_dedup_deletes_xmp(tmp_path):
+        # Setup test file
+        test_img_path = tmp_path / "test_dedup_export.jpg"
+        img = Image.new('RGB', (100, 100))
+        img.save(test_img_path, format='JPEG')
+    
+        img_path_str = str(test_img_path)
+    
+        # Needs db
+        from server.dependencies import get_db_manager
+        db = get_db_manager()
+    
+        import time
+        item = MediaItem(file_path=img_path_str, media_type="image", file_size=100, file_hash="dummyhash", created_at=time.time(), modified_at=time.time(), tags=["tag1"], character_tags=[], series_tags=[], caption="")
+        res = ProcessingResult(file_path=img_path_str, success=True, media_item=item)
+        db.add_results_batch([res])
+    
+        # Need to find the ID
+        c = db._connect()
+        c.execute("SELECT id FROM files WHERE file_path=?", (img_path_str,))
+>       file_id = c.fetchone()[0]
+E       AttributeError: 'sqlite3.Connection' object has no attribute 'fetchone'
+
+tests\test_integration_export_dedup.py:30: AttributeError
+============================== warnings summary ===============================
+<frozen importlib._bootstrap>:241
+  <frozen importlib._bootstrap>:241: DeprecationWarning: builtin type SwigPyPacked has no __module__ attribute
+
+<frozen importlib._bootstrap>:241
+  <frozen importlib._bootstrap>:241: DeprecationWarning: builtin type SwigPyObject has no __module__ attribute
+
+<frozen importlib._bootstrap>:241
+  <frozen importlib._bootstrap>:241: DeprecationWarning: builtin type swigvarlink has no __module__ attribute
+
+venv\lib\site-packages\huggingface_hub\file_download.py:949
+venv\lib\site-packages\huggingface_hub\file_download.py:949
+tests/test_engine.py::test_engine
+  C:\tools\organizefiles0112\LocalCuratorPrime\venv\lib\site-packages\huggingface_hub\file_download.py:949: FutureWarning: `resume_download` is deprecated and will be removed in version 1.0.0. Downloads always resume when possible. If you want to force a new download, use `force_download=True`.
+    warnings.warn(
+
+<frozen importlib._bootstrap>:283
+<frozen importlib._bootstrap>:283
+<frozen importlib._bootstrap>:283
+<frozen importlib._bootstrap>:283
+tests/test_engine.py::test_engine
+tests/test_engine.py::test_engine
+tests/test_engine.py::test_engine
+tests/test_engine.py::test_engine
+  <frozen importlib._bootstrap>:283: DeprecationWarning: the load_module() method is deprecated and slated for removal in Python 3.12; use exec_module() instead
+
+tests/test_debug_unpacking.py::test_batch_unpacking
+tests/test_engine.py::test_engine
+tests/test_pipeline.py::test_pipeline
+  C:\tools\organizefiles0112\LocalCuratorPrime\venv\lib\site-packages\onnxruntime\capi\onnxruntime_inference_collection.py:123: UserWarning: Specified provider 'CUDAExecutionProvider' is not in available provider names.Available providers: 'AzureExecutionProvider, CPUExecutionProvider'
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/test_integration_export_dedup.py::test_integration_export_dedup_deletes_xmp
+ERROR tests/test_video_understanding.py::test_pipeline_with_video
+ERROR tests/test_video_understanding.py::test_db_roundtrip
+======= 1 failed, 18 passed, 17 warnings, 2 errors in 61.19s (0:01:01) ========

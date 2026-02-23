@@ -1,4 +1,3 @@
-
 import sqlite3
 import pandas as pd
 import numpy as np
@@ -6,8 +5,12 @@ import os
 import pickle
 import faiss
 import json
+import threading
+import logging
 from typing import List, Optional, Tuple, Dict
 from .schemas import MediaItem, VectorData, ProcessingResult
+
+logger = logging.getLogger(__name__)
 
 class DBManager:
     def __init__(self, db_dir: str = "data/db"):
@@ -21,14 +24,20 @@ class DBManager:
         # Dimensions
         self.clip_dim = 768
         self.face_dim = 512
+        self._faiss_lock = threading.Lock()
         
         self._init_sqlite()
         self._migrate_schema()
         self._init_faiss()
 
+    def _connect(self):
+        conn = sqlite3.connect(self.sqlite_path, timeout=30)
+        conn.execute("PRAGMA journal_mode=WAL")
+        return conn
+
     def _migrate_schema(self):
         """Add missing columns to existing database if needed."""
-        conn = sqlite3.connect(self.sqlite_path)
+        conn = self._connect()
         c = conn.cursor()
         
         # Check current columns
@@ -55,12 +64,29 @@ class DBManager:
             print("Migrating DB: Adding frame_descriptions column")
             c.execute("ALTER TABLE files ADD COLUMN frame_descriptions TEXT")
             
+        # Add caption if missing
+        if 'caption' not in columns:
+            print("Migrating DB: Adding caption column")
+            c.execute("ALTER TABLE files ADD COLUMN caption TEXT")
+
+        # Migrate faces table for bbox and person_name
+        c.execute("PRAGMA table_info(faces)")
+        faces_columns = [row[1] for row in c.fetchall()]
+        
+        if 'bbox' not in faces_columns:
+            print("Migrating DB: Adding bbox column to faces")
+            c.execute("ALTER TABLE faces ADD COLUMN bbox TEXT")
+            
+        if 'person_name' not in faces_columns:
+            print("Migrating DB: Adding person_name column to faces")
+            c.execute("ALTER TABLE faces ADD COLUMN person_name TEXT")
+
         conn.commit()
         conn.close()
 
     def _init_sqlite(self):
         """Initialize SQLite tables."""
-        conn = sqlite3.connect(self.sqlite_path)
+        conn = self._connect()
         c = conn.cursor()
         
         # Files Table
@@ -83,7 +109,8 @@ class DBManager:
                 series_tags TEXT, -- JSON List
                 rating INTEGER DEFAULT 0,
                 audio_transcription TEXT, -- JSON List
-                frame_descriptions TEXT -- JSON List
+                frame_descriptions TEXT, -- JSON List
+                caption TEXT -- Text
             )
         ''')
         
@@ -95,7 +122,50 @@ class DBManager:
                 face_index INTEGER, -- Index in the file's face list
                 cluster_id INTEGER DEFAULT -1,
                 timestamp REAL,
+                bbox TEXT, -- JSON List
+                person_name TEXT,
                 FOREIGN KEY(file_id) REFERENCES files(id)
+            )
+        ''')
+
+        # Scan Jobs Table (Persistent scan state for resume)
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS scan_jobs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                target_path TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'pending',  -- pending, running, paused, completed, failed
+                total_files INTEGER DEFAULT 0,
+                processed_count INTEGER DEFAULT 0,
+                skipped_count INTEGER DEFAULT 0,
+                error_count INTEGER DEFAULT 0,
+                force_reprocess BOOLEAN DEFAULT 0,
+                current_file TEXT,
+                started_at REAL,
+                updated_at REAL,
+                completed_at REAL,
+                last_processed_path TEXT  -- For resume: last file successfully processed
+            )
+        ''')
+
+        # Scan Errors Table (Per-file error log)
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS scan_errors (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                job_id INTEGER NOT NULL,
+                file_path TEXT NOT NULL,
+                error_message TEXT,
+                traceback TEXT,
+                occurred_at REAL,
+                FOREIGN KEY(job_id) REFERENCES scan_jobs(id)
+            )
+        ''')
+
+        # App Settings Table (Key-Value pair)
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS app_settings (
+                key TEXT PRIMARY KEY,
+                value TEXT,
+                updated_at REAL
             )
         ''')
         
@@ -109,24 +179,25 @@ class DBManager:
             self.clip_index = faiss.read_index(self.faiss_path)
         else:
             self.clip_index = faiss.IndexFlatIP(self.clip_dim)
-            # Use IDMap to map vector IDs to File IDs
-            self.clip_index = faiss.IndexIDMap(self.clip_index)
+            # Use IDMap2 to map vector IDs to File IDs, supporting reconstruct()
+            self.clip_index = faiss.IndexIDMap2(self.clip_index)
 
         # 2. Face Index
         if os.path.exists(self.face_faiss_path):
             self.face_index = faiss.read_index(self.face_faiss_path)
         else:
             self.face_index = faiss.IndexFlatIP(self.face_dim)
-            self.face_index = faiss.IndexIDMap(self.face_index)
+            self.face_index = faiss.IndexIDMap2(self.face_index)
 
     def save_indices(self):
         """Persist FAISS indices to disk."""
-        faiss.write_index(self.clip_index, self.faiss_path)
-        faiss.write_index(self.face_index, self.face_faiss_path)
+        with self._faiss_lock:
+            faiss.write_index(self.clip_index, self.faiss_path)
+            faiss.write_index(self.face_index, self.face_faiss_path)
 
     def is_file_processed(self, file_path: str, file_hash: str) -> bool:
         """Check if file exists and hash matches."""
-        conn = sqlite3.connect(self.sqlite_path)
+        conn = self._connect()
         c = conn.cursor()
         c.execute('SELECT file_hash, is_processed FROM files WHERE file_path = ?', (file_path,))
         row = c.fetchone()
@@ -143,15 +214,15 @@ class DBManager:
         item = result.media_item
         vec_data = result.vector_data
         
-        conn = sqlite3.connect(self.sqlite_path)
+        conn = self._connect()
         c = conn.cursor()
         
         try:
             # Upsert File Info
             # SQLite upsert syntax (ON CONFLICT)
             c.execute('''
-                INSERT INTO files (file_path, file_hash, file_size, media_type, created_at, modified_at, width, height, duration, is_processed, error_msg, tags, character_tags, series_tags, audio_transcription, frame_descriptions)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO files (file_path, file_hash, file_size, media_type, created_at, modified_at, width, height, duration, is_processed, error_msg, tags, character_tags, series_tags, audio_transcription, frame_descriptions, caption)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(file_path) DO UPDATE SET
                     file_hash=excluded.file_hash,
                     is_processed=excluded.is_processed,
@@ -161,14 +232,16 @@ class DBManager:
                     character_tags=excluded.character_tags,
                     series_tags=excluded.series_tags,
                     audio_transcription=excluded.audio_transcription,
-                    frame_descriptions=excluded.frame_descriptions
+                    frame_descriptions=excluded.frame_descriptions,
+                    caption=excluded.caption
             ''', (
                 item.file_path, item.file_hash, item.file_size, item.media_type, 
                 item.created_at, item.modified_at, item.width, item.height, item.duration,
                 1 if result.success else 0, item.error_msg, 
                 json.dumps(item.tags), json.dumps(item.character_tags), json.dumps(item.series_tags),
                 json.dumps(item.audio_transcription) if item.audio_transcription is not None else None,
-                json.dumps(item.frame_descriptions) if item.frame_descriptions is not None else None
+                json.dumps(item.frame_descriptions) if item.frame_descriptions is not None else None,
+                item.caption
             ))
             
             file_id = c.lastrowid
@@ -176,12 +249,31 @@ class DBManager:
                  # In case of update, lastrowid might be 0, need to fetch
                  c.execute('SELECT id FROM files WHERE file_path = ?', (item.file_path,))
                  file_id = c.fetchone()[0]
+                 
+                 # Remove old embeddings from faiss explicitly before re-adding
+                 try:
+                     with self._faiss_lock:
+                         self.clip_index.remove_ids(np.array([file_id], dtype='int64'))
+                 except Exception as e:
+                     logger.error(f"FAISS operation failed during clip index removal: {e}")
+                     
+                 # Remove old face mappings
+                 c.execute('SELECT id FROM faces WHERE file_id = ?', (file_id,))
+                 old_face_ids = [row[0] for row in c.fetchall()]
+                 if old_face_ids:
+                     try:
+                         with self._faiss_lock:
+                             self.face_index.remove_ids(np.array(old_face_ids, dtype='int64'))
+                     except Exception as e:
+                         logger.error(f"FAISS operation failed during face index removal: {e}")
+                     c.execute('DELETE FROM faces WHERE file_id = ?', (file_id,))
 
             if result.success and vec_data:
                 # 1. Add CLIP Vector
                 clip_vec = np.array([vec_data.clip_vector], dtype='float32') # (1, 768)
                 faiss.normalize_L2(clip_vec) # Ensure normalized
-                self.clip_index.add_with_ids(clip_vec, np.array([file_id], dtype='int64'))
+                with self._faiss_lock:
+                    self.clip_index.add_with_ids(clip_vec, np.array([file_id], dtype='int64'))
                 
                 # 2. Add Face Vectors
                 if vec_data.face_vectors:
@@ -194,12 +286,14 @@ class DBManager:
                     
                     for i, face_vec in enumerate(face_vecs):
                         timestamp = result.faces[i].timestamp if i < len(result.faces) else 0.0
+                        bbox_json = json.dumps(result.faces[i].bbox) if i < len(result.faces) else "[]"
                         
-                        c.execute('INSERT INTO faces (file_id, face_index, timestamp) VALUES (?, ?, ?)', (file_id, i, timestamp))
+                        c.execute('INSERT INTO faces (file_id, face_index, timestamp, bbox) VALUES (?, ?, ?, ?)', (file_id, i, timestamp, bbox_json))
                         face_db_id = c.lastrowid
                         
                         # Add to FAISS
-                        self.face_index.add_with_ids(np.array([face_vec]), np.array([face_db_id], dtype='int64'))
+                        with self._faiss_lock:
+                            self.face_index.add_with_ids(np.array([face_vec]), np.array([face_db_id], dtype='int64'))
 
             conn.commit()
             
@@ -232,7 +326,7 @@ class DBManager:
             return []
             
         # Resolve File Paths
-        conn = sqlite3.connect(self.sqlite_path)
+        conn = self._connect()
         c = conn.cursor()
         
         placeholders = ','.join(['?'] * len(file_ids))
@@ -257,7 +351,7 @@ class DBManager:
         if not results:
             return
 
-        conn = sqlite3.connect(self.sqlite_path)
+        conn = self._connect()
         c = conn.cursor()
         
         try:
@@ -273,12 +367,13 @@ class DBManager:
                    1 if r.success else 0, item.error_msg, 
                    json.dumps(item.tags), json.dumps(item.character_tags), json.dumps(item.series_tags),
                    json.dumps(item.audio_transcription) if item.audio_transcription is not None else None,
-                   json.dumps(item.frame_descriptions) if item.frame_descriptions is not None else None
+                   json.dumps(item.frame_descriptions) if item.frame_descriptions is not None else None,
+                   item.caption
                 ))
             
             c.executemany('''
-                INSERT INTO files (file_path, file_hash, file_size, media_type, created_at, modified_at, width, height, duration, is_processed, error_msg, tags, character_tags, series_tags, audio_transcription, frame_descriptions)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO files (file_path, file_hash, file_size, media_type, created_at, modified_at, width, height, duration, is_processed, error_msg, tags, character_tags, series_tags, audio_transcription, frame_descriptions, caption)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(file_path) DO UPDATE SET
                     file_hash=excluded.file_hash,
                     is_processed=excluded.is_processed,
@@ -288,7 +383,8 @@ class DBManager:
                     character_tags=excluded.character_tags,
                     series_tags=excluded.series_tags,
                     audio_transcription=excluded.audio_transcription,
-                    frame_descriptions=excluded.frame_descriptions
+                    frame_descriptions=excluded.frame_descriptions,
+                    caption=excluded.caption
             ''', files_data)
             
             # Need to get IDs Back. 
@@ -315,6 +411,22 @@ class DBManager:
                 if fid is None:
                     continue
                     
+                # Clean up old vectors/faces to prevent duplicates on upsert
+                try:
+                    with self._faiss_lock:
+                        self.clip_index.remove_ids(np.array([fid], dtype='int64'))
+                except Exception as e:
+                    logger.error(f"FAISS operation failed during clip index batch removal: {e}")
+                c.execute('SELECT id FROM faces WHERE file_id = ?', (fid,))
+                old_face_ids = [row[0] for row in c.fetchall()]
+                if old_face_ids:
+                    try:
+                        with self._faiss_lock:
+                            self.face_index.remove_ids(np.array(old_face_ids, dtype='int64'))
+                    except Exception as e:
+                        logger.error(f"FAISS operation failed during face index batch removal: {e}")
+                    c.execute('DELETE FROM faces WHERE file_id = ?', (fid,))
+                    
                 # CLIP Result
                 clip_vectors_list.append(r.vector_data.clip_vector)
                 clip_ids_list.append(fid)
@@ -323,26 +435,28 @@ class DBManager:
                 if r.vector_data.face_vectors:
                      for i, fvec in enumerate(r.vector_data.face_vectors):
                          timestamp = r.faces[i].timestamp if i < len(r.faces) else 0.0
+                         bbox = json.dumps(r.faces[i].bbox) if i < len(r.faces) else "[]"
                          face_vectors_list.append(fvec)
-                         face_metadata_list.append((fid, i, timestamp))
+                         face_metadata_list.append((fid, i, timestamp, bbox))
 
             # --- Commit to FAISS & DB (Faces) ---
             
             # A. CLIP FAISS
             if clip_vectors_list:
-                # Add to FAISS
-                vecs = np.array(clip_vectors_list, dtype='float32')
-                ids = np.array(clip_ids_list, dtype='int64')
-                faiss.normalize_L2(vecs)
-                self.clip_index.add_with_ids(vecs, ids)
+                 # Add to FAISS
+                 vecs = np.array(clip_vectors_list, dtype='float32')
+                 ids = np.array(clip_ids_list, dtype='int64')
+                 faiss.normalize_L2(vecs)
+                 with self._faiss_lock:
+                     self.clip_index.add_with_ids(vecs, ids)
             
             # B. Face Metadata (SQLite) (One by one loop for safety to get IDs) & Face FAISS
             if face_vectors_list:
                 f_vecs_to_add = []
                 f_ids_to_add = []
                 
-                for i, (fid, fidx, ts) in enumerate(face_metadata_list):
-                    c.execute('INSERT INTO faces (file_id, face_index, timestamp) VALUES (?, ?, ?)', (fid, fidx, ts))
+                for i, (fid, fidx, ts, bbox) in enumerate(face_metadata_list):
+                    c.execute('INSERT INTO faces (file_id, face_index, timestamp, bbox) VALUES (?, ?, ?, ?)', (fid, fidx, ts, bbox))
                     face_row_id = c.lastrowid
                     f_vecs_to_add.append(face_vectors_list[i])
                     f_ids_to_add.append(face_row_id)
@@ -351,7 +465,8 @@ class DBManager:
                     f_vecs = np.array(f_vecs_to_add, dtype='float32')
                     f_ids = np.array(f_ids_to_add, dtype='int64')
                     faiss.normalize_L2(f_vecs)
-                    self.face_index.add_with_ids(f_vecs, f_ids)
+                    with self._faiss_lock:
+                        self.face_index.add_with_ids(f_vecs, f_ids)
 
             conn.commit()
             self.save_indices()
@@ -360,5 +475,199 @@ class DBManager:
             print(f"Batch Insert Error: {e}")
             conn.rollback()
             raise e
+        finally:
+            conn.close()
+
+    def search_similar_faces(self, query_face_vector: np.ndarray, top_k: int = 20) -> List[Tuple[int, float]]:
+        """Search similar faces using face vector from FAISS."""
+        if self.face_index.ntotal == 0:
+            return []
+            
+        params = np.array([query_face_vector], dtype='float32')
+        faiss.normalize_L2(params)
+        
+        D, I = self.face_index.search(params, top_k)
+        
+        face_ids = [int(idx) for idx in I[0] if idx != -1]
+        scores = [float(s) for s, idx in zip(D[0], I[0]) if idx != -1]
+        
+        if not face_ids:
+            return []
+            
+        results = []
+        for fid, score in zip(face_ids, scores):
+            results.append((fid, score))
+            
+        return results
+
+    def get_face_vector(self, face_id: int) -> Optional[np.ndarray]:
+        """Retrieve a specific face vector from FAISS via ID."""
+        try:
+            return self.face_index.reconstruct(face_id)
+        except Exception as e:
+            print(f"Failed to reconstruct face vector {face_id}: {e}. Ensure IndexIDMap2 is used.")
+            return None
+
+    def get_faces_for_file(self, file_id: int) -> List[Dict]:
+        """Get all face metadata for a specific file."""
+        conn = self._connect()
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        
+        try:
+            c.execute('SELECT id, file_id, face_index, timestamp, bbox, person_name FROM faces WHERE file_id = ? ORDER BY face_index ASC', (file_id,))
+            rows = c.fetchall()
+            return [dict(r) for r in rows]
+        finally:
+            conn.close()
+
+    def get_face_details(self, face_ids: List[int]) -> List[Dict]:
+        """Fetch file and face details for a list of face IDs."""
+        if not face_ids:
+            return []
+            
+        conn = self._connect()
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        
+        try:
+            placeholders = ','.join(['?'] * len(face_ids))
+            c.execute(f'''
+                SELECT f.id as face_id, f.file_id, f.bbox, f.person_name, f.timestamp, 
+                       fi.file_path, fi.media_type, fi.width, fi.height
+                FROM faces f
+                JOIN files fi ON f.file_id = fi.id
+                WHERE f.id IN ({placeholders})
+            ''', face_ids)
+            
+            rows = c.fetchall()
+            return [dict(r) for r in rows]
+        finally:
+            conn.close()
+
+    def get_files_by_ids(self, file_ids: List[int]) -> List[Dict]:
+        """Fetch files by their IDs."""
+        if not file_ids:
+            return []
+            
+        conn = self._connect()
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        
+        try:
+            placeholders = ','.join(['?'] * len(file_ids))
+            c.execute(f'''
+                SELECT id, file_path, media_type, width, height, tags, character_tags, series_tags, caption
+                FROM files
+                WHERE id IN ({placeholders})
+            ''', file_ids)
+            
+            rows = c.fetchall()
+            return [dict(r) for r in rows]
+        finally:
+            conn.close()
+
+    def update_face_person(self, face_id: int, person_name: str) -> bool:
+        """Update the person name for a given face."""
+        conn = self._connect()
+        c = conn.cursor()
+        
+        try:
+            c.execute('UPDATE faces SET person_name = ? WHERE id = ?', (person_name, face_id))
+            conn.commit()
+            return True
+        except Exception as e:
+            print(f"Error updating face person {face_id}: {e}")
+            return False
+        finally:
+            conn.close()
+
+    # ------------------------------------------------------------------ #
+    # App Settings Methods
+    # ------------------------------------------------------------------ #
+
+    def merge_metadata(self, source_path: str, target_path: str) -> bool:
+        """
+        Merge tags, character_tags, series_tags, and captions from source to target.
+        """
+        conn = self._connect()
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        
+        try:
+            # Fetch source
+            c.execute('SELECT tags, character_tags, series_tags, caption FROM files WHERE file_path = ?', (source_path,))
+            src = c.fetchone()
+            if not src:
+                return False
+                
+            # Fetch target
+            c.execute('SELECT tags, character_tags, series_tags, caption FROM files WHERE file_path = ?', (target_path,))
+            tgt = c.fetchone()
+            if not tgt:
+                return False
+                
+            def safe_parse(val):
+                if not val: return []
+                try: return json.loads(val)
+                except: return []
+                
+            # Merge JSON arrays
+            new_tags = list(set(safe_parse(src['tags']) + safe_parse(tgt['tags'])))
+            new_chars = list(set(safe_parse(src['character_tags']) + safe_parse(tgt['character_tags'])))
+            new_series = list(set(safe_parse(src['series_tags']) + safe_parse(tgt['series_tags'])))
+            
+            # Merge captions
+            new_caption = tgt['caption']
+            if src['caption']:
+                if new_caption:
+                    if src['caption'] not in new_caption:
+                        new_caption += "\n" + src['caption']
+                else:
+                    new_caption = src['caption']
+                    
+            c.execute('''
+                UPDATE files SET
+                    tags = ?,
+                    character_tags = ?,
+                    series_tags = ?,
+                    caption = ?
+                WHERE file_path = ?
+            ''', (json.dumps(new_tags), json.dumps(new_chars), json.dumps(new_series), new_caption, target_path))
+            
+            conn.commit()
+            return True
+        except Exception as e:
+            logger.error(f"Merge error: {e}")
+            conn.rollback()
+            return False
+        finally:
+            conn.close()
+
+    def get_setting(self, key: str, default: Optional[str] = None) -> Optional[str]:
+        """Retrieve a setting value by key."""
+        conn = self._connect()
+        c = conn.cursor()
+        try:
+            c.execute('SELECT value FROM app_settings WHERE key = ?', (key,))
+            row = c.fetchone()
+            return row[0] if row else default
+        finally:
+            conn.close()
+
+    def set_setting(self, key: str, value: str):
+        """Save or update a setting value."""
+        import time
+        conn = self._connect()
+        c = conn.cursor()
+        try:
+            c.execute('''
+                INSERT INTO app_settings (key, value, updated_at)
+                VALUES (?, ?, ?)
+                ON CONFLICT(key) DO UPDATE SET
+                    value=excluded.value,
+                    updated_at=excluded.updated_at
+            ''', (key, value, time.time()))
+            conn.commit()
         finally:
             conn.close()

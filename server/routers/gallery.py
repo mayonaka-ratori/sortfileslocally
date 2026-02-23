@@ -4,12 +4,23 @@ from typing import List, Optional
 from pydantic import BaseModel
 import json
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 from ..dependencies import get_db_manager, get_ai_engine
 from src.data.db_manager import DBManager
 from src.core.ai_models import AIEngine
 
 router = APIRouter(prefix="/gallery", tags=["gallery"])
+
+def safe_parse_json(x):
+    """Helper to safely parse JSON strings from SQLite."""
+    if not x: return []
+    try:
+        return json.loads(x)
+    except Exception:
+        return []
 
 class MediaItemResponse(BaseModel):
     id: int
@@ -20,6 +31,7 @@ class MediaItemResponse(BaseModel):
     tags: List[str]
     character_tags: List[str]
     series_tags: List[str]
+    caption: Optional[str] = None
     score: Optional[float] = None
     snippet: Optional[str] = None
 
@@ -57,7 +69,7 @@ def list_media(
         params.append(media_type.lower())
 
     query = f"""
-        SELECT id, file_path, media_type, width, height, tags, character_tags, series_tags
+        SELECT id, file_path, media_type, width, height, tags, character_tags, series_tags, caption
         FROM files
         WHERE {' AND '.join(where_clauses)}
         ORDER BY created_at DESC
@@ -66,7 +78,7 @@ def list_media(
     params.extend([limit, offset])
 
     import sqlite3
-    conn = sqlite3.connect(db.sqlite_path)
+    conn = db._connect()
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
     
@@ -76,23 +88,16 @@ def list_media(
         
         results = []
         for r in rows:
-            # Helper to safely parse JSON
-            def parse_json(x):
-                if not x: return []
-                try:
-                    return json.loads(x)
-                except:
-                    return []
-
             results.append(MediaItemResponse(
                 id=r['id'],
                 file_path=r['file_path'],
                 media_type=r['media_type'],
                 width=r['width'],
                 height=r['height'],
-                tags=parse_json(r['tags']),
-                character_tags=parse_json(r['character_tags']),
-                series_tags=parse_json(r['series_tags'])
+                tags=safe_parse_json(r['tags']),
+                character_tags=safe_parse_json(r['character_tags']),
+                series_tags=safe_parse_json(r['series_tags']),
+                caption=r['caption']
             ))
         return results
     finally:
@@ -100,8 +105,8 @@ def list_media(
 
 @router.post("/search", response_model=List[MediaItemResponse])
 def search_media(
-    query: str,
-    top_k: int = 50,
+    query: str = Query(...),
+    top_k: int = Query(default=50),
     ai: AIEngine = Depends(get_ai_engine),
     db: DBManager = Depends(get_db_manager)
 ):
@@ -114,7 +119,7 @@ def search_media(
 
     # 1. Fetch from SQLite via Text Search
     import sqlite3
-    conn = sqlite3.connect(db.sqlite_path)
+    conn = db._connect()
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
     
@@ -122,12 +127,11 @@ def search_media(
     escaped_query = query.replace("%", "\\%").replace("_", "\\_")
     text_search_query = f"%{escaped_query}%"
     c.execute("""
-        SELECT id, file_path, media_type, width, height, tags, character_tags, series_tags, audio_transcription, frame_descriptions
+        SELECT id, file_path, media_type, width, height, tags, character_tags, series_tags, audio_transcription, frame_descriptions, caption
         FROM files
-        WHERE media_type = 'video' AND 
-              (audio_transcription LIKE ? OR frame_descriptions LIKE ?)
+        WHERE audio_transcription LIKE ? OR frame_descriptions LIKE ? OR caption LIKE ?
         LIMIT 20
-    """, (text_search_query, text_search_query))
+    """, (text_search_query, text_search_query, text_search_query))
     text_rows = c.fetchall()
     
     text_match_paths = [r['file_path'] for r in text_rows]
@@ -159,7 +163,7 @@ def search_media(
     if paths_to_fetch:
         placeholders = ','.join(['?'] * len(paths_to_fetch))
         c.execute(f"""
-            SELECT id, file_path, media_type, width, height, tags, character_tags, series_tags, audio_transcription, frame_descriptions
+            SELECT id, file_path, media_type, width, height, tags, character_tags, series_tags, audio_transcription, frame_descriptions, caption
             FROM files
             WHERE file_path IN ({placeholders})
         """, paths_to_fetch)
@@ -176,22 +180,24 @@ def search_media(
     
     def extract_snippet(row_dict, q):
         q_lower = q.lower()
+        if row_dict.get('caption') and q_lower in row_dict['caption'].lower():
+             return f"[Caption] {row_dict['caption']}"
         if row_dict.get('audio_transcription'):
             try:
                 audio_data = json.loads(row_dict['audio_transcription'])
                 for seg in audio_data:
                     if q_lower in seg.get('text', '').lower():
                         return f"[Audio @{seg['start']:.1f}s] {seg['text']}"
-            except:
-                pass
+            except Exception as e:
+                logger.error(f"Error parsing audio_transcription JSON: {e}")
         if row_dict.get('frame_descriptions'):
             try:
                 frame_data = json.loads(row_dict['frame_descriptions'])
                 for seg in frame_data:
                     if q_lower in seg.get('text', '').lower():
                         return f"[Video @{seg['timestamp']:.1f}s] {seg['text']}"
-            except:
-                pass
+            except Exception as e:
+                logger.error(f"Error parsing frame_descriptions JSON: {e}")
         return None
 
     for path in all_paths:
@@ -204,9 +210,10 @@ def search_media(
                 media_type=r['media_type'],
                 width=r['width'],
                 height=r['height'],
-                tags=json.loads(r['tags']) if r['tags'] else [],
-                character_tags=json.loads(r['character_tags']) if r['character_tags'] else [],
-                series_tags=json.loads(r['series_tags']) if r['series_tags'] else [],
+                tags=safe_parse_json(r['tags']),
+                character_tags=safe_parse_json(r['character_tags']),
+                series_tags=safe_parse_json(r['series_tags']),
+                caption=r.get('caption'),
                 score=scores.get(path, 1.0), # Give text matches 1.0 score by default
                 snippet=snippet
             ))
@@ -217,29 +224,27 @@ def search_media(
 def get_filters(db: DBManager = Depends(get_db_manager)):
     """Get unique lists of characters and series for filtering."""
     import sqlite3
-    conn = sqlite3.connect(db.sqlite_path)
+    conn = db._connect()
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
     
     try:
-        c.execute("SELECT character_tags, series_tags FROM files WHERE is_processed=1")
-        rows = c.fetchall()
-        
-        all_chars = set()
-        all_series = set()
-        
-        for r in rows:
-            try:
-                if r['character_tags']:
-                    all_chars.update(json.loads(r['character_tags']))
-                if r['series_tags']:
-                    all_series.update(json.loads(r['series_tags']))
-            except:
-                pass
+        # Use SQLite json_each for efficient flattening
+        try:
+            c.execute("SELECT DISTINCT value FROM files, json_each(character_tags) WHERE is_processed=1 AND character_tags IS NOT NULL")
+            all_chars = [row[0] for row in c.fetchall() if row[0]]
+        except Exception:
+            all_chars = []
+            
+        try:
+            c.execute("SELECT DISTINCT value FROM files, json_each(series_tags) WHERE is_processed=1 AND series_tags IS NOT NULL")
+            all_series = [row[0] for row in c.fetchall() if row[0]]
+        except Exception:
+            all_series = []
                 
         return {
-            "characters": sorted(list(all_chars)),
-            "series": sorted(list(all_series))
+            "characters": sorted(all_chars),
+            "series": sorted(all_series)
         }
     finally:
         conn.close()
@@ -272,6 +277,8 @@ def chat_with_gallery(
             try:
                 import decord
                 vr = decord.VideoReader(request.file_path)
+                if len(vr) == 0:
+                    raise HTTPException(status_code=422, detail="Video has no readable frames")
                 mid_frame = vr[len(vr)//2].asnumpy()
                 img = Image.fromarray(mid_frame).convert("RGB")
             except ImportError:
@@ -291,3 +298,91 @@ def chat_with_gallery(
              
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+class FaceResponse(BaseModel):
+    id: int
+    file_id: int
+    face_index: int
+    timestamp: float
+    bbox: List[float]
+    person_name: Optional[str] = None
+    
+class NameFaceRequest(BaseModel):
+    person_name: str
+
+@router.get("/{id}/faces", response_model=List[FaceResponse])
+def get_file_faces(id: int, db: DBManager = Depends(get_db_manager)):
+    """Get all detected faces for a specific media file."""
+    faces = db.get_faces_for_file(id)
+    results = []
+    for f in faces:
+        try:
+            bbox = json.loads(f['bbox']) if f['bbox'] else []
+        except:
+            bbox = []
+        results.append(FaceResponse(
+            id=f['id'],
+            file_id=f['file_id'],
+            face_index=f['face_index'],
+            timestamp=f['timestamp'],
+            bbox=bbox,
+            person_name=f['person_name']
+        ))
+    return results
+
+@router.post("/faces/{face_id}/search", response_model=List[MediaItemResponse])
+def search_by_face(face_id: int, top_k: int = Query(default=50), db: DBManager = Depends(get_db_manager)):
+    """Search for media containing the same face."""
+    face_vec = db.get_face_vector(face_id)
+    if face_vec is None:
+        raise HTTPException(status_code=404, detail="Face vector not found")
+        
+    search_results = db.search_similar_faces(face_vec, top_k=top_k)
+    if not search_results:
+        return []
+        
+    face_ids = [r[0] for r in search_results]
+    face_details = db.get_face_details(face_ids)
+    
+    file_ids = list(set([f['file_id'] for f in face_details]))
+    
+    if not file_ids:
+        return []
+        
+    rows = db.get_files_by_ids(file_ids)
+    
+    # Map scores by file_id taking maximum score for that file
+    file_scores = {}
+    face_scores = {r[0]: r[1] for r in search_results}
+    for fd in face_details:
+        fid = fd['file_id']
+        f_score = face_scores.get(fd['face_id'], 0.0)
+        file_scores[fid] = max(file_scores.get(fid, 0.0), f_score)
+
+    results = []
+    for r in rows:
+        results.append(MediaItemResponse(
+            id=r['id'],
+            file_path=r['file_path'],
+            media_type=r['media_type'],
+            width=r['width'],
+            height=r['height'],
+            tags=safe_parse_json(r['tags']),
+            character_tags=safe_parse_json(r['character_tags']),
+            series_tags=safe_parse_json(r['series_tags']),
+            caption=r['caption'],
+            score=file_scores.get(r['id'], 0.0)
+        ))
+        
+    results.sort(key=lambda x: x.score or 0.0, reverse=True)
+    return results
+
+@router.post("/faces/{face_id}/name")
+def name_face(face_id: int, request: NameFaceRequest, db: DBManager = Depends(get_db_manager)):
+    """Give a name to a specific face."""
+    success = db.update_face_person(face_id, request.person_name)
+    if not success:
+         raise HTTPException(status_code=500, detail="Failed to update name")
+    return {"success": True}
+

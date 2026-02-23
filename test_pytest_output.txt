@@ -1,0 +1,62 @@
+============================= test session starts =============================
+platform win32 -- Python 3.10.11, pytest-9.0.2, pluggy-1.6.0 -- C:\tools\organizefiles0112\LocalCuratorPrime\venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\tools\organizefiles0112\LocalCuratorPrime
+plugins: anyio-4.12.1
+collecting ... VLMEngine initializing on device: cuda
+Loading VLM model (microsoft/Florence-2-base)...
+VLM model loaded successfully.
+Answer: QA>
+Model config dir: ['__annotations__', '__class__', '__delattr__', '__dict__', '__dir__', '__doc__', '__eq__', '__format__', '__ge__', '__getattribute__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__', '__module__', '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__sizeof__', '__slotnames__', '__str__', '__subclasshook__', '__weakref__', '_attn_implementation', '_attn_implementation_internal', '_auto_class', '_commit_hash', '_create_repo', '_dict_from_json_file', '_get_config_dict', '_get_files_timestamps', '_get_generation_defaults', '_has_non_default_generation_parameters', '_name_or_path', '_set_token_in_kwargs', '_upload_modified_files', 'add_cross_attention', 'architectures', 'attribute_map', 'auto_map', 'bad_words_ids', 'begin_suppress_tokens', 'bos_token_id', 'chunk_size_feed_forward', 'cross_attention_hidden_size', 'decoder_start_token_id', 'dict_torch_dtype_to_str', 'diversity_penalty', 'do_sample', 'early_stopping', 'encoder_no_repeat_ngram_size', 'eos_token_id', 'exponential_decay_length_penalty', 'finetuning_task', 'forced_bos_token_id', 'forced_eos_token_id', 'from_dict', 'from_json_file', 'from_pretrained', 'get_config_dict', 'id2label', 'ignore_index', 'is_composition', 'is_decoder', 'is_encoder_decoder', 'label2id', 'length_penalty', 'max_length', 'min_length', 'model_type', 'name_or_path', 'no_repeat_ngram_size', 'num_beam_groups', 'num_beams', 'num_labels', 'num_return_sequences', 'output_attentions', 'output_hidden_states', 'output_scores', 'pad_token_id', 'prefix', 'problem_type', 'projection_dim', 'pruned_heads', 'push_to_hub', 'register_for_auto_class', 'remove_invalid_values', 'repetition_penalty', 'return_dict', 'return_dict_in_generate', 'save_pretrained', 'sep_token_id', 'suppress_tokens', 'task_specific_params', 'temperature', 'text_config', 'tf_legacy_loss', 'tie_encoder_decoder', 'tie_word_embeddings', 'to_dict', 'to_diff_dict', 'to_json_file', 'to_json_string', 'tokenizer_class', 'top_k', 'top_p', 'torch_dtype', 'torchscript', 'transformers_version', 'typical_p', 'update', 'update_from_string', 'use_bfloat16', 'use_return_dict', 'vision_config', 'vocab_size']
+pad_token_id is present in config
+STDOUT: []
+
+STDERR: 
+collected 19 items / 2 errors
+
+=================================== ERRORS ====================================
+_______________ ERROR collecting tests/test_debug_unpacking.py ________________
+ImportError while importing test module 'C:\tools\organizefiles0112\LocalCuratorPrime\tests\test_debug_unpacking.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+C:\Users\hosom\AppData\Local\Programs\Python\Python310\lib\importlib\__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests\test_debug_unpacking.py:10: in <module>
+    from src.core.inference import InferenceOrchestrator
+E   ModuleNotFoundError: No module named 'src'
+________________ ERROR collecting tests/test_deduplication.py _________________
+ImportError while importing test module 'C:\tools\organizefiles0112\LocalCuratorPrime\tests\test_deduplication.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+C:\Users\hosom\AppData\Local\Programs\Python\Python310\lib\importlib\__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests\test_deduplication.py:12: in <module>
+    from src.core.deduplication import Deduplicator
+E   ModuleNotFoundError: No module named 'src'
+============================== warnings summary ===============================
+<frozen importlib._bootstrap>:241
+  <frozen importlib._bootstrap>:241: DeprecationWarning: builtin type SwigPyPacked has no __module__ attribute
+
+<frozen importlib._bootstrap>:241
+  <frozen importlib._bootstrap>:241: DeprecationWarning: builtin type SwigPyObject has no __module__ attribute
+
+<frozen importlib._bootstrap>:241
+  <frozen importlib._bootstrap>:241: DeprecationWarning: builtin type swigvarlink has no __module__ attribute
+
+venv\lib\site-packages\huggingface_hub\file_download.py:949
+venv\lib\site-packages\huggingface_hub\file_download.py:949
+  C:\tools\organizefiles0112\LocalCuratorPrime\venv\lib\site-packages\huggingface_hub\file_download.py:949: FutureWarning: `resume_download` is deprecated and will be removed in version 1.0.0. Downloads always resume when possible. If you want to force a new download, use `force_download=True`.
+    warnings.warn(
+
+<frozen importlib._bootstrap>:283
+<frozen importlib._bootstrap>:283
+<frozen importlib._bootstrap>:283
+<frozen importlib._bootstrap>:283
+  <frozen importlib._bootstrap>:283: DeprecationWarning: the load_module() method is deprecated and slated for removal in Python 3.12; use exec_module() instead
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+ERROR tests/test_debug_unpacking.py
+ERROR tests/test_deduplication.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 2 errors during collection !!!!!!!!!!!!!!!!!!!
+======================= 9 warnings, 2 errors in 21.24s ========================

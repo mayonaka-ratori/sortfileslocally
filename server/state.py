@@ -1,6 +1,6 @@
-
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Dict
+import time
 
 class ScanStatus(BaseModel):
     is_active: bool = False
@@ -10,8 +10,6 @@ class ScanStatus(BaseModel):
     total_files: int = 0
     eta_seconds: float = 0.0
     error: Optional[str] = None
+    last_updated: float = 0.0
 
-# Global state
-# In production, use Redis or DB for persistence across workers.
-# For single worker Uvicorn, this global variable is fine.
-current_status = ScanStatus()
+active_scans: Dict[int, ScanStatus] = {}

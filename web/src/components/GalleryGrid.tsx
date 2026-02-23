@@ -1,11 +1,25 @@
 "use client"
-
 import React, { useState, useEffect, useRef } from "react"
-import { MediaItem, getThumbnailUrl, getOriginalUrl } from "@/lib/api"
-import { Search, Loader2, Menu, PlayCircle, FileText } from "lucide-react"
-import { useInView } from "react-intersection-observer"
 
-const MediaCard = ({ item, onSelect }: { item: MediaItem, onSelect: (item: MediaItem) => void }) => {
+import { MediaItem, getThumbnailUrl, getOriginalUrl } from "@/lib/api"
+import { Search, Loader2, Menu, PlayCircle, FileText, CheckCircle2, Download, X } from "lucide-react"
+import { useInView } from "react-intersection-observer"
+import Image from "next/image"
+import { BulkExportModal } from "./BulkExportModal"
+
+const MediaCard = ({
+    item,
+    onSelect,
+    isSelected,
+    isSelectionMode,
+    onToggleSelect
+}: {
+    item: MediaItem,
+    onSelect: (item: MediaItem) => void,
+    isSelected: boolean,
+    isSelectionMode: boolean,
+    onToggleSelect: (id: number) => void
+}) => {
     const [isHovered, setIsHovered] = useState(false);
     const hoverTimeout = useRef<NodeJS.Timeout | null>(null);
 
@@ -13,7 +27,7 @@ const MediaCard = ({ item, onSelect }: { item: MediaItem, onSelect: (item: Media
         if (item.media_type === "video") {
             hoverTimeout.current = setTimeout(() => {
                 setIsHovered(true);
-            }, 600); // Wait 600ms before playing video preview
+            }, 600);
         }
     };
 
@@ -22,27 +36,32 @@ const MediaCard = ({ item, onSelect }: { item: MediaItem, onSelect: (item: Media
         setIsHovered(false);
     };
 
-    // Cleanup timeout on unmount
-    React.useEffect(() => {
-        return () => {
-            if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
-        };
-    }, []);
+    const handleClick = (e: React.MouseEvent) => {
+        if (isSelectionMode || e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            e.stopPropagation();
+            onToggleSelect(item.id);
+        } else {
+            onSelect(item);
+        }
+    };
 
     return (
         <div
-            onClick={() => onSelect(item)}
+            onClick={handleClick}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
-            className="relative group cursor-pointer overflow-hidden rounded-xl bg-zinc-900 border border-zinc-800 hover:border-indigo-500/50 transition-all duration-300 break-inside-avoid shadow-lg flex flex-col"
+            className={`relative group cursor-pointer overflow-hidden rounded-xl bg-zinc-900 border transition-all duration-300 break-inside-avoid shadow-lg flex flex-col ${isSelected ? 'border-indigo-500 ring-2 ring-indigo-500/50' : 'border-zinc-800 hover:border-zinc-700'}`}
         >
             <div className="relative w-full aspect-auto bg-zinc-900">
-                {/* Always show thumbnail, but fade it out if video is ready */}
-                <img
+                <Image
                     src={getThumbnailUrl(item.id, 400)}
                     alt={`Media ${item.id}`}
+                    width={400}
+                    height={300}
                     className={`w-full h-auto object-cover transition-opacity duration-300 ${isHovered && item.media_type === "video" ? 'opacity-0' : 'opacity-100'}`}
                     loading="lazy"
+                    unoptimized
                 />
 
                 {isHovered && item.media_type === "video" && (
@@ -56,7 +75,15 @@ const MediaCard = ({ item, onSelect }: { item: MediaItem, onSelect: (item: Media
                     />
                 )}
 
-                {/* Overlay gradient and badge */}
+                {/* Selection Overlay */}
+                {(isSelected || isSelectionMode) && (
+                    <div className="absolute top-2 left-2 z-10">
+                        <div className={`rounded-full p-0.5 transition-colors ${isSelected ? 'bg-indigo-600 text-white' : 'bg-black/40 text-white/50 border border-white/20 hover:bg-black/60'}`}>
+                            <CheckCircle2 className="w-5 h-5" />
+                        </div>
+                    </div>
+                )}
+
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
                 {item.media_type === "video" && !isHovered && (
@@ -66,7 +93,6 @@ const MediaCard = ({ item, onSelect }: { item: MediaItem, onSelect: (item: Media
                 )}
             </div>
 
-            {/* Tags and Snippets Overlay */}
             <div className="absolute bottom-0 left-0 right-0 p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end pointer-events-none">
                 {item.character_tags.length > 0 && (
                     <div className="flex gap-1 flex-wrap mb-1">
@@ -79,7 +105,6 @@ const MediaCard = ({ item, onSelect }: { item: MediaItem, onSelect: (item: Media
                 )}
             </div>
 
-            {/* Persistent snippet below media if matched in search */}
             {item.snippet && (
                 <div className="px-3 py-2 bg-indigo-950/30 border-t border-indigo-900/50">
                     <p className="text-xs text-indigo-200 line-clamp-2 leading-relaxed flex items-start gap-1">
@@ -99,25 +124,61 @@ interface GalleryGridProps {
     onLoadMore?: () => void
     hasMore?: boolean
     onMenuClick?: () => void
+    onImageDrop?: (file: File) => void
 }
 
-export function GalleryGrid({ media, onSelect, onSearch, onLoadMore, hasMore, onMenuClick }: GalleryGridProps) {
+export function GalleryGrid({ media, onSelect, onSearch, onLoadMore, hasMore, onMenuClick, onImageDrop }: GalleryGridProps) {
     const [query, setQuery] = useState("")
+    const [isDragging, setIsDragging] = useState(false)
+    const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+    const [showBulkModal, setShowBulkModal] = useState(false)
     const { ref, inView } = useInView()
 
     useEffect(() => {
         if (inView && hasMore && onLoadMore) {
             onLoadMore()
         }
-    }, [inView, hasMore])
+    }, [inView, hasMore, onLoadMore])
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault()
         onSearch(query)
     }
 
+    const toggleSelect = (id: number) => {
+        const next = new Set(selectedIds)
+        if (next.has(id)) next.delete(id)
+        else next.add(id)
+        setSelectedIds(next)
+    }
+
+    const clearSelection = () => {
+        setSelectedIds(new Set())
+    }
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault()
+        setIsDragging(true)
+    }
+
+    const handleDragLeave = (e: React.DragEvent) => {
+        e.preventDefault()
+        setIsDragging(false)
+    }
+
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault()
+        setIsDragging(false)
+        const file = e.dataTransfer.files?.[0]
+        if (file && file.type.startsWith('image/') && onImageDrop) {
+            onImageDrop(file)
+        }
+    }
+
+    const selectedItems = media.filter(item => selectedIds.has(item.id))
+
     return (
-        <div className="flex flex-col h-full w-full bg-zinc-950 text-zinc-100">
+        <div className="flex flex-col h-full w-full bg-zinc-950 text-zinc-100 relative">
             {/* Search Header */}
             <div className="sticky top-0 z-10 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800 p-4 flex items-center gap-3">
                 {onMenuClick && (
@@ -125,15 +186,21 @@ export function GalleryGrid({ media, onSelect, onSearch, onLoadMore, hasMore, on
                         <Menu className="w-6 h-6" />
                     </button>
                 )}
-                <form onSubmit={handleSearch} className="flex-1 max-w-2xl mx-auto relative">
+                <form
+                    onSubmit={handleSearch}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    className={`flex-1 max-w-2xl mx-auto relative transition-all rounded-full ${isDragging ? 'ring-2 ring-indigo-500 bg-indigo-500/10' : ''}`}
+                >
                     <input
                         type="text"
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
-                        placeholder="Search with AI (e.g. 'sunset at the beach')"
-                        className="w-full bg-zinc-900 border border-zinc-800 rounded-full py-3 px-12 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                        placeholder="Search with AI or Drop an Image"
+                        className={`w-full bg-zinc-900 border ${isDragging ? 'border-indigo-500' : 'border-zinc-800'} rounded-full py-3 px-12 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all`}
                     />
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 w-5 h-5" />
+                    <Search className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${isDragging ? 'text-indigo-400' : 'text-zinc-500'}`} />
                     <button
                         type="submit"
                         className="absolute right-2 top-1/2 -translate-y-1/2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full px-4 py-1.5 text-sm font-medium transition-colors"
@@ -142,6 +209,30 @@ export function GalleryGrid({ media, onSelect, onSearch, onLoadMore, hasMore, on
                     </button>
                 </form>
             </div>
+
+            {/* Selection Toolbar */}
+            {selectedIds.size > 0 && (
+                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-4 px-6 py-3 bg-indigo-600 rounded-2xl shadow-2xl shadow-indigo-900/40 animate-in slide-in-from-bottom-4 duration-300">
+                    <div className="flex items-center gap-2 border-r border-indigo-500 pr-4 mr-1">
+                        <span className="text-white font-bold text-sm leading-none">{selectedIds.size}</span>
+                        <span className="text-indigo-100 text-xs font-medium uppercase tracking-tight">Selected</span>
+                    </div>
+                    <button
+                        onClick={() => setShowBulkModal(true)}
+                        className="flex items-center gap-2 text-white hover:text-indigo-100 transition-colors py-1"
+                    >
+                        <Download className="w-4 h-4" />
+                        <span className="text-xs font-bold uppercase tracking-wider">Export Meta</span>
+                    </button>
+                    <button
+                        onClick={clearSelection}
+                        className="p-1 hover:bg-indigo-700 rounded-md transition-colors text-indigo-100"
+                        title="Clear Selection"
+                    >
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+            )}
 
             {/* Grid */}
             <div className="flex-1 overflow-y-auto p-4">
@@ -153,7 +244,14 @@ export function GalleryGrid({ media, onSelect, onSearch, onLoadMore, hasMore, on
                 ) : (
                     <div className="columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4 space-y-4">
                         {media.map((item) => (
-                            <MediaCard key={item.id} item={item} onSelect={onSelect} />
+                            <MediaCard
+                                key={item.id}
+                                item={item}
+                                onSelect={onSelect}
+                                isSelected={selectedIds.has(item.id)}
+                                isSelectionMode={selectedIds.size > 0}
+                                onToggleSelect={toggleSelect}
+                            />
                         ))}
                     </div>
                 )}
@@ -163,6 +261,17 @@ export function GalleryGrid({ media, onSelect, onSearch, onLoadMore, hasMore, on
                     </div>
                 )}
             </div>
+
+            {showBulkModal && (
+                <BulkExportModal
+                    selectedItems={selectedItems}
+                    onClose={() => setShowBulkModal(false)}
+                    onSuccess={(success, failed) => {
+                        alert(`Successfully exported metadata for ${success} files.${failed > 0 ? ` (${failed} failed)` : ''}`);
+                        clearSelection();
+                    }}
+                />
+            )}
         </div>
     )
 }

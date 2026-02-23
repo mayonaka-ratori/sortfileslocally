@@ -2,194 +2,139 @@
   <img src="https://via.placeholder.com/150/09090b/4f46e5?text=LCP" alt="Local Curator Prime Logo" width="100"/>
   <h1>Local Curator Prime</h1>
   <p><strong>AI-Powered Local Media Manager & Semantic Search</strong></p>
-  <p><em>AI駆動のローカルメディア管理＆セマンティック検索システム</em></p>
 </div>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.10%2B-blue" alt="Python Version">
-  <img src="https://img.shields.io/badge/Next.js-16-black" alt="Next.js">
-  <img src="https://img.shields.io/badge/FastAPI-0.109-009688" alt="FastAPI">
-  <img src="https://img.shields.io/badge/PyTorch-2.0%2B-ee4c2c" alt="PyTorch">
+  <img src="https://img.shields.io/badge/Next.js-16.1.6-black" alt="Next.js">
+  <img src="https://img.shields.io/badge/FastAPI-0.129.0-009688" alt="FastAPI">
+  <img src="https://img.shields.io/badge/PyTorch-2.5.1-ee4c2c" alt="PyTorch">
   <img src="https://img.shields.io/badge/Tailwind_CSS-4-38bdf8" alt="Tailwind CSS">
+  <img src="https://img.shields.io/badge/License-MIT-green" alt="License">
 </p>
 
 ---
 
-## 🌟 Overview / 概要
+## 🌟 Overview (English)
 
-**Local Curator Prime** is an advanced, offline-first media management tool designed to intelligently categorize, tag, and search through tens of thousands of local images and videos using cutting-edge Vision-Language Models (VLMs) and Semantic Search.
+**Local Curator Prime** is a powerful, offline-first media management suite designed to intelligently catalog, tag, and search your local image and video collections. By leveraging state-of-the-art Vision-Language Models (VLM) and Semantic Search, it transforms your folders into a searchable, interactive digital library.
 
-**Local Curator Prime** は、最先端の視覚・言語モデル(VLM)とセマンティック検索を用いて、数万枚以上のローカル画像や動画を自動で分類・タグ付けし、自然言語で検索できるようにする、完全オフライン動作の高度なメディア管理ツールです。
+### ✨ Key Features
+- **🔍 Semantic Search**: Search using natural language (e.g., *"a cat sleeping on a sunny windowsill"*) instead of just filenames.
+- **🤖 Automated AI Tagging**: Automatically detects characters, series, and objects in your images.
+- **🎬 Video Understanding**: Transcribes audio with Whisper and describes scenes using VLM for deep video search.
+- **💬 Chat with Media**: Interactive VLM panel to ask questions about specific images or videos.
+- **🚀 Deduplication**: Find and manage visually similar or duplicate files to save space.
+- **💾 Metadata Export**: Write AI-generated tags back to files as EXIF/IPTC or XMP sidecars.
+- **🛡️ 100% Privacy**: All AI processing happens locally. No data ever leaves your machine.
 
-> **Note**: This repository is a portfolio showcase. The core AI models are downloaded locally upon first execution.
-> 
-> **注意**: このリポジトリはポートフォリオ用の公開モックアップを含みます。コアとなるAIモデルは初回実行時にローカル環境へダウンロードされます。
-
-![Dashboard Mockup](docs/mockup_hero.png)
-*(Mockup image of the dashboard interface / ダッシュボードUIのモックアップ画像)*
-
----
-
-## ✨ Key Features / 主な機能
-
-### 🔍 1. Semantic Search (セマンティック検索)
-Instead of matching file names or manual tags, search your local media using natural language descriptions (e.g., *"a girl holding a red umbrella under the rain"*).
-ファイル名や手動タグに頼らず、「雨の中で赤い傘を持つ女の子」のような**自然言語の記述で画像・動画を検索**できます（CLIP & FAISS連携）。
-
-### 🤖 2. Automated AI Tagging (自動AIタグ付け)
-Automatically extracts characters, series, and general tags from images using specialized models (e.g., DeepDanbooru/WD14), organizing your pristine collection instantly.
-専用の画像認識モデルを用いて、画像から**キャラクター名、作品名、一般タグを自動抽出**し、手元の大規模コレクションを瞬時に整理します。
-
-### 🎬 3. Video Understanding (動画・音声理解)
-Fully supports video processing. Extracts keyframes for VLM description (Moondream2) and transcribes audio directly using local Whisper to enable deep scene search.
-動画処理に完全対応。キーフレームを抽出してVLM(Moondream2)でシーン内容を説明させ、ローカルWhisperで**音声を自動文字起こし**することで、テキストから特定のシーンを瞬時に検索可能です。
-
-### 💬 4. Chat with Media (画像・動画との対話)
-Open any image in the gallery and chat directly with it using a Vision-Language Model. Ask about specific details, translate text in the image, or get creative prompts.
-ギャラリー内の画像を対象に、視覚言語モデル（VLM）と**直接チャット**が可能。画像内の詳細を尋ねたり、文字を翻訳したりできます。
-
-### ⚡ 5. Offline & Privacy-First (完全オフライン・プライバシー優先)
-All heavy AI processing runs locally completely offline. No data is sent to external APIs (OpenAI, etc.), protecting your private collection. 
-すべてのAI処理（推論、特徴量抽出）はローカル環境で100%完結。外部のAPIへデータを送信することはなく、安全に管理できます。
-
----
-
-## 🏗 Architecture / アーキテクチャ構成
-
-The system utilizes a modern web stack backed by a powerful local Python/PyTorch inference engine.
-モダンなWebスタックと、強力なローカルPyTorch推論エンジンを組み合わせています。
-
-```mermaid
-graph TD
-    subgraph Frontend [Web Client - Next.js/React]
-        UI[Gallery UI & Chat Panel]
-        Sidebar[Search & Filters]
-        ScanUI[Background Scan Monitor]
-    end
-
-    subgraph Backend [API Server - FastAPI]
-        API[REST API Routes]
-        DBManager[Database Manager]
-    end
-
-    subgraph CoreEngine [AI Inference Pipeline]
-        Router[Task Router]
-        CLIP[CLIP Encoder]
-        VLM[Moondream2 / LLaVA]
-        Faces[InsightFace / DeepDanbooru]
-        Whisper[faster-whisper]
-    end
-
-    subgraph Storage [Local Data]
-        SQLite[(SQLite DB)]
-        FAISS[(FAISS Vector Index)]
-        Files[Local Filesystem]
-    end
-
-    UI <-->|JSON/HTTP| API
-    Sidebar <-->|Search Queries| API
-    ScanUI <-->|Status Polling| API
-
-    API <--> DBManager
-    DBManager <--> SQLite
-    DBManager <--> FAISS
-
-    API <-->|Image/Video Paths| Router
-    Router --> CLIP
-    Router --> VLM
-    Router --> Faces
-    Router --> Whisper
-
-    Router -->|Extracted Vectors & Tags| DBManager
-    Router -.->|Read| Files
+### 🏗 Project Structure
+```text
+LocalCuratorPrime/
+├── server/            # FastAPI Backend (Python)
+│   ├── routers/       # API Endpoints (Scan, Gallery, Dedup, Setup)
+│   └── main.py        # Backend Entry Point
+├── web/               # Next.js Frontend (TypeScript)
+│   └── src/           # UI Components and Logic
+├── src/               # Shared AI/Data Logic
+│   ├── core/          # AI Inference Engines (CLIP, VLM, Whisper)
+│   └── data/          # Database & Job Management
+├── docs/              # Detailed Documentation & User Manuals
+└── data/              # Local Storage (SQLite, Vector Index, Thumbnails)
 ```
 
----
+### 🛠 Tech Stack
+- **Frontend**: Next.js 16.1.6 (React 19.2.3), Tailwind CSS 4, Lucide React, Framer Motion.
+- **Backend**: FastAPI 0.129.0, Uvicorn, SQLite3.
+- **AI Core**: PyTorch 2.5.1, Transformers, FAISS (Vector DB), InsightFace (Face ID), faster-whisper.
 
-## 🛠 Tech Stack / 技術スタック
-
-### Frontend (User Interface)
-- **Next.js 16** (React 19) - App Router
-- **Tailwind CSS 4** - Styling & Dark Mode Aesthetics
-- **Lucide React** - Iconography
-
-### Backend (Server & API)
-- **FastAPI** - High-performance Python web framework
-- **Uvicorn** - ASGI server
-
-### AI & Data Engine
-- **PyTorch** - Core Deep Learning Framework
-- **Transformers / OpenCLIP (Hugging Face)** - CLIP & Text processing
-- **FAISS** - Ultra-fast vector similarity search for semantic queries
-- **SQLite3** - Relational metadata storage
-- **faster-whisper** - Optimized audio transcription
-- **InsightFace / Decord** - Face detection & hardware-accelerated video decoding
-
----
-
-## 🚀 Getting Started / セットアップ手順
-
-### Prerequisites / 前提条件
-- **OS**: Windows 10/11, Linux (Ubuntu recommended)
-- **Python**: 3.10 or 3.11
-- **Node.js**: v18+
-- **GPU**: NVIDIA GPU with at least 8GB VRAM (CUDA 11.8+ installed recommended for performance). CPU fallback is supported but extremely slow.
-*(VRAM 8GB以上のNVIDIA GPUを強く推奨します。)*
-
-### 1. Backend Setup (バックエンドの起動)
-
+### 🚀 Quick Start
+**1. Backend Setup**
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/local-curator-prime.git
-cd local-curator-prime
+# Enter project directory
+cd LocalCuratorPrime
 
-# Create virtual environment / 仮想環境の作成
+# Create venv and install
 python -m venv venv
-# Windows: venv\Scripts\activate
-# Linux/Mac: source venv/bin/activate
 
-# Install dependencies (ensure PyTorch matches your CUDA version first)
-# 依存関係のインストール（先にPyTorchのCUDAバージョンを合わせてください）
+# Windows:
+venv\Scripts\activate
+# Mac / Linux:
+source venv/bin/activate
+
+# Install dependencies (ensure PyTorch matches your CUDA version if using GPU)
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 pip install -r requirements.txt
 
-# Start the FastAPI server (downloads models on first run - approx. 6GB)
-# FastAPIサーバーを起動（初回はモデルのダウンロードが行われます - 約6GB）
+# Start Server
+cd server
+python main.py
+```
+**2. Frontend Setup**
+```bash
+# Open a new terminal
+cd LocalCuratorPrime/web
+
+# Install dependencies and start
+npm install
+npm run dev
+```
+Visit `http://localhost:3000`.
+
+---
+
+## 🌟 概要 (日本語)
+
+**Local Curator Prime** は、ローカルに保存された大量の画像や動画を AI でスマートに管理するための、完全オフライン型のメディア管理スイートです。最新の視覚言語モデル (VLM) とセマンティック検索を組み合わせ、単なるファイル管理を超えた「対話可能なライブラリ」を実現します。
+
+### ✨ 主な機能
+- **🔍 セマンティック検索**: 「夕暮れの浜辺を歩く犬」のような自然言語での記述でメディアを瞬時に特定します。
+- **🤖 自動AIタグ付け**: 画像からキャラクター、作品名、一般属性を自動で抽出・付与します。
+- **🎬 動画解析**: Whisper による音声文字起こしと、VLM によるシーン説明により、動画内の特定の場面を検索可能です。
+- **💬 メディアと対話**: ギャラリー内の画像に対し、VLM (AI) を通じて質問をしたり説明を求めたりできます。
+- **🚀 ダブリの解消 (Deduplication)**: 視覚的に類似したファイルや完全な重複ファイルを検出し、整理を支援します。
+- **💾 メタデータの書き出し**: AIが付与したタグを EXIF/IPTC 形式でファイルに直接書き込む、または XMP サイドカーとして出力できます。
+- **🛡️ 100% プライバシー**: すべての推論処理はローカルで完結します。データが外部に送信されることはありません。
+
+### 🛠 テックスタック
+- **フロントエンド**: Next.js 16.1.6 (React 19.2.3), Tailwind CSS 4, Lucide React.
+- **バックエンド**: FastAPI 0.129.0, Uvicorn, SQLite3.
+- **AI Core**: PyTorch 2.5.1, Transformers, FAISS, faster-whisper.
+
+### 🚀 クイックスタート
+**1. バックエンドのセットアップ**
+```bash
+# ディレクトリへ移動
+cd LocalCuratorPrime
+
+# 仮想環境の作成と有効化
+python -m venv venv
+# Windows: venv\Scripts\activate
+# Mac / Linux: source venv/bin/activate
+
+# 依存関係のインストール
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+pip install -r requirements.txt
+
+# サーバーの起動
 cd server
 python main.py
 ```
 
-### 2. Frontend Setup (フロントエンドの起動)
-
-Open a new terminal. / 新しいターミナルを開きます。
-
+**2. フロントエンドのセットアップ**
 ```bash
-cd local-curator-prime/web
+# 新しいターミナルを開く
+cd LocalCuratorPrime/web
 
-# Install dependencies
+# インストールと起動
 npm install
-
-# Start the development server
 npm run dev
 ```
+Webブラウザで `http://localhost:3000` を開いてください。
 
-Visit `http://localhost:3000` in your browser.
-ブラウザで `http://localhost:3000` にアクセスしてください。
-
----
-
-## 📸 Screenshots / スクリーンショット
-
-*Screenshots feature mock data for portfolio presentation purposes.*
-
-### Gallery View & Semantic Search
-![Gallery Search Mockup](docs/mockup_search.png)
-*Search for complex concepts and see exact text match snippets from video audio/frames.*
-
-### Video Analysis & Chat
-![Chat Panel Mockup](docs/mockup_chat.png)
-*Chat directly with the local vision language model about any media file.*
+詳細な使い方は [USER_MANUAL.md](docs/USER_MANUAL_JP.md) をご覧ください。
 
 ---
-*Built with ❤️ for organizing massive digital collections.*
 
+## 📄 License
+This project is licensed under the MIT License - see the LICENSE file for details.

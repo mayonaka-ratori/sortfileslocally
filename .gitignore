@@ -31,3 +31,5 @@ web/.vercel
 .idea/
 
 data/models/
+*.onnx
+*.bin

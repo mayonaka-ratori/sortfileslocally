@@ -3,10 +3,13 @@ import numpy as np
 import sqlite3
 import os
 import faiss
+import logging
 from dataclasses import dataclass
 from typing import List, Tuple, Dict, Optional
 from ..data.db_manager import DBManager
 from ..data.schemas import MediaItem
+
+logger = logging.getLogger(__name__)
 
 @dataclass
 class DuplicatePair:
@@ -78,7 +81,7 @@ class Deduplicator:
             # res_lims is standard start-end ptrs
             
             # Fetch Metadata Cache
-            conn = sqlite3.connect(self.db_manager.sqlite_path)
+            conn = self.db_manager._connect()
             conn.row_factory = sqlite3.Row
             c = conn.cursor()
             
@@ -167,8 +170,8 @@ class Deduplicator:
                                 continue # Skip, structural diff too large
                                 
                         except Exception as e:
-                            print(f"Hash calc failed: {e}")
-                            pass
+                            logger.error(f"Hash calc failed during deduplication: {e}")
+                            continue
                         
                     # Determine Action
                     action, reason = self._recommend_action(item_a, item_b)

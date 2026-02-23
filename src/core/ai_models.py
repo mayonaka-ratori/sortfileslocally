@@ -13,13 +13,17 @@ try:
 except ImportError:
     HAS_WHISPER = False
 
+import threading
+
 class AIEngine:
     _instance = None
+    _lock = threading.Lock()
     
     def __new__(cls, *args, **kwargs):
-        if cls._instance is None:
-            cls._instance = super(AIEngine, cls).__new__(cls)
-            cls._instance._initialized = False
+        with cls._lock:
+            if cls._instance is None:
+                cls._instance = super(AIEngine, cls).__new__(cls)
+                cls._instance._initialized = False
         return cls._instance
 
     def __init__(self):
@@ -40,6 +44,7 @@ class AIEngine:
                 pretrained='laion2b_s32b_b82k', 
                 device=self.device
             )
+            self.clip_tokenizer = open_clip.get_tokenizer('ViT-L-14')
             self.clip_model.eval() # Inference mode
             print("CLIP model loaded successfully.")
         except Exception as e:
@@ -110,7 +115,7 @@ class AIEngine:
             # Preprocess and move to device
             image_tensor = self.clip_preprocess(image).unsqueeze(0).to(self.device)
             
-            with torch.no_grad(), torch.cuda.amp.autocast():
+            with torch.no_grad(), torch.amp.autocast("cuda") if self.device == "cuda" else torch.no_grad():
                 image_features = self.clip_model.encode_image(image_tensor)
                 image_features /= image_features.norm(dim=-1, keepdim=True) # Normalize
 
@@ -125,10 +130,9 @@ class AIEngine:
         Returns a normalized numpy array of shape (768,).
         """
         try:
-            tokenizer = open_clip.get_tokenizer('ViT-L-14')
-            text_tensor = tokenizer([text]).to(self.device)
+            text_tensor = self.clip_tokenizer([text]).to(self.device)
 
-            with torch.no_grad(), torch.cuda.amp.autocast():
+            with torch.no_grad(), torch.amp.autocast("cuda") if self.device == "cuda" else torch.no_grad():
                 text_features = self.clip_model.encode_text(text_tensor)
                 text_features /= text_features.norm(dim=-1, keepdim=True)
             
@@ -183,7 +187,7 @@ class AIEngine:
             tensors = [self.clip_preprocess(img) for img in images]
             batch_tensor = torch.stack(tensors).to(self.device)
             
-            with torch.no_grad(), torch.cuda.amp.autocast():
+            with torch.no_grad(), torch.amp.autocast("cuda") if self.device == "cuda" else torch.no_grad():
                 image_features = self.clip_model.encode_image(batch_tensor)
                 image_features /= image_features.norm(dim=-1, keepdim=True) # Normalize
 
@@ -249,7 +253,13 @@ except Exception as e:
             if os.name == 'nt':
                 creationflags = subprocess.CREATE_NO_WINDOW
                 
-            res = subprocess.run(cmd, capture_output=True, text=True, creationflags=creationflags)
+            try:
+                res = subprocess.run(cmd, capture_output=True, text=True, creationflags=creationflags, timeout=60)
+            except subprocess.TimeoutExpired:
+                print("WARNING: Whisper subprocess timed out")
+                if os.path.exists(script_path):
+                    os.remove(script_path)
+                return []
             
             if os.path.exists(script_path):
                 os.remove(script_path)
