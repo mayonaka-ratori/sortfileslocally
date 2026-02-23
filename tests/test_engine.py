@@ -13,7 +13,7 @@ try:
     from core.video_processor import VideoProcessor
 except ImportError as e:
     print(f"Import Error: {e}")
-    sys.exit(1)
+    raise e
 
 def create_dummy_video(filename="dummy_video.mp4", duration_sec=5, fps=30):
     print(f"Creating dummy video: {filename}...")

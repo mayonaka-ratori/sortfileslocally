@@ -14,6 +14,20 @@ export interface MediaItem {
     snippet?: string; // Optional field for holding search match text snippet
 }
 
+export interface SearchFilters {
+    tags?: string[];
+    character_tags?: string[];
+    series_tags?: string[];
+    media_type?: string;
+    extension?: string[];
+}
+
+export interface HybridSearchResponse {
+    results: MediaItem[];
+    total_candidates: number;
+    filters_applied: SearchFilters;
+}
+
 export interface ScanStatus {
     is_active: boolean;
     progress_percent: number;
@@ -49,11 +63,13 @@ export const fetchMedia = async (
 
 export const searchMedia = async (
     query: string,
+    filters: SearchFilters = {},
     top_k: number = 50
-): Promise<MediaItem[]> => {
-    const params = new URLSearchParams({ query, top_k: top_k.toString() });
-    const res = await fetch(`${API_BASE_URL}/gallery/search?${params.toString()}`, {
+): Promise<HybridSearchResponse> => {
+    const res = await fetch(`${API_BASE_URL}/gallery/search`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query, filters, top_k }),
     });
     if (!res.ok) throw new Error("Search failed");
     return res.json();
@@ -241,11 +257,20 @@ export const getDownloadProgress = async (modelKey: string): Promise<DownloadPro
 
 export interface AppSettings {
     custom_model_dir: string | null;
+    setup_completed: boolean;
+    execution_profile: string;
+    theme: string;
 }
 
 export const getAppSettings = async (): Promise<AppSettings> => {
     const res = await fetch(`${API_BASE_URL}/setup/settings`);
     if (!res.ok) throw new Error("Failed to fetch app settings");
+    return res.json();
+};
+
+export const completeSetup = async (): Promise<{ status: string }> => {
+    const res = await fetch(`${API_BASE_URL}/setup/complete`, { method: "POST" });
+    if (!res.ok) throw new Error("Failed to complete setup");
     return res.json();
 };
 
@@ -367,6 +392,87 @@ export const exportAllMetadata = async (
         body: JSON.stringify({ mode }),
     });
     if (!res.ok) throw new Error("Metadata export failed");
+    return res.json();
+};
+
+// ------------------------------------------------------------------ //
+// Album APIs
+// ------------------------------------------------------------------ //
+
+export interface Album {
+    id: number;
+    name: string;
+    is_dynamic: boolean;
+    query_json?: string;
+    cover_file_id?: number | null;
+    item_count: number;
+    created_at: string;
+    updated_at: string;
+}
+
+export const fetchAlbums = async (): Promise<Album[]> => {
+    const res = await fetch(`${API_BASE_URL}/albums/`);
+    if (!res.ok) throw new Error("Failed to fetch albums");
+    return res.json();
+};
+
+export const fetchAlbum = async (id: number): Promise<Album> => {
+    const res = await fetch(`${API_BASE_URL}/albums/${id}`);
+    if (!res.ok) throw new Error("Failed to fetch album");
+    return res.json();
+};
+
+export const createAlbum = async (name: string, isDynamic: boolean = false, queryJson?: string): Promise<number> => {
+    const res = await fetch(`${API_BASE_URL}/albums/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, is_dynamic: isDynamic, query_json: queryJson }),
+    });
+    if (!res.ok) throw new Error("Failed to create album");
+    return res.json();
+};
+
+export const updateAlbum = async (id: number, data: { name?: string; query_json?: string; cover_file_id?: number | null }): Promise<{ success: boolean }> => {
+    const res = await fetch(`${API_BASE_URL}/albums/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("Failed to update album");
+    return res.json();
+};
+
+export const deleteAlbum = async (id: number): Promise<{ success: boolean }> => {
+    const res = await fetch(`${API_BASE_URL}/albums/${id}`, {
+        method: "DELETE",
+    });
+    if (!res.ok) throw new Error("Failed to delete album");
+    return res.json();
+};
+
+export const fetchAlbumMedia = async (id: number): Promise<MediaItem[]> => {
+    const res = await fetch(`${API_BASE_URL}/albums/${id}/media`);
+    if (!res.ok) throw new Error("Failed to fetch album media");
+    return res.json();
+};
+
+export const addItemsToAlbum = async (id: number, fileIds: number[]): Promise<{ success: boolean }> => {
+    const res = await fetch(`${API_BASE_URL}/albums/${id}/items`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ file_ids: fileIds }),
+    });
+    if (!res.ok) throw new Error("Failed to add items to album");
+    return res.json();
+};
+
+export const removeItemsFromAlbum = async (id: number, fileIds: number[]): Promise<{ success: boolean }> => {
+    const res = await fetch(`${API_BASE_URL}/albums/${id}/items`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ file_ids: fileIds }),
+    });
+    if (!res.ok) throw new Error("Failed to remove items from album");
     return res.json();
 };
 

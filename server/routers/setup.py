@@ -54,7 +54,9 @@ class SettingItem(BaseModel):
 
 class AppSettingsResponse(BaseModel):
     custom_model_dir: Optional[str] = None
-    # Future settings can be added here
+    setup_completed: bool = False
+    execution_profile: str = "balanced"
+    theme: str = "system"
 
 class SettingUpdateResponse(BaseModel):
     status: str
@@ -118,8 +120,19 @@ def get_settings():
     from server.dependencies import get_db_manager
     db = get_db_manager()
     return {
-        "custom_model_dir": db.get_setting("custom_model_dir")
+        "custom_model_dir": db.get_setting("custom_model_dir"),
+        "setup_completed": db.get_setting("setup_completed") == "1",
+        "execution_profile": db.get_setting("execution_profile", "balanced"),
+        "theme": db.get_setting("theme", "system")
     }
+
+@router.post("/complete")
+def complete_setup():
+    """Mark setup as completed."""
+    from server.dependencies import get_db_manager
+    db = get_db_manager()
+    db.set_setting("setup_completed", "1")
+    return {"status": "success"}
 
 
 @router.post("/settings", response_model=SettingUpdateResponse)

@@ -7,7 +7,7 @@ import faiss
 import json
 import threading
 import logging
-from typing import List, Optional, Tuple, Dict
+from typing import List, Optional, Tuple, Dict, Any
 from .schemas import MediaItem, VectorData, ProcessingResult
 
 logger = logging.getLogger(__name__)
@@ -68,6 +68,46 @@ class DBManager:
         if 'caption' not in columns:
             print("Migrating DB: Adding caption column")
             c.execute("ALTER TABLE files ADD COLUMN caption TEXT")
+
+        # Create albums table if missing
+        c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='albums'")
+        if not c.fetchone():
+            print("Migrating DB: Creating albums table")
+            c.execute('''
+                CREATE TABLE albums (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    is_dynamic BOOLEAN NOT NULL DEFAULT 0,
+                    query_json TEXT, -- only used for dynamic albums
+                    cover_file_id INTEGER, -- FK to files table
+                    item_count INTEGER DEFAULT 0, -- Cache for static albums
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY(cover_file_id) REFERENCES files(id)
+                )
+            ''')
+
+        # Create album_media table if missing
+        c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='album_media'")
+        if not c.fetchone():
+            print("Migrating DB: Creating album_media table")
+            c.execute('''
+                CREATE TABLE album_media (
+                    album_id INTEGER NOT NULL,
+                    file_id INTEGER NOT NULL,
+                    added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (album_id, file_id),
+                    FOREIGN KEY(album_id) REFERENCES albums(id) ON DELETE CASCADE,
+                    FOREIGN KEY(file_id) REFERENCES files(id) ON DELETE CASCADE
+                )
+            ''')
+
+        # Add item_count to albums if missing (in case table was created earlier without it)
+        c.execute("PRAGMA table_info(albums)")
+        albums_cols = [row[1] for row in c.fetchall()]
+        if 'item_count' not in albums_cols:
+            print("Migrating DB: Adding item_count to albums")
+            c.execute("ALTER TABLE albums ADD COLUMN item_count INTEGER DEFAULT 0")
 
         # Migrate faces table for bbox and person_name
         c.execute("PRAGMA table_info(faces)")
@@ -168,8 +208,46 @@ class DBManager:
                 updated_at REAL
             )
         ''')
+
+        # Albums Table
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS albums (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                is_dynamic BOOLEAN NOT NULL DEFAULT 0,
+                query_json TEXT,
+                cover_file_id INTEGER,
+                item_count INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(cover_file_id) REFERENCES files(id)
+            )
+        ''')
+
+        # Album Media Table (Static)
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS album_media (
+                album_id INTEGER NOT NULL,
+                file_id INTEGER NOT NULL,
+                added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (album_id, file_id),
+                FOREIGN KEY(album_id) REFERENCES albums(id) ON DELETE CASCADE,
+                FOREIGN KEY(file_id) REFERENCES files(id) ON DELETE CASCADE
+            )
+        ''')
         
         conn.commit()
+        
+        # Check for existing users to auto-complete setup
+        c.execute('SELECT COUNT(*) FROM files')
+        if c.fetchone()[0] > 0:
+            c.execute('SELECT value FROM app_settings WHERE key = "setup_completed"')
+            if not c.fetchone():
+                import time
+                c.execute('INSERT INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)', 
+                         ("setup_completed", "1", time.time()))
+                conn.commit()
+                
         conn.close()
 
     def _init_faiss(self):
@@ -671,3 +749,267 @@ class DBManager:
             conn.commit()
         finally:
             conn.close()
+
+    # ------------------------------------------------------------------ #
+    # Hybrid Search Methods
+    # ------------------------------------------------------------------ #
+
+    def hybrid_search(self, query_vector: np.ndarray, filters: Dict, top_k: int = 50) -> Dict:
+        """
+        Hybrid search using FAISS retrieval followed by SQLite filtering.
+        """
+        if self.clip_index.ntotal == 0:
+            return {"results": [], "total_candidates": 0, "filters_applied": filters}
+
+        # FAISS Score Threshold (Cosine Similarity >= 0.15)
+        MIN_SCORE = 0.15
+
+        def get_faiss_results(k):
+            params = np.array([query_vector], dtype='float32')
+            faiss.normalize_L2(params)
+            D, I = self.clip_index.search(params, k)
+            ids = [int(idx) for idx in I[0] if idx != -1]
+            scores = [float(s) for s, idx in zip(D[0], I[0]) if idx != -1]
+            # Apply threshold
+            valid = [(idx, s) for idx, s in zip(ids, scores) if s >= MIN_SCORE]
+            return valid
+
+        # Round 1: top_k * 3
+        candidates = get_faiss_results(top_k * 3)
+        total_candidates = len(candidates)
+        
+        filtered_results = self._apply_sqlite_filters(candidates, filters, top_k)
+        
+        # Round 2: top_k * 10 (only if Round 1 insufficient and more exists)
+        if len(filtered_results) < top_k and total_candidates < self.clip_index.ntotal:
+            candidates_r2 = get_faiss_results(top_k * 10)
+            if len(candidates_r2) > total_candidates:
+                total_candidates = len(candidates_r2)
+                filtered_results = self._apply_sqlite_filters(candidates_r2, filters, top_k)
+
+        return {
+            "results": filtered_results,
+            "total_candidates": total_candidates,
+            "filters_applied": filters
+        }
+
+    def _apply_sqlite_filters(self, candidates: List[Tuple[int, float]], filters: Dict, top_k: int) -> List[Dict]:
+        if not candidates:
+            return []
+            
+        file_id_to_score = {idx: score for idx, score in candidates}
+        file_ids = [idx for idx, _ in candidates]
+        
+        # Build SQL filters
+        where_clauses = []
+        sql_params = []
+        
+        if filters.get('media_type'):
+            where_clauses.append("media_type = ?")
+            sql_params.append(filters['media_type'])
+            
+        if filters.get('extension') and isinstance(filters['extension'], list):
+            ext_clauses = ["file_path LIKE ?" for _ in filters['extension']]
+            where_clauses.append(f"({' OR '.join(ext_clauses)})")
+            for ext in filters['extension']:
+                sql_params.append(f"%{ext}")
+
+        for field in ['tags', 'character_tags', 'series_tags']:
+            if filters.get(field) and isinstance(filters[field], list):
+                for val in filters[field]:
+                    where_clauses.append(f"{field} LIKE ?")
+                    # SQLite JSON match workaround
+                    sql_params.append(f'%"{val}"%')
+
+        conn = self._connect()
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        
+        final_rows = []
+        # Chunk file_ids by 500 to avoid SQL variable limits
+        for i in range(0, len(file_ids), 500):
+            chunk = file_ids[i:i+500]
+            placeholders = ','.join(['?'] * len(chunk))
+            
+            query = f"SELECT id, file_path, media_type, width, height, tags, character_tags, series_tags, caption FROM files WHERE id IN ({placeholders})"
+            if where_clauses:
+                query += " AND " + " AND ".join(where_clauses)
+            
+            c.execute(query, chunk + sql_params)
+            final_rows.extend([dict(r) for r in c.fetchall()])
+            
+        conn.close()
+        
+        # Merge scores and sort
+        for row in final_rows:
+            row['score'] = file_id_to_score.get(row['id'], 0.0)
+            
+        final_rows.sort(key=lambda x: x['score'], reverse=True)
+        return final_rows[:top_k]
+
+    # ------------------------------------------------------------------ #
+    # Album Methods
+    # ------------------------------------------------------------------ #
+
+    def create_album(self, name: str, is_dynamic: bool, query_json: Optional[str] = None) -> int:
+        """Create a new album."""
+        conn = self._connect()
+        c = conn.cursor()
+        try:
+            c.execute(
+                'INSERT INTO albums (name, is_dynamic, query_json) VALUES (?, ?, ?)',
+                (name, 1 if is_dynamic else 0, query_json)
+            )
+            album_id = c.lastrowid
+            conn.commit()
+            return album_id
+        finally:
+            conn.close()
+
+    def delete_album(self, album_id: int) -> bool:
+        """Delete an album."""
+        conn = self._connect()
+        c = conn.cursor()
+        try:
+            c.execute('DELETE FROM albums WHERE id = ?', (album_id,))
+            conn.commit()
+            return c.rowcount > 0
+        finally:
+            conn.close()
+
+    def update_album(self, album_id: int, name: Optional[str] = None, query_json: Optional[str] = None, cover_file_id: Optional[int] = None):
+        """Update album metadata."""
+        updates = []
+        params = []
+        if name is not None:
+            updates.append("name = ?")
+            params.append(name)
+        if query_json is not None:
+            updates.append("query_json = ?")
+            params.append(query_json)
+        if cover_file_id is not None:
+            updates.append("cover_file_id = ?")
+            params.append(cover_file_id)
+        
+        if not updates:
+            return
+
+        updates.append("updated_at = CURRENT_TIMESTAMP")
+        params.append(album_id)
+
+        conn = self._connect()
+        c = conn.cursor()
+        try:
+            c.execute(f"UPDATE albums SET {', '.join(updates)} WHERE id = ?", params)
+            conn.commit()
+        finally:
+            conn.close()
+
+    def get_albums(self) -> List[Dict]:
+        """List all albums."""
+        conn = self._connect()
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        try:
+            c.execute('SELECT * FROM albums ORDER BY created_at DESC')
+            return [dict(r) for r in c.fetchall()]
+        finally:
+            conn.close()
+
+    def get_album(self, album_id: int) -> Optional[Dict]:
+        """Get a single album by id."""
+        conn = self._connect()
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        try:
+            c.execute('SELECT * FROM albums WHERE id = ?', (album_id,))
+            row = c.fetchone()
+            return dict(row) if row else None
+        finally:
+            conn.close()
+
+    def add_to_album(self, album_id: int, file_ids: List[int]):
+        """Add files to a static album."""
+        conn = self._connect()
+        c = conn.cursor()
+        try:
+            # Verify it's a static album
+            c.execute('SELECT is_dynamic FROM albums WHERE id = ?', (album_id,))
+            row = c.fetchone()
+            if not row or row[0]: # Not found or is dynamic
+                return
+
+            # Insert items
+            for fid in file_ids:
+                c.execute('INSERT OR IGNORE INTO album_media (album_id, file_id) VALUES (?, ?)', (album_id, fid))
+            
+            # Update item_count
+            c.execute('SELECT COUNT(*) FROM album_media WHERE album_id = ?', (album_id,))
+            count = c.fetchone()[0]
+            c.execute('UPDATE albums SET item_count = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', (count, album_id))
+            
+            conn.commit()
+        finally:
+            conn.close()
+
+    def remove_from_album(self, album_id: int, file_ids: List[int]):
+        """Remove files from a static album."""
+        conn = self._connect()
+        c = conn.cursor()
+        try:
+            placeholders = ','.join(['?'] * len(file_ids))
+            c.execute(f'DELETE FROM album_media WHERE album_id = ? AND file_id IN ({placeholders})', [album_id] + file_ids)
+            
+            # Update item_count
+            c.execute('SELECT COUNT(*) FROM album_media WHERE album_id = ?', (album_id,))
+            count = c.fetchone()[0]
+            c.execute('UPDATE albums SET item_count = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', (count, album_id))
+            
+            conn.commit()
+        finally:
+            conn.close()
+
+    def get_album_media(self, album_id: int, ai_engine: Optional[Any] = None) -> List[Dict]:
+        """Get media items for an album (static or dynamic)."""
+        album = self.get_album(album_id)
+        if not album:
+            return []
+
+        if not album['is_dynamic']:
+            # Static album
+            conn = self._connect()
+            conn.row_factory = sqlite3.Row
+            c = conn.cursor()
+            try:
+                c.execute('''
+                    SELECT f.id, f.file_path, f.media_type, f.width, f.height, f.tags, f.character_tags, f.series_tags, f.caption
+                    FROM files f
+                    JOIN album_media am ON f.id = am.file_id
+                    WHERE am.album_id = ?
+                    ORDER BY am.added_at DESC
+                ''', (album_id,))
+                return [dict(r) for r in c.fetchall()]
+            finally:
+                conn.close()
+        else:
+            # Dynamic album
+            if not album['query_json'] or not ai_engine:
+                return []
+            
+            try:
+                query_data = json.loads(album['query_json'])
+                query_text = query_data.get('query')
+                filters = query_data.get('filters', {})
+                top_k = query_data.get('top_k', 100)
+                
+                if not query_text:
+                    # Optional: handle filter-only dynamic albums? 
+                    # For now, require query as per spec.
+                    return []
+                
+                text_vec = ai_engine.extract_clip_text_feature(query_text)
+                search_results = self.hybrid_search(text_vec, filters, top_k=top_k)
+                return search_results['results']
+            except Exception as e:
+                logger.error(f"Error executing dynamic album query: {e}")
+                return []

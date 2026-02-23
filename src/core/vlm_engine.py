@@ -35,6 +35,13 @@ class VLMEngine:
         if self._loaded or self._load_failures >= 3:
             return
             
+        from server.dependencies import get_db_manager
+        db = get_db_manager()
+        profile = db.get_setting("execution_profile", "balanced")
+        if profile == "lightweight":
+            print("Skipping VLM load (lightweight profile)")
+            return
+
         print(f"Loading VLM model ({self.model_id})...")
         try:
             self.model = AutoModelForCausalLM.from_pretrained(

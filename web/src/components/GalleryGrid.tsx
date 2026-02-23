@@ -120,7 +120,7 @@ const MediaCard = ({
 interface GalleryGridProps {
     media: MediaItem[]
     onSelect: (item: MediaItem) => void
-    onSearch: (query: string) => void
+    onSearch?: (query: string) => void
     onLoadMore?: () => void
     hasMore?: boolean
     onMenuClick?: () => void
@@ -142,7 +142,7 @@ export function GalleryGrid({ media, onSelect, onSearch, onLoadMore, hasMore, on
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault()
-        onSearch(query)
+        onSearch?.(query)
     }
 
     const toggleSelect = (id: number) => {

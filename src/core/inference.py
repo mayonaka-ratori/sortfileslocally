@@ -48,14 +48,13 @@ class InferenceOrchestrator:
         
         # 3. Face Detection
         # Needs BGR numpy
-        img_np = np.array(img.convert('RGB'))
-        img_bgr = img_np[:, :, ::-1]
-        raw_faces = self.ai_engine.extract_face_features(img_bgr)
-        # Convert to serializable format (list of dicts) if not already
-        # extract_face_features returns list of dicts.
-        # We might want to standardise schemas here or in Processor?
-        # Let's return raw for now, caller maps to Schema.
-        result['faces'] = raw_faces
+        if self.ai_engine.face_app:
+            img_np = np.array(img.convert('RGB'))
+            img_bgr = img_np[:, :, ::-1]
+            raw_faces = self.ai_engine.extract_face_features(img_bgr)
+            result['faces'] = raw_faces
+        else:
+            result['faces'] = []
         
         # 4. Character Tagging (Conditional)
         if style == "illustration":
@@ -97,8 +96,10 @@ class InferenceOrchestrator:
                 clip_vecs.append(base_clip_vecs[i])
         
         # 2. Face Batch
-        bgr_stack = [np.array(img.convert('RGB'))[:, :, ::-1] for img in images]
-        faces_list = self.ai_engine.extract_face_features_batch(bgr_stack)
+        faces_list = [[]] * len(images)
+        if self.ai_engine.face_app:
+            bgr_stack = [np.array(img.convert('RGB'))[:, :, ::-1] for img in images]
+            faces_list = self.ai_engine.extract_face_features_batch(bgr_stack)
         
         # 3. Style Classification
         results = []

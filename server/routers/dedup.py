@@ -152,7 +152,7 @@ def apply_deduplication(
                 deleted.append(path)
                 
                 # Check and delete associated .xmp sidecar
-                xmp_path = path + ".xmp"
+                xmp_path = os.path.splitext(path)[0] + ".xmp"
                 if os.path.exists(xmp_path):
                     try:
                         os.remove(xmp_path)

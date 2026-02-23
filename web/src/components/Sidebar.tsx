@@ -1,8 +1,9 @@
 "use client"
-import React, { useEffect, useState } from "react"
+import React from "react"
 import Link from "next/link"
-import { fetchFilters } from "@/lib/api"
-import { LayoutGrid, Filter, Settings } from "lucide-react"
+import { LayoutGrid, Filter, Settings, BookOpen, Sparkles, Folder } from "lucide-react"
+import { useEffect, useState } from "react"
+import { fetchAlbums, Album } from "@/lib/api"
 import { ScanUI } from "./ScanUI"
 
 export interface FilterState {
@@ -12,43 +13,17 @@ export interface FilterState {
 }
 
 interface SidebarProps {
-    onFilterChange: (filters: FilterState) => void;
+    onFilterChange?: (filters: FilterState) => void;
     isOpen: boolean;
     onClose: () => void;
 }
 
-export function Sidebar({ onFilterChange, isOpen, onClose }: SidebarProps) {
-    const [characters, setCharacters] = useState<string[]>([])
-    const [seriesList, setSeriesList] = useState<string[]>([])
-
-    const [selectedCharacter, setSelectedCharacter] = useState("All")
-    const [selectedSeries, setSelectedSeries] = useState("All")
-    const [selectedMediaType, setSelectedMediaType] = useState("All")
+export function Sidebar({ isOpen, onClose }: Omit<SidebarProps, 'onFilterChange'>) {
+    const [albums, setAlbums] = useState<Album[]>([])
 
     useEffect(() => {
-        fetchFilters().then(data => {
-            setCharacters(data.characters)
-            setSeriesList(data.series)
-        }).catch(console.error)
+        fetchAlbums().then(setAlbums).catch(console.error)
     }, [])
-
-    const handleFilterUpdate = (type: string, val: string) => {
-        if (type === 'character') setSelectedCharacter(val)
-        if (type === 'series') setSelectedSeries(val)
-        if (type === 'media') setSelectedMediaType(val)
-
-        const newFilters = {
-            character: type === 'character' ? val : selectedCharacter,
-            series: type === 'series' ? val : selectedSeries,
-            media_type: type === 'media' ? val : selectedMediaType,
-        }
-
-        onFilterChange({
-            character: newFilters.character === 'All' ? undefined : newFilters.character,
-            series: newFilters.series === 'All' ? undefined : newFilters.series,
-            media_type: newFilters.media_type === 'All' ? undefined : newFilters.media_type,
-        })
-    }
 
     return (
         <>
@@ -75,49 +50,43 @@ export function Sidebar({ onFilterChange, isOpen, onClose }: SidebarProps) {
 
                     <div className="mb-6 px-2">
                         <h3 className="text-xs uppercase text-zinc-500 font-semibold mb-3 flex items-center gap-2">
-                            <Filter className="w-3 h-3" /> Filters
+                            <LayoutGrid className="w-3 h-3 text-indigo-500" /> Library
                         </h3>
 
-                        <div className="mb-6">
-                            <label className="block text-zinc-400 mb-2 text-xs font-medium">Media Type</label>
-                            <div className="flex bg-zinc-900 border border-zinc-800 rounded-lg p-1 gap-1">
-                                {['All', 'image', 'video'].map((type) => (
-                                    <button
-                                        key={type}
-                                        onClick={() => handleFilterUpdate('media', type)}
-                                        className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${selectedMediaType === type
-                                            ? 'bg-zinc-800 text-white shadow-sm'
-                                            : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50'
-                                            }`}
-                                    >
-                                        {type === 'All' ? 'All' : type === 'image' ? 'Images' : 'Videos'}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
+                        <div className="flex flex-col gap-1">
+                            <Link href="/" onClick={onClose} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-white bg-zinc-800/50 transition-colors">
+                                <LayoutGrid className="w-4 h-4 text-indigo-500" />
+                                All Media
+                            </Link>
+                            <Link href="/albums" onClick={onClose} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-800/50 transition-colors">
+                                <BookOpen className="w-4 h-4 text-indigo-500" />
+                                Albums
+                            </Link>
 
-                        <div className="mb-4">
-                            <label className="block text-zinc-400 mb-1 text-xs">Character</label>
-                            <select
-                                value={selectedCharacter}
-                                onChange={(e) => handleFilterUpdate('character', e.target.value)}
-                                className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 focus:outline-none focus:border-indigo-500 transition-colors"
-                            >
-                                <option value="All">All Characters</option>
-                                {characters.map(c => <option key={c} value={c}>{c}</option>)}
-                            </select>
-                        </div>
-
-                        <div className="mb-4">
-                            <label className="block text-zinc-400 mb-1 text-xs">Series</label>
-                            <select
-                                value={selectedSeries}
-                                onChange={(e) => handleFilterUpdate('series', e.target.value)}
-                                className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 focus:outline-none focus:border-indigo-500 transition-colors"
-                            >
-                                <option value="All">All Series</option>
-                                {seriesList.map(c => <option key={c} value={c}>{c}</option>)}
-                            </select>
+                            {albums.length > 0 && (
+                                <div className="mt-2 ml-4 flex flex-col gap-1 border-l border-zinc-900">
+                                    {albums.slice(0, 5).map(album => (
+                                        <Link
+                                            key={album.id}
+                                            href={`/albums/${album.id}`}
+                                            onClick={onClose}
+                                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium text-zinc-500 hover:text-white hover:bg-zinc-800/50 transition-colors group"
+                                        >
+                                            {album.is_dynamic ? (
+                                                <Sparkles className="w-3 h-3 text-blue-500/50 group-hover:text-blue-400 Transition-colors" />
+                                            ) : (
+                                                <Folder className="w-3 h-3 text-zinc-600 group-hover:text-zinc-400 Transition-colors" />
+                                            )}
+                                            <span className="truncate">{album.name}</span>
+                                        </Link>
+                                    ))}
+                                    {albums.length > 5 && (
+                                        <Link href="/albums" onClick={onClose} className="px-3 py-1 text-[10px] text-zinc-600 hover:text-zinc-400">
+                                            + {albums.length - 5} more...
+                                        </Link>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

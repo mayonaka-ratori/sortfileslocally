@@ -1,0 +1,66 @@
+============================= test session starts =============================
+platform win32 -- Python 3.10.11, pytest-9.0.2, pluggy-1.6.0 -- C:\tools\organizefiles0112\LocalCuratorPrime\venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\tools\organizefiles0112\LocalCuratorPrime
+plugins: anyio-4.12.1
+collecting ... collected 1 item
+
+tests/test_integration_export_dedup.py::test_integration_export_dedup_deletes_xmp FAILED [100%]
+
+================================== FAILURES ===================================
+__________________ test_integration_export_dedup_deletes_xmp __________________
+
+tmp_path = WindowsPath('C:/Users/hosom/AppData/Local/Temp/pytest-of-hosom/pytest-13/test_integration_export_dedup_0')
+
+    def test_integration_export_dedup_deletes_xmp(tmp_path):
+        # Setup test file
+        test_img_path = tmp_path / "test_dedup_export.jpg"
+        img = Image.new('RGB', (100, 100))
+        img.save(test_img_path, format='JPEG')
+    
+        img_path_str = str(test_img_path)
+    
+        # Needs db
+        from server.dependencies import get_db_manager
+        db = get_db_manager()
+    
+        import time
+        item = MediaItem(file_path=img_path_str, media_type="image", file_size=100, file_hash="dummyhash", created_at=time.time(), modified_at=time.time(), tags=["tag1"], character_tags=[], series_tags=[], caption="")
+        res = ProcessingResult(file_path=img_path_str, success=True, media_item=item)
+        db.add_results_batch([res])
+    
+        # Need to find the ID
+        conn = db._connect()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM files WHERE file_path=?", (img_path_str,))
+        file_id = cursor.fetchone()[0]
+        conn.close()
+    
+        # 1. Export Metadata (creates .xmp)
+        exp_res = client.post("/media/export-metadata", json={"file_ids": [file_id], "mode": "xmp"})
+        assert exp_res.status_code == 200
+    
+        # Confirm .xmp sidecar exists
+        xmp_path = img_path_str + ".xmp"
+>       assert os.path.exists(xmp_path), "XMP sidecar was not created"
+E       AssertionError: XMP sidecar was not created
+E       assert False
+E        +  where False = <function exists at 0x0000019992E22CB0>('C:\\Users\\hosom\\AppData\\Local\\Temp\\pytest-of-hosom\\pytest-13\\test_integration_export_dedup_0\\test_dedup_export.jpg.xmp')
+E        +    where <function exists at 0x0000019992E22CB0> = <module 'ntpath' from 'C:\\Users\\hosom\\AppData\\Local\\Programs\\Python\\Python310\\lib\\ntpath.py'>.exists
+E        +      where <module 'ntpath' from 'C:\\Users\\hosom\\AppData\\Local\\Programs\\Python\\Python310\\lib\\ntpath.py'> = os.path
+
+tests\test_integration_export_dedup.py:40: AssertionError
+============================== warnings summary ===============================
+<frozen importlib._bootstrap>:241
+  <frozen importlib._bootstrap>:241: DeprecationWarning: builtin type SwigPyPacked has no __module__ attribute
+
+<frozen importlib._bootstrap>:241
+  <frozen importlib._bootstrap>:241: DeprecationWarning: builtin type SwigPyObject has no __module__ attribute
+
+<frozen importlib._bootstrap>:241
+  <frozen importlib._bootstrap>:241: DeprecationWarning: builtin type swigvarlink has no __module__ attribute
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/test_integration_export_dedup.py::test_integration_export_dedup_deletes_xmp
+======================== 1 failed, 3 warnings in 6.61s ========================

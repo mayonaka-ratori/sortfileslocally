@@ -1,25 +1,30 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { MediaItem, fetchMedia, searchMedia, searchByFace, reverseImageSearch } from "@/lib/api"
+import { MediaItem, fetchMedia, searchMedia, searchByFace, reverseImageSearch, SearchFilters } from "@/lib/api"
 import { GalleryGrid } from "@/components/GalleryGrid"
 import { ChatPanel } from "@/components/ChatPanel"
-import { Sidebar, FilterState } from "@/components/Sidebar"
+import { Sidebar } from "@/components/Sidebar"
+import { HybridSearchBar } from "@/components/HybridSearchBar"
+import { Menu, Save } from "lucide-react"
+import SaveAlbumModal from "@/components/SaveAlbumModal"
 
 export default function Home() {
   const [media, setMedia] = useState<MediaItem[]>([])
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
-  const [filters, setFilters] = useState<FilterState>({})
   const [currentSearch, setCurrentSearch] = useState("")
+  const [currentFilters, setCurrentFilters] = useState<SearchFilters>({})
+  const [searchStats, setSearchStats] = useState<{ total_candidates: number } | null>(null)
 
   const [offset, setOffset] = useState(0)
   const [hasMore, setHasMore] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false)
 
-  const loadMedia = useCallback(async (currentOffset: number = 0, currentFilters = filters) => {
+  const loadMedia = useCallback(async (currentOffset: number = 0) => {
     try {
       if (currentOffset === 0) {
         setLoading(true)
@@ -28,13 +33,16 @@ export default function Home() {
       }
 
       const limit = 50
-      const data = await fetchMedia({ ...currentFilters, offset: currentOffset, limit })
+      // Default fetch doesn't use semantic search filters yet in the backend list_media, 
+      // but for Phase 2 we mainly care about the search bar.
+      const data = await fetchMedia({ offset: currentOffset, limit })
       if (currentOffset === 0) {
         setMedia(data)
       } else {
         setMedia(prev => [...prev, ...data])
       }
       setHasMore(data.length === limit)
+      setSearchStats(null)
     } catch {
       setError("Failed to load gallery.")
     } finally {
@@ -44,49 +52,40 @@ export default function Home() {
         setIsLoadingMore(false)
       }
     }
-  }, [filters])
+  }, [])
 
   const handleLoadMore = useCallback(() => {
     if (!currentSearch && hasMore && !loading && !isLoadingMore) {
       const nextOffset = offset + 50
       setOffset(nextOffset)
-      loadMedia(nextOffset, filters)
+      loadMedia(nextOffset)
     }
-  }, [currentSearch, hasMore, loading, isLoadingMore, offset, loadMedia, filters])
+  }, [currentSearch, hasMore, loading, isLoadingMore, offset, loadMedia])
 
-  const handleSearch = useCallback(async (query: string) => {
+  const handleSearch = useCallback(async (query: string, filters: SearchFilters = {}) => {
     setCurrentSearch(query)
-    if (!query.trim()) {
+    setCurrentFilters(filters)
+
+    if (!query.trim() && Object.keys(filters).length === 0) {
       setOffset(0)
-      loadMedia(0, filters)
+      loadMedia(0)
       return
     }
     try {
       setLoading(true)
       setError("")
-      const results = await searchMedia(query)
+      const response = await searchMedia(query, filters)
 
-      // Client-side filtering of search results if filters are active
-      let filteredResults = results;
-      if (filters.media_type) {
-        filteredResults = filteredResults.filter(r => r.media_type === filters.media_type)
-      }
-      if (filters.character) {
-        filteredResults = filteredResults.filter(r => r.character_tags.includes(filters.character!))
-      }
-      if (filters.series) {
-        filteredResults = filteredResults.filter(r => r.series_tags.includes(filters.series!))
-      }
-
-      setMedia(filteredResults)
-      setSelectedItem(null) // Close chat on new search
-      setHasMore(false) // Disable infinite scroll during semantic search
+      setMedia(response.results)
+      setSearchStats({ total_candidates: response.total_candidates })
+      setSelectedItem(null)
+      setHasMore(false)
     } catch {
       setError("Search failed.")
     } finally {
       setLoading(false)
     }
-  }, [filters, loadMedia])
+  }, [loadMedia])
 
   const handleFaceSearch = useCallback(async (faceId: number) => {
     setCurrentSearch(`Face Search: ID ${faceId}`)
@@ -95,28 +94,17 @@ export default function Home() {
       setError("")
       const results = await searchByFace(faceId)
 
-      let filteredResults = results;
-      if (filters.media_type) {
-        filteredResults = filteredResults.filter(r => r.media_type === filters.media_type)
-      }
-      if (filters.character) {
-        filteredResults = filteredResults.filter(r => r.character_tags.includes(filters.character!))
-      }
-      if (filters.series) {
-        filteredResults = filteredResults.filter(r => r.series_tags.includes(filters.series!))
-      }
-
-      setMedia(filteredResults)
-      // We can keep ChatPanel open or close it
-      // Let's close it to show results
+      // Keep face search results directly (they are already sorted by score)
+      setMedia(results)
       setSelectedItem(null)
       setHasMore(false)
+      setSearchStats(null)
     } catch {
       setError("Face Search failed.")
     } finally {
       setLoading(false)
     }
-  }, [filters])
+  }, [])
 
   const handleImageDrop = useCallback(async (file: File) => {
     setCurrentSearch(`Reverse Search: ${file.name}`)
@@ -153,16 +141,15 @@ export default function Home() {
   }, [])
 
   useEffect(() => {
-    if (!currentSearch) {
+    if (!currentSearch && Object.keys(currentFilters).length === 0) {
       setOffset(0)
-      loadMedia(0, filters)
+      loadMedia(0)
     }
-  }, [filters, currentSearch, loadMedia])
+  }, [currentFilters, currentSearch, loadMedia])
 
   return (
     <main className="flex h-screen w-full bg-zinc-950 overflow-hidden font-sans">
       <Sidebar
-        onFilterChange={setFilters}
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
       />
@@ -181,26 +168,67 @@ export default function Home() {
             {error}
           </div>
         ) : (
-          <GalleryGrid
-            media={media}
-            onSelect={setSelectedItem}
-            onSearch={handleSearch}
-            onLoadMore={handleLoadMore}
-            hasMore={hasMore}
-            onMenuClick={() => setIsSidebarOpen(true)}
-            onImageDrop={handleImageDrop}
-          />
+          <div className="flex flex-col h-full">
+            <div className="p-4 border-b border-zinc-800 bg-zinc-950/50 backdrop-blur-sm sticky top-0 z-20">
+              <div className="flex items-center gap-4">
+                <button onClick={() => setIsSidebarOpen(true)} className="md:hidden p-2 text-zinc-400 hover:text-white transition-colors">
+                  <Menu className="w-6 h-6" />
+                </button>
+                <div className="flex-1">
+                  <HybridSearchBar onSearch={handleSearch} />
+                </div>
+              </div>
+              {searchStats && (
+                <div className="mt-2 flex items-center justify-between">
+                  <div className="text-[10px] text-zinc-500 font-medium uppercase tracking-widest flex items-center gap-2">
+                    <span>Found {media.length} of {searchStats.total_candidates} candidates</span>
+                    {Object.keys(currentFilters).length > 0 && (
+                      <>
+                        <span className="w-1 h-1 rounded-full bg-zinc-800" />
+                        <span>Filtered by: {Object.entries(currentFilters).map(([k, v]) => `${k}=${v}`).join(", ")}</span>
+                      </>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setIsSaveModalOpen(true)}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 text-xs font-semibold rounded-lg border border-blue-500/20 transition-all active:scale-95"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    Save as Smart Album
+                  </button>
+                </div>
+              )}
+            </div>
+            <div className="flex-1 min-h-0">
+              <GalleryGrid
+                media={media}
+                onSelect={setSelectedItem}
+                onLoadMore={handleLoadMore}
+                hasMore={hasMore}
+                onImageDrop={handleImageDrop}
+              />
+            </div>
+          </div>
         )}
       </div>
 
       {/* Chat / Context Panel */}
-      {selectedItem && (
-        <ChatPanel
-          item={selectedItem}
-          onClose={() => setSelectedItem(null)}
-          onFaceSearch={handleFaceSearch}
-        />
-      )}
-    </main>
+      {
+        selectedItem && (
+          <ChatPanel
+            item={selectedItem}
+            onClose={() => setSelectedItem(null)}
+            onFaceSearch={handleFaceSearch}
+          />
+        )
+      }
+      {/* Modal */}
+      <SaveAlbumModal
+        isOpen={isSaveModalOpen}
+        onClose={() => setIsSaveModalOpen(false)}
+        currentQuery={currentSearch}
+        currentFilters={currentFilters}
+      />
+    </main >
   )
 }

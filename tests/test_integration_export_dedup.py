@@ -36,7 +36,7 @@ def test_integration_export_dedup_deletes_xmp(tmp_path):
     assert exp_res.status_code == 200
     
     # Confirm .xmp sidecar exists
-    xmp_path = img_path_str + ".xmp"
+    xmp_path = os.path.splitext(img_path_str)[0] + ".xmp"
     assert os.path.exists(xmp_path), "XMP sidecar was not created"
     
     # 2. Dedup Apply (Delete media)

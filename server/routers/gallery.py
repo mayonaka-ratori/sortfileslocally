@@ -35,6 +35,23 @@ class MediaItemResponse(BaseModel):
     score: Optional[float] = None
     snippet: Optional[str] = None
 
+class SearchFilters(BaseModel):
+    tags: Optional[List[str]] = None
+    character_tags: Optional[List[str]] = None
+    series_tags: Optional[List[str]] = None
+    media_type: Optional[str] = None
+    extension: Optional[List[str]] = None
+
+class HybridSearchRequest(BaseModel):
+    query: Optional[str] = None
+    filters: Optional[SearchFilters] = None
+    top_k: int = 50
+
+class HybridSearchResponse(BaseModel):
+    results: List[MediaItemResponse]
+    total_candidates: int
+    filters_applied: SearchFilters
+
 @router.get("/", response_model=List[MediaItemResponse])
 def list_media(
     limit: int = 50,
@@ -103,81 +120,45 @@ def list_media(
     finally:
         conn.close()
 
-@router.post("/search", response_model=List[MediaItemResponse])
+@router.post("/search", response_model=HybridSearchResponse)
 def search_media(
-    query: str = Query(...),
+    request: Optional[HybridSearchRequest] = None,
+    query: Optional[str] = Query(None),
     top_k: int = Query(default=50),
     ai: AIEngine = Depends(get_ai_engine),
     db: DBManager = Depends(get_db_manager)
 ):
-
     """
-    Semantic search using CLIP.
+    Hybrid semantic search using CLIP + SQLite filtering.
     """
-    if not query:
-        return []
+    # 1. Handle Backward Compatibility & Param Extraction
+    final_query = query
+    final_top_k = top_k
+    final_filters = {}
 
-    # 1. Fetch from SQLite via Text Search
-    import sqlite3
-    conn = db._connect()
-    conn.row_factory = sqlite3.Row
-    c = conn.cursor()
-    
-    # Text match search in audio_transcription and frame_descriptions
-    escaped_query = query.replace("%", "\\%").replace("_", "\\_")
-    text_search_query = f"%{escaped_query}%"
-    c.execute("""
-        SELECT id, file_path, media_type, width, height, tags, character_tags, series_tags, audio_transcription, frame_descriptions, caption
-        FROM files
-        WHERE audio_transcription LIKE ? OR frame_descriptions LIKE ? OR caption LIKE ?
-        LIMIT 20
-    """, (text_search_query, text_search_query, text_search_query))
-    text_rows = c.fetchall()
-    
-    text_match_paths = [r['file_path'] for r in text_rows]
-    text_results_map = {r['file_path']: dict(r) for r in text_rows}
+    if request:
+        if request.query:
+            final_query = request.query
+        if request.top_k != 50:
+            final_top_k = request.top_k
+        if request.filters:
+            final_filters = request.filters.dict(exclude_none=True)
+
+    if not final_query:
+        return HybridSearchResponse(
+            results=[],
+            total_candidates=0,
+            filters_applied=SearchFilters()
+        )
 
     # 2. Extract Text Feature
-    text_vec = ai.extract_clip_text_feature(query)
+    text_vec = ai.extract_clip_text_feature(final_query)
     
-    # 3. Search in FAISS
-    search_results = db.search_similar_images(text_vec, top_k=top_k)
+    # 3. Perform Hybrid Search
+    hybrid_res = db.hybrid_search(text_vec, final_filters, top_k=final_top_k)
     
-    paths = [r[0] for r in search_results]
-    scores = {r[0]: r[1] for r in search_results}
-    
-    # Merge paths, prioritizing exact text matches for videos
-    all_paths = list(text_match_paths)
-    for p in paths:
-        if p not in text_match_paths:
-            all_paths.append(p)
-    
-    if not all_paths:
-        conn.close()
-        return []
-        
-    # 4. Fetch Metadata for vector matches
-    paths_to_fetch = [p for p in all_paths if p not in text_results_map]
-    row_map = {**text_results_map}
-    
-    if paths_to_fetch:
-        placeholders = ','.join(['?'] * len(paths_to_fetch))
-        c.execute(f"""
-            SELECT id, file_path, media_type, width, height, tags, character_tags, series_tags, audio_transcription, frame_descriptions, caption
-            FROM files
-            WHERE file_path IN ({placeholders})
-        """, paths_to_fetch)
-        
-        faiss_rows = c.fetchall()
-        for r in faiss_rows:
-            row_map[r['file_path']] = dict(r)
-            
-    conn.close()
-    
-    # Re-sort match search
-    # Format results
-    results = []
-    
+    # 4. Format Results
+    # We still want to extract snippets for the results if applicable
     def extract_snippet(row_dict, q):
         q_lower = q.lower()
         if row_dict.get('caption') and q_lower in row_dict['caption'].lower():
@@ -200,25 +181,28 @@ def search_media(
                 logger.error(f"Error parsing frame_descriptions JSON: {e}")
         return None
 
-    for path in all_paths:
-        if path in row_map:
-            r = row_map[path]
-            snippet = extract_snippet(r, query)
-            results.append(MediaItemResponse(
-                id=r['id'],
-                file_path=r['file_path'],
-                media_type=r['media_type'],
-                width=r['width'],
-                height=r['height'],
-                tags=safe_parse_json(r['tags']),
-                character_tags=safe_parse_json(r['character_tags']),
-                series_tags=safe_parse_json(r['series_tags']),
-                caption=r.get('caption'),
-                score=scores.get(path, 1.0), # Give text matches 1.0 score by default
-                snippet=snippet
-            ))
-            
-    return results[:top_k]
+    results = []
+    for r in hybrid_res['results']:
+        snippet = extract_snippet(r, final_query)
+        results.append(MediaItemResponse(
+            id=r['id'],
+            file_path=r['file_path'],
+            media_type=r['media_type'],
+            width=r['width'],
+            height=r['height'],
+            tags=safe_parse_json(r['tags']),
+            character_tags=safe_parse_json(r['character_tags']),
+            series_tags=safe_parse_json(r['series_tags']),
+            caption=r.get('caption'),
+            score=r.get('score', 0.0),
+            snippet=snippet
+        ))
+        
+    return HybridSearchResponse(
+        results=results,
+        total_candidates=hybrid_res['total_candidates'],
+        filters_applied=SearchFilters(**final_filters)
+    )
 
 @router.get("/filters")
 def get_filters(db: DBManager = Depends(get_db_manager)):

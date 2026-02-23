@@ -30,19 +30,29 @@ class AIEngine:
         if self._initialized:
             return
 
+        from server.dependencies import get_db_manager
+        db = get_db_manager()
+        self.profile = db.get_setting("execution_profile", "balanced")
+        
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        print(f"AIEngine initializing on device: {self.device}")
+        # Force CPU if lightweight profile is chosen? User said "CPU-friendly", but if CUDA is available, we can still use it.
+        # User explicitly mentioned fp32 for lightweight.
+        
+        print(f"AIEngine initializing with profile: {self.profile} on device: {self.device}")
         
         if self.device == "cpu":
             print("WARNING: CUDA is not available. Performance will be significantly degraded.")
 
+        self.use_fp16 = self.profile != "lightweight" and self.device == "cuda"
+
         # --- 1. Load CLIP Model ---
-        print("Loading CLIP model (ViT-L-14 / laion2b_s32b_b82k)...")
+        print(f"Loading CLIP model (ViT-L-14 / laion2b_s32b_b82k) [FP16={self.use_fp16}]...")
         try:
             self.clip_model, _, self.clip_preprocess = open_clip.create_model_and_transforms(
                 'ViT-L-14', 
                 pretrained='laion2b_s32b_b82k', 
-                device=self.device
+                device=self.device,
+                precision='fp16' if self.use_fp16 else 'fp32'
             )
             self.clip_tokenizer = open_clip.get_tokenizer('ViT-L-14')
             self.clip_model.eval() # Inference mode
@@ -51,19 +61,24 @@ class AIEngine:
             print(f"Failed to load CLIP model: {e}")
             raise e
 
-        # --- 2. Load InsightFace Model ---
-        print("Loading InsightFace model (buffalo_l)...")
-        try:
-            # providers: CUDAExecutionProvider if available, else CPUExecutionProvider
-            providers = ['CUDAExecutionProvider'] if self.device == "cuda" else ['CPUExecutionProvider']
-            
-            self.face_app = FaceAnalysis(name='buffalo_l', providers=providers)
-            # ctx_id=0 for GPU 0, det_size=(640, 640) can be adjusted if needed
-            self.face_app.prepare(ctx_id=0, det_size=(640, 640))
-            print("InsightFace model loaded successfully.")
-        except Exception as e:
-            print(f"Failed to load InsightFace model: {e}")
-            raise e
+        # --- 2. Load InsightFace Model (BuffaloL) ---
+        if self.profile != "lightweight":
+            print("Loading InsightFace model (buffalo_l)...")
+            try:
+                # providers: CUDAExecutionProvider if available, else CPUExecutionProvider
+                providers = ['CUDAExecutionProvider'] if self.device == "cuda" else ['CPUExecutionProvider']
+                
+                self.face_app = FaceAnalysis(name='buffalo_l', providers=providers)
+                # ctx_id=0 for GPU 0, det_size=(640, 640) can be adjusted if needed
+                self.face_app.prepare(ctx_id=0, det_size=(640, 640))
+                print("InsightFace model loaded successfully.")
+            except Exception as e:
+                print(f"Failed to load InsightFace model: {e}")
+                # We can proceed without faces in some cases, but better to fail if profile expects them
+                raise e
+        else:
+            print("Skipping InsightFace (lightweight profile)")
+            self.face_app = None
 
         # --- 3. Pre-compute Text Features for Style Classification ---
         # "Anime" vs "Photo"
