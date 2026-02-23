@@ -28,6 +28,14 @@ export interface HybridSearchResponse {
     filters_applied: SearchFilters;
 }
 
+export interface SearchHistoryEntry {
+    id: number;
+    query_text: string;
+    filters_json: string | null;
+    result_count: number;
+    executed_at: string;
+}
+
 export interface ScanStatus {
     is_active: boolean;
     progress_percent: number;
@@ -149,6 +157,30 @@ export const nameFace = async (faceId: number, personName: string): Promise<{ su
     });
     if (!res.ok) throw new Error("Failed to name face");
     return res.json();
+};
+
+// ------------------------------------------------------------------ //
+// Search History APIs
+// ------------------------------------------------------------------ //
+
+export const getSearchHistory = async (limit: number = 20): Promise<SearchHistoryEntry[]> => {
+    const res = await fetch(`${API_BASE_URL}/gallery/search-history?limit=${limit}`);
+    if (!res.ok) throw new Error("Failed to fetch search history");
+    return res.json();
+};
+
+export const deleteSearchHistory = async (id: number): Promise<void> => {
+    const res = await fetch(`${API_BASE_URL}/gallery/search-history/${id}`, {
+        method: "DELETE",
+    });
+    if (!res.ok) throw new Error("Failed to delete search history entry");
+};
+
+export const clearSearchHistory = async (): Promise<void> => {
+    const res = await fetch(`${API_BASE_URL}/gallery/search-history`, {
+        method: "DELETE",
+    });
+    if (!res.ok) throw new Error("Failed to clear search history");
 };
 
 

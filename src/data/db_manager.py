@@ -102,6 +102,18 @@ class DBManager:
                 )
             ''')
 
+        # Search History Table
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS search_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                query_text TEXT NOT NULL,
+                filters_json TEXT,
+                result_count INTEGER NOT NULL,
+                executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_search_history_query ON search_history(query_text, filters_json)")
+
         # Add item_count to albums if missing (in case table was created earlier without it)
         c.execute("PRAGMA table_info(albums)")
         albums_cols = [row[1] for row in c.fetchall()]
@@ -120,6 +132,21 @@ class DBManager:
         if 'person_name' not in faces_columns:
             print("Migrating DB: Adding person_name column to faces")
             c.execute("ALTER TABLE faces ADD COLUMN person_name TEXT")
+
+        # Create search_history table if missing
+        c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='search_history'")
+        if not c.fetchone():
+            print("Migrating DB: Creating search_history table")
+            c.execute('''
+                CREATE TABLE search_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    query_text TEXT NOT NULL,
+                    filters_json TEXT,
+                    result_count INTEGER NOT NULL,
+                    executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_search_history_query ON search_history(query_text, filters_json)")
 
         conn.commit()
         conn.close()
@@ -1013,3 +1040,62 @@ class DBManager:
             except Exception as e:
                 logger.error(f"Error executing dynamic album query: {e}")
                 return []
+
+    # ------------------------------------------------------------------ #
+    # Search History Methods
+    # ------------------------------------------------------------------ #
+
+    def save_search_history(self, query_text: str, filters_json: Optional[str], result_count: int):
+        """Save search to history with UPSERT logic and size limit."""
+        conn = self._connect()
+        c = conn.cursor()
+        # Use empty JSON string instead of NULL to ensure unique index / UPSERT works
+        safe_filters = filters_json if filters_json else "{}"
+        try:
+            # UPSERT: if same query_text + filters_json exists, update executed_at and result_count.
+            c.execute('''
+                INSERT INTO search_history (query_text, filters_json, result_count, executed_at)
+                VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(query_text, filters_json) DO UPDATE SET
+                    result_count=excluded.result_count,
+                    executed_at=CURRENT_TIMESTAMP
+            ''', (query_text, safe_filters, result_count))
+            
+            # Enforce limit of 100 rows, use id as tie-breaker for oldest
+            c.execute("DELETE FROM search_history WHERE id NOT IN (SELECT id FROM search_history ORDER BY executed_at DESC, id DESC LIMIT 100)")
+            
+            conn.commit()
+        finally:
+            conn.close()
+
+    def get_search_history(self, limit: int = 20) -> List[Dict]:
+        """Return recent history entries."""
+        conn = self._connect()
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        try:
+            c.execute('SELECT id, query_text, filters_json, result_count, executed_at FROM search_history ORDER BY executed_at DESC LIMIT ?', (limit,))
+            rows = c.fetchall()
+            return [dict(r) for r in rows]
+        finally:
+            conn.close()
+
+    def delete_search_history(self, history_id: int):
+        """Delete a single search history entry."""
+        conn = self._connect()
+        c = conn.cursor()
+        try:
+            c.execute('DELETE FROM search_history WHERE id = ?', (history_id,))
+            conn.commit()
+        finally:
+            conn.close()
+
+    def clear_search_history(self):
+        """Clear all search history."""
+        conn = self._connect()
+        c = conn.cursor()
+        try:
+            c.execute('DELETE FROM search_history')
+            conn.commit()
+        finally:
+            conn.close()

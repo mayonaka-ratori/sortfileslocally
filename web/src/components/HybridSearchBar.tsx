@@ -1,7 +1,7 @@
 "use client"
 import React, { useState, useEffect, useRef } from "react"
-import { Search, X, ChevronDown, Check, Image as ImageIcon, Video, Filter } from "lucide-react"
-import { SearchFilters, fetchFilters } from "@/lib/api"
+import { Search, X, ChevronDown, Check, Image as ImageIcon, Video, Filter, Clock } from "lucide-react"
+import { SearchFilters, fetchFilters, getSearchHistory, deleteSearchHistory, clearSearchHistory, SearchHistoryEntry } from "@/lib/api"
 
 interface HybridSearchBarProps {
     onSearch: (query: string, filters: SearchFilters) => void
@@ -37,7 +37,10 @@ export function HybridSearchBar({ onSearch, initialQuery = "" }: HybridSearchBar
     })
 
     const [activeDropdown, setActiveDropdown] = useState<string | null>(null)
+    const [searchHistory, setSearchHistory] = useState<SearchHistoryEntry[]>([])
+    const [showHistory, setShowHistory] = useState(false)
     const dropdownRef = useRef<HTMLDivElement>(null)
+    const historyRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
         fetchFilters().then(data => {
@@ -48,10 +51,21 @@ export function HybridSearchBar({ onSearch, initialQuery = "" }: HybridSearchBar
         }).catch(console.error)
     }, [])
 
+    const loadHistory = async () => {
+        try {
+            const history = await getSearchHistory(5)
+            setSearchHistory(history)
+        } catch (error) {
+            console.error("Failed to load search history:", error)
+        }
+    }
+
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node) &&
+                historyRef.current && !historyRef.current.contains(event.target as Node)) {
                 setActiveDropdown(null)
+                setShowHistory(false)
             }
         }
         document.addEventListener("mousedown", handleClickOutside)
@@ -62,6 +76,59 @@ export function HybridSearchBar({ onSearch, initialQuery = "" }: HybridSearchBar
         e?.preventDefault()
         onSearch(query, filters)
         setActiveDropdown(null)
+        setShowHistory(false)
+    }
+
+    const handleHistoryClick = (item: SearchHistoryEntry) => {
+        const itemFilters = item.filters_json ? JSON.parse(item.filters_json) : {}
+        setQuery(item.query_text)
+        setFilters(itemFilters)
+        onSearch(item.query_text, itemFilters)
+        setShowHistory(false)
+    }
+
+    const handleDeleteHistory = async (e: React.MouseEvent, id: number) => {
+        e.stopPropagation()
+        try {
+            await deleteSearchHistory(id)
+            setSearchHistory(prev => prev.filter(item => item.id !== id))
+        } catch (error) {
+            console.error("Failed to delete history item:", error)
+        }
+    }
+
+    const handleClearHistory = async () => {
+        try {
+            await clearSearchHistory()
+            setSearchHistory([])
+            setShowHistory(false)
+        } catch (error) {
+            console.error("Failed to clear history:", error)
+        }
+    }
+
+    const formatRelativeTime = (timestamp: string) => {
+        const date = new Date(timestamp + "Z") // Ensure UTC
+        const now = new Date()
+        const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+
+        if (diffInSeconds < 60) return "just now"
+        if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} min ago`
+        if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hr ago`
+        if (diffInSeconds < 172800) return "yesterday"
+        return date.toLocaleDateString()
+    }
+
+    const parseFilters = (json: string | null): string[] => {
+        if (!json) return []
+        try {
+            const f = JSON.parse(json)
+            const labels: string[] = []
+            if (f.character_tags) labels.push(...f.character_tags)
+            if (f.series_tags) labels.push(...f.series_tags)
+            if (f.media_type) labels.push(f.media_type)
+            return labels
+        } catch { return [] }
     }
 
     const toggleFilter = (type: keyof SearchFilters, value: string) => {
@@ -103,7 +170,22 @@ export function HybridSearchBar({ onSearch, initialQuery = "" }: HybridSearchBar
                     <input
                         type="text"
                         value={query}
-                        onChange={(e) => setQuery(e.target.value)}
+                        onChange={(e) => {
+                            setQuery(e.target.value)
+                            if (e.target.value) setShowHistory(false)
+                        }}
+                        onFocus={() => {
+                            if (!query) {
+                                loadHistory()
+                                setShowHistory(true)
+                            }
+                        }}
+                        onKeyDown={(e) => {
+                            if (e.key === "Escape") {
+                                setShowHistory(false)
+                                setActiveDropdown(null)
+                            }
+                        }}
                         placeholder="Search your library with natural language..."
                         className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl py-4 pl-14 pr-32 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all shadow-xl"
                     />
@@ -126,6 +208,66 @@ export function HybridSearchBar({ onSearch, initialQuery = "" }: HybridSearchBar
                         </button>
                     </div>
                 </form>
+
+                {/* Search History Dropdown */}
+                {showHistory && searchHistory.length > 0 && (
+                    <div ref={historyRef} className="absolute top-full left-0 right-0 mt-2 bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                        <div className="px-4 py-3 border-b border-zinc-800 flex items-center gap-2 text-zinc-400">
+                            <Clock className="w-4 h-4" />
+                            <span className="text-xs font-bold uppercase tracking-wider">Recent Searches</span>
+                        </div>
+                        <div className="max-h-80 overflow-y-auto">
+                            {searchHistory.map((item) => {
+                                const filterLabels = parseFilters(item.filters_json)
+                                return (
+                                    <div
+                                        key={item.id}
+                                        onClick={() => handleHistoryClick(item)}
+                                        className="group w-full flex items-center justify-between px-4 py-3 hover:bg-zinc-900 cursor-pointer transition-colors border-b border-zinc-900 last:border-0"
+                                    >
+                                        <div className="flex flex-col gap-1 min-w-0 flex-1">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-zinc-100 font-bold truncate">{item.query_text}</span>
+                                                <span className="text-[10px] text-zinc-500 bg-zinc-800 px-1.5 py-0.5 rounded whitespace-nowrap">
+                                                    {item.result_count} results
+                                                </span>
+                                            </div>
+                                            <div className="flex flex-wrap gap-1">
+                                                {filterLabels.slice(0, 3).map((f, i) => (
+                                                    <span key={i} className="text-[9px] text-zinc-500 bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800">
+                                                        {f}
+                                                    </span>
+                                                ))}
+                                                {filterLabels.length > 3 && (
+                                                    <span className="text-[9px] text-zinc-600 px-1">
+                                                        +{filterLabels.length - 3} more
+                                                    </span>
+                                                )}
+                                                <span className="text-[9px] text-zinc-600 ml-auto">
+                                                    {formatRelativeTime(item.executed_at)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={(e) => handleDeleteHistory(e, item.id)}
+                                            className="ml-4 p-2 text-zinc-700 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                                        >
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                        <div className="px-4 py-2 border-t border-zinc-800 bg-zinc-900/50">
+                            <button
+                                onClick={handleClearHistory}
+                                className="text-[10px] font-bold text-zinc-500 hover:text-indigo-400 transition-colors uppercase tracking-widest"
+                            >
+                                Clear History
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Dropdown menus */}
                 {activeDropdown && (

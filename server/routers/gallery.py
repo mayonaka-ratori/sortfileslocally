@@ -52,6 +52,13 @@ class HybridSearchResponse(BaseModel):
     total_candidates: int
     filters_applied: SearchFilters
 
+class SearchHistoryResponse(BaseModel):
+    id: int
+    query_text: str
+    filters_json: Optional[str] = None
+    result_count: int
+    executed_at: str
+
 @router.get("/", response_model=List[MediaItemResponse])
 def list_media(
     limit: int = 50,
@@ -198,11 +205,34 @@ def search_media(
             snippet=snippet
         ))
         
+    # Auto-save search history (excluding empty query)
+    if final_query:
+        filters_str = json.dumps(final_filters) if final_filters else None
+        db.save_search_history(final_query, filters_str, hybrid_res['total_candidates'])
+
     return HybridSearchResponse(
         results=results,
         total_candidates=hybrid_res['total_candidates'],
         filters_applied=SearchFilters(**final_filters)
     )
+
+@router.get("/search-history", response_model=List[SearchHistoryResponse])
+def get_search_history(limit: int = 20, db: DBManager = Depends(get_db_manager)):
+    """Get recent search history."""
+    history = db.get_search_history(limit=limit)
+    return history
+
+@router.delete("/search-history/{id}", status_code=204)
+def delete_search_history_entry(id: int, db: DBManager = Depends(get_db_manager)):
+    """Delete a single search history entry."""
+    db.delete_search_history(id)
+    return
+
+@router.delete("/search-history", status_code=204)
+def clear_search_history(db: DBManager = Depends(get_db_manager)):
+    """Clear all search history."""
+    db.clear_search_history()
+    return
 
 @router.get("/filters")
 def get_filters(db: DBManager = Depends(get_db_manager)):
