@@ -4,6 +4,7 @@ import { ArrowLeft, Settings as SettingsIcon } from 'lucide-react';
 import { ModelManagerUI } from '@/components/Settings/ModelManagerUI';
 import { DataManagementUI } from '@/components/Settings/DataManagementUI';
 import { CleanerUI } from '@/components/Settings/CleanerUI';
+import { SceneSettings } from '@/components/SceneSettings';
 
 export default function SettingsPage() {
     return (
@@ -45,6 +46,16 @@ export default function SettingsPage() {
                     </div>
 
                     <DataManagementUI />
+                </section>
+
+                {/* Scene Settings Section */}
+                <section className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-1">
+                        <h2 className="text-lg font-bold">AI Video Analysis</h2>
+                        <p className="text-xs text-zinc-400">Configure how the system analyzes and segments video files.</p>
+                    </div>
+
+                    <SceneSettings />
                 </section>
 
                 {/* Deduplication Section */}

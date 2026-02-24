@@ -1,12 +1,13 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { MediaItem, fetchMedia, searchMedia, searchByFace, reverseImageSearch, SearchFilters } from "@/lib/api"
+import { MediaItem, fetchMedia, searchMedia, searchByFace, reverseImageSearch, SearchFilters, SceneSearchResult, searchScenes } from "@/lib/api"
 import { GalleryGrid } from "@/components/GalleryGrid"
 import { ChatPanel } from "@/components/ChatPanel"
 import { Sidebar } from "@/components/Sidebar"
 import { HybridSearchBar } from "@/components/HybridSearchBar"
-import { Menu, Save } from "lucide-react"
+import { SceneSearchResultComponent } from "@/components/SceneSearchResult"
+import { Menu, Save, Film } from "lucide-react"
 import SaveAlbumModal from "@/components/SaveAlbumModal"
 import { InsightsPanel } from "@/components/InsightsPanel"
 
@@ -18,6 +19,8 @@ export default function Home() {
   const [currentSearch, setCurrentSearch] = useState("")
   const [currentFilters, setCurrentFilters] = useState<SearchFilters>({})
   const [searchStats, setSearchStats] = useState<{ total_candidates: number } | null>(null)
+  const [sceneResults, setSceneResults] = useState<SceneSearchResult[]>([])
+  const [isSceneSearchActive, setIsSceneSearchActive] = useState(false)
 
   const [offset, setOffset] = useState(0)
   const [hasMore, setHasMore] = useState(true)
@@ -39,6 +42,8 @@ export default function Home() {
       const data = await fetchMedia({ offset: currentOffset, limit })
       if (currentOffset === 0) {
         setMedia(data)
+        setSceneResults([])
+        setIsSceneSearchActive(false)
       } else {
         setMedia(prev => [...prev, ...data])
       }
@@ -63,9 +68,10 @@ export default function Home() {
     }
   }, [currentSearch, hasMore, loading, isLoadingMore, offset, loadMedia])
 
-  const handleSearch = useCallback(async (query: string, filters: SearchFilters = {}) => {
+  const handleSearch = useCallback(async (query: string, filters: SearchFilters = {}, searchForScenes: boolean = false) => {
     setCurrentSearch(query)
     setCurrentFilters(filters)
+    setIsSceneSearchActive(searchForScenes)
 
     if (!query.trim() && Object.keys(filters).length === 0) {
       setOffset(0)
@@ -75,10 +81,19 @@ export default function Home() {
     try {
       setLoading(true)
       setError("")
-      const response = await searchMedia(query, filters)
 
-      setMedia(response.results)
-      setSearchStats({ total_candidates: response.total_candidates })
+      if (searchForScenes) {
+        const results = await searchScenes(query)
+        setSceneResults(results)
+        setMedia([])
+        setSearchStats(null)
+      } else {
+        const response = await searchMedia(query, filters)
+        setMedia(response.results)
+        setSceneResults([])
+        setSearchStats({ total_candidates: response.total_candidates })
+      }
+
       setSelectedItem(null)
       setHasMore(false)
     } catch {
@@ -205,13 +220,56 @@ export default function Home() {
               <div className="max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8">
                 <InsightsPanel />
 
-                <GalleryGrid
-                  media={media}
-                  onSelect={setSelectedItem}
-                  onLoadMore={handleLoadMore}
-                  hasMore={hasMore}
-                  onImageDrop={handleImageDrop}
-                />
+                {isSceneSearchActive ? (
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="p-2 bg-indigo-600/10 rounded-lg">
+                        <Film className="w-5 h-5 text-indigo-400" />
+                      </div>
+                      <div>
+                        <h2 className="text-lg font-bold text-white">Scene Search Results</h2>
+                        <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Found {sceneResults.length} matching scenes</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 gap-4">
+                      {sceneResults.map((result) => (
+                        <SceneSearchResultComponent
+                          key={`${result.file_id}-${result.scene_index}`}
+                          result={result}
+                          onPlay={async (fileId, startTime) => {
+                            // Find the media item for this scene
+                            // If not in current media list, we might need to fetch it
+                            const item = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/gallery/${fileId}`).then(r => r.json())
+                            setSelectedItem(item)
+                            // The seek logic is handled in ChatPanel when it mounts with the item
+                            // We can use a small delay to ensure video element is ready
+                            setTimeout(() => {
+                              const video = document.querySelector('video')
+                              if (video) {
+                                video.currentTime = startTime
+                                video.play().catch(() => { })
+                              }
+                            }, 500)
+                          }}
+                        />
+                      ))}
+                    </div>
+                    {sceneResults.length === 0 && (
+                      <div className="flex flex-col items-center justify-center py-20 text-zinc-500">
+                        <Film className="w-12 h-12 mb-4 opacity-20" />
+                        <p className="text-sm font-medium">No scenes match your search query.</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <GalleryGrid
+                    media={media}
+                    onSelect={setSelectedItem}
+                    onLoadMore={handleLoadMore}
+                    hasMore={hasMore}
+                    onImageDrop={handleImageDrop}
+                  />
+                )}
               </div>
             </div>
           </div>

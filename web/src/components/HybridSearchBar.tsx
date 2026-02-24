@@ -1,10 +1,10 @@
 "use client"
 import React, { useState, useEffect, useRef } from "react"
-import { Search, X, ChevronDown, Check, Image as ImageIcon, Video, Filter, Clock } from "lucide-react"
+import { Search, X, ChevronDown, Check, Image as ImageIcon, Video, Filter, Clock, Clapperboard } from "lucide-react"
 import { SearchFilters, fetchFilters, getSearchHistory, deleteSearchHistory, clearSearchHistory, SearchHistoryEntry } from "@/lib/api"
 
 interface HybridSearchBarProps {
-    onSearch: (query: string, filters: SearchFilters) => void
+    onSearch: (query: string, filters: SearchFilters, searchScenes?: boolean) => void
     initialQuery?: string
 }
 
@@ -35,6 +35,7 @@ export function HybridSearchBar({ onSearch, initialQuery = "" }: HybridSearchBar
         characters: [],
         series: []
     })
+    const [isSceneSearch, setIsSceneSearch] = useState(false)
 
     const [activeDropdown, setActiveDropdown] = useState<string | null>(null)
     const [searchHistory, setSearchHistory] = useState<SearchHistoryEntry[]>([])
@@ -74,7 +75,7 @@ export function HybridSearchBar({ onSearch, initialQuery = "" }: HybridSearchBar
 
     const handleSearch = (e?: React.FormEvent) => {
         e?.preventDefault()
-        onSearch(query, filters)
+        onSearch(query, filters, isSceneSearch)
         setActiveDropdown(null)
         setShowHistory(false)
     }
@@ -160,6 +161,7 @@ export function HybridSearchBar({ onSearch, initialQuery = "" }: HybridSearchBar
     const clearAll = () => {
         setFilters({})
         setQuery("")
+        setIsSceneSearch(false)
     }
 
 
@@ -189,7 +191,13 @@ export function HybridSearchBar({ onSearch, initialQuery = "" }: HybridSearchBar
                         placeholder="Search your library with natural language..."
                         className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl py-4 pl-14 pr-32 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all shadow-xl"
                     />
-                    <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-6 h-6 text-zinc-500 group-focus-within:text-indigo-400 transition-colors" />
+                    <div className="absolute left-5 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                        {isSceneSearch ? (
+                            <Clapperboard className="w-6 h-6 text-indigo-400 transition-colors" />
+                        ) : (
+                            <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-6 h-6 text-zinc-500 group-focus-within:text-indigo-400 transition-colors" />
+                        )}
+                    </div>
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
                         {(query || Object.keys(filters).length > 0) && (
                             <button
@@ -339,6 +347,19 @@ export function HybridSearchBar({ onSearch, initialQuery = "" }: HybridSearchBar
                     activeDropdown={activeDropdown}
                     onClick={() => setActiveDropdown(activeDropdown === "Media Type" ? null : "Media Type")}
                 />
+
+                <div className="h-4 w-[1px] bg-zinc-800 mx-1" />
+
+                <button
+                    onClick={() => setIsSceneSearch(!isSceneSearch)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all border uppercase tracking-wider ${isSceneSearch
+                        ? "bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-900/40"
+                        : "bg-zinc-900 border-zinc-800 text-zinc-500 hover:border-zinc-700 hover:text-zinc-300"
+                        }`}
+                >
+                    <Clapperboard className="w-3.5 h-3.5" />
+                    Search Scenes
+                </button>
             </div>
 
             {/* Active Filters */}

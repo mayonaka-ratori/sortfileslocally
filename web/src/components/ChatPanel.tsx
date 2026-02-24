@@ -2,7 +2,8 @@
 
 import React, { useState, useRef, useEffect } from "react"
 import { MediaItem, getOriginalUrl, chatWithImage, FaceData, getFaces, nameFace, exportMetadata, TagCategory, rescanFile, RescanMode, getScanStatus } from "@/lib/api"
-import { X, Send, Loader2, Users, MessageSquare, Search, Edit2, Check, Save, Settings2, Tags as TagsIcon, RefreshCw, ChevronDown } from "lucide-react"
+import { X, Send, Loader2, Users, MessageSquare, Search, Edit2, Check, Save, Settings2, Tags as TagsIcon, RefreshCw, ChevronDown, Clapperboard } from "lucide-react"
+import { SceneTimeline } from "./SceneTimeline"
 import Image from "next/image"
 import { MetadataExportOptions, ExportMode } from "./MetadataExportOptions"
 import { TagEditorPanel } from "./TagEditorPanel"
@@ -25,7 +26,7 @@ export function ChatPanel({ item, onClose, onFaceSearch, onItemUpdate }: ChatPan
     const [isLoading, setIsLoading] = useState(false)
     const messagesEndRef = useRef<HTMLDivElement>(null)
 
-    const [activeTab, setActiveTab] = useState<"chat" | "faces" | "tags">("chat")
+    const [activeTab, setActiveTab] = useState<"chat" | "faces" | "tags" | "scenes">("chat")
     const [faces, setFaces] = useState<FaceData[]>([])
     const [editingFaceId, setEditingFaceId] = useState<number | null>(null)
     const [editName, setEditName] = useState("")
@@ -159,6 +160,14 @@ export function ChatPanel({ item, onClose, onFaceSearch, onItemUpdate }: ChatPan
         }
     }
 
+    const handleSeek = (time: number) => {
+        const video = document.querySelector('video')
+        if (video) {
+            video.currentTime = time
+            video.play().catch(() => { })
+        }
+    }
+
     return (
         <div className="w-96 flex flex-col h-full bg-zinc-900 border-l border-zinc-800 shadow-2xl overflow-hidden flex-shrink-0 relative">
             {/* Header */}
@@ -182,6 +191,14 @@ export function ChatPanel({ item, onClose, onFaceSearch, onItemUpdate }: ChatPan
                     >
                         <TagsIcon className="w-4 h-4" /> Tags
                     </button>
+                    {item.media_type === 'video' && (
+                        <button
+                            onClick={() => setActiveTab("scenes")}
+                            className={`font-semibold flex items-center gap-2 transition-colors ${activeTab === 'scenes' ? 'text-indigo-400' : 'text-zinc-500 hover:text-zinc-300'}`}
+                        >
+                            <Clapperboard className="w-4 h-4" /> Scenes
+                        </button>
+                    )}
                 </div>
                 <div className="flex gap-2 items-center">
                     <button
@@ -352,7 +369,7 @@ export function ChatPanel({ item, onClose, onFaceSearch, onItemUpdate }: ChatPan
                         ))
                     )}
                 </div>
-            ) : (
+            ) : activeTab === "tags" ? (
                 <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-4">
                     <div className="relative">
                         <button
@@ -392,6 +409,10 @@ export function ChatPanel({ item, onClose, onFaceSearch, onItemUpdate }: ChatPan
                         seriesTags={item.series_tags || []}
                         onUpdate={handleTagUpdate}
                     />
+                </div>
+            ) : (
+                <div className="flex-1 p-4 overflow-y-auto">
+                    <SceneTimeline fileId={item.id} onSeek={handleSeek} />
                 </div>
             )}
         </div>

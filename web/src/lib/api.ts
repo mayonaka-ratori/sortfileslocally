@@ -14,6 +14,27 @@ export interface MediaItem {
     snippet?: string; // Optional field for holding search match text snippet
 }
 
+export interface Scene {
+    id: number;
+    scene_index: number;
+    start_time: number;
+    end_time: number;
+    start_frame: number;
+    end_frame: number;
+    thumbnail_url: string;
+    caption: string;
+    tags: string[];
+    character_tags: string[];
+    series_tags: string[];
+    duration: number;
+}
+
+export interface SceneSearchResult extends Scene {
+    file_id: number;
+    filename: string;
+    score: number;
+}
+
 export interface SearchFilters {
     tags?: string[];
     character_tags?: string[];
@@ -679,5 +700,40 @@ export interface InsightsResponse {
 export const getInsights = async (): Promise<InsightsResponse> => {
     const res = await fetch(`${API_BASE_URL}/insights`);
     if (!res.ok) throw new Error("Failed to fetch insights");
+    return res.json();
+};
+
+// ------------------------------------------------------------------ #
+// Scene Segmentation APIs
+// ------------------------------------------------------------------ #
+
+export const detectScenes = async (fileId: number, force: boolean = false): Promise<{ status: string; job_id?: number }> => {
+    const res = await fetch(`${API_BASE_URL}/scenes/${fileId}/detect`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ force }),
+    });
+    if (!res.ok) throw new Error("Failed to start scene detection");
+    return res.json();
+};
+
+export const getScenes = async (fileId: number): Promise<Scene[]> => {
+    const res = await fetch(`${API_BASE_URL}/media/${fileId}/scenes`);
+    if (!res.ok) throw new Error("Failed to fetch scenes");
+    return res.json();
+};
+
+export const deleteScenes = async (fileId: number): Promise<{ success: boolean; deleted_count: number }> => {
+    const res = await fetch(`${API_BASE_URL}/scenes/${fileId}`, {
+        method: "DELETE",
+    });
+    if (!res.ok) throw new Error("Failed to delete scenes");
+    return res.json();
+};
+
+export const searchScenes = async (query: string, topK: number = 20): Promise<SceneSearchResult[]> => {
+    const params = new URLSearchParams({ query, top_k: topK.toString() });
+    const res = await fetch(`${API_BASE_URL}/scenes/search?${params.toString()}`);
+    if (!res.ok) throw new Error("Scene search failed");
     return res.json();
 };
