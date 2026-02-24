@@ -1,7 +1,7 @@
 "use client"
 import React from "react"
 import Link from "next/link"
-import { LayoutGrid, Filter, Settings, BookOpen, Sparkles, Folder } from "lucide-react"
+import { LayoutGrid, Settings, BookOpen, Sparkles, Folder, Tag } from "lucide-react"
 import { useEffect, useState } from "react"
 import { fetchAlbums, Album } from "@/lib/api"
 import { ScanUI } from "./ScanUI"
@@ -61,6 +61,10 @@ export function Sidebar({ isOpen, onClose }: Omit<SidebarProps, 'onFilterChange'
                             <Link href="/albums" onClick={onClose} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-800/50 transition-colors">
                                 <BookOpen className="w-4 h-4 text-indigo-500" />
                                 Albums
+                            </Link>
+                            <Link href="/tags" onClick={onClose} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-800/50 transition-colors">
+                                <Tag className="w-4 h-4 text-indigo-500" />
+                                Tags
                             </Link>
 
                             {albums.length > 0 && (

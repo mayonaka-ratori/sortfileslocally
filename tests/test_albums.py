@@ -1,9 +1,14 @@
-
 import pytest
 import os
 import json
 import sqlite3
 import numpy as np
+
+try:
+    import faiss
+except Exception:
+    pytest.skip("faiss not installed", allow_module_level=True)
+
 from src.data.db_manager import DBManager
 from unittest.mock import MagicMock
 

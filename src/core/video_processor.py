@@ -97,7 +97,7 @@ class VideoProcessor:
                 
         return results
 
-    def process_video(self, video_path: str) -> Dict[str, Any]:
+    def process_video(self, video_path: str, skip_face: bool = False, skip_whisper: bool = False) -> Dict[str, Any]:
         """
         Process a video file: extract keyframes, compute averaged CLIP embedding, and pool face detections.
         """
@@ -117,23 +117,24 @@ class VideoProcessor:
         
         # Extract Audio and Transcribe
         audio_transcription = []
-        try:
-            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp_audio:
-                tmp_audio_path = tmp_audio.name
-            
-            # Extract audio at 16kHz for whisper
-            cmd = ['ffmpeg', '-y', '-i', video_path, '-vn', '-acodec', 'pcm_s16le', '-ar', '16000', '-ac', '1', tmp_audio_path]
-            # Use subprocess to run ffmpeg, supressing output
-            result = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=60)
-            if result.returncode == 0:
-                audio_transcription = self.ai_engine.transcribe_audio(tmp_audio_path)
-            
-            if os.path.exists(tmp_audio_path):
-                os.remove(tmp_audio_path)
-        except Exception as e:
-            print(f"Failed to process audio for {video_path}: {e}")
-            if 'tmp_audio_path' in locals() and os.path.exists(tmp_audio_path):
-                os.remove(tmp_audio_path)
+        if not skip_whisper:
+            try:
+                with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp_audio:
+                    tmp_audio_path = tmp_audio.name
+                
+                # Extract audio at 16kHz for whisper
+                cmd = ['ffmpeg', '-y', '-i', video_path, '-vn', '-acodec', 'pcm_s16le', '-ar', '16000', '-ac', '1', tmp_audio_path]
+                # Use subprocess to run ffmpeg, supressing output
+                result = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=60)
+                if result.returncode == 0:
+                    audio_transcription = self.ai_engine.transcribe_audio(tmp_audio_path)
+                
+                if os.path.exists(tmp_audio_path):
+                    os.remove(tmp_audio_path)
+            except Exception as e:
+                print(f"Failed to process audio for {video_path}: {e}")
+                if 'tmp_audio_path' in locals() and os.path.exists(tmp_audio_path):
+                    os.remove(tmp_audio_path)
         
         # Extract Frames
         indices = self._get_frame_indices(vr)
@@ -153,15 +154,16 @@ class VideoProcessor:
             clip_embeddings.append(clip_vec)
             
             # 2. Face Detection (Needs BGR for InsightFace)
-            # Convert RGB to BGR
-            frame_bgr = frame_np[:, :, ::-1] 
-            faces = self.ai_engine.extract_face_features(frame_bgr)
-            
-            # Add timestamp info to face
-            timestamp = indices[i] / fps if fps > 0 else 0
-            for face in faces:
-                face['timestamp'] = timestamp
-                all_faces.append(face)
+            if not skip_face:
+                # Convert RGB to BGR
+                frame_bgr = frame_np[:, :, ::-1] 
+                faces = self.ai_engine.extract_face_features(frame_bgr)
+                
+                # Add timestamp info to face
+                timestamp = indices[i] / fps if fps > 0 else 0
+                for face in faces:
+                    face['timestamp'] = timestamp
+                    all_faces.append(face)
 
             # 3. Action Recognition (Florence-2 VLM) - lazy-load VLMEngine
             try:
@@ -171,7 +173,7 @@ class VideoProcessor:
                 action_text = self._vlm_engine.generate_detailed_caption(pil_img)
                 if action_text is not None:
                     frame_descriptions.append({
-                        'timestamp': timestamp,
+                        'timestamp': timestamp if not skip_face else (indices[i] / fps if fps > 0 else 0),
                         'text': action_text
                     })
             except Exception as e:

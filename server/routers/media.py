@@ -1,5 +1,5 @@
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 from typing import List, Optional
@@ -7,11 +7,15 @@ import os
 import io
 import json
 import sqlite3
+import time
 from PIL import Image
 
-from ..dependencies import get_db_manager
+from ..dependencies import get_db_manager, get_processor
+from ..state import active_scans, ScanStatus
 from src.data.db_manager import DBManager
 from src.core.exporter import MetadataExporter, ExportableMetadata
+from src.core.processor import Processor
+from src.data.scan_job_manager import ScanJobManager
 
 router = APIRouter(prefix="/media", tags=["media"])
 
@@ -206,3 +210,271 @@ def export_all_metadata(
 
     result = MetadataExporter.export_batch(items, mode=req.mode)
     return result
+
+
+# ------------------------------------------------------------------ #
+# Tag Management Endpoints
+# ------------------------------------------------------------------ #
+
+class TagRequest(BaseModel):
+    tags: List[str]
+    category: str = "general" # "general" | "character" | "series"
+
+@router.post("/{file_id}/tags")
+def add_media_tags(file_id: int, req: TagRequest, db: DBManager = Depends(get_db_manager)):
+    """Append tags to a specific media item."""
+    try:
+        updated_tags = db.add_tags(file_id, req.tags, req.category)
+        return {
+            "tags": updated_tags,
+            "updated_count": len(req.tags)
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/{file_id}/tags")
+def remove_media_tags(file_id: int, req: TagRequest, db: DBManager = Depends(get_db_manager)):
+    """Remove tags from a specific media item."""
+    try:
+        updated_tags = db.remove_tags(file_id, req.tags, req.category)
+        return {
+            "tags": updated_tags,
+            "removed_count": len(req.tags)
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+class BulkTagRequest(BaseModel):
+    file_ids: List[int]
+    action: str # "add" | "remove" | "replace"
+    tags: List[str]
+    category: str = "general" # "general" | "character" | "series"
+
+@router.post("/bulk-tags")
+def bulk_update_media_tags(req: BulkTagRequest, db: DBManager = Depends(get_db_manager)):
+    """Bulk update tags for multiple media items."""
+    if len(req.file_ids) > 500:
+        raise HTTPException(status_code=422, detail="Maximum 500 files per bulk operation")
+    
+    if not req.tags:
+        raise HTTPException(status_code=422, detail="Tags list cannot be empty")
+
+    if req.action not in ("add", "remove", "replace"):
+        raise HTTPException(status_code=400, detail="Invalid action")
+    
+    if req.category not in ("general", "character", "series"):
+        raise HTTPException(status_code=400, detail="Invalid category")
+
+    try:
+        result = db.bulk_update_tags(req.file_ids, req.action, req.tags, req.category)
+        return {
+            "affected_count": result["affected_count"],
+            "action": req.action,
+            "tags": req.tags,
+            "errors": result["errors"]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ------------------------------------------------------------------ #
+# AI Rescan Endpoints
+# ------------------------------------------------------------------ #
+
+class RescanRequest(BaseModel):
+    mode: str = "append"  # "overwrite" | "append"
+
+class BulkRescanRequest(BaseModel):
+    file_ids: List[int]
+    mode: str = "append"
+
+def _rescan_file_worker(file_id: int, mode: str, db: DBManager, processor: Processor):
+    """Background worker for single file rescan."""
+    # Use active_scans for tracking, use file_id + 1000000 to avoid collisions
+    job_key = 1000000 + file_id
+    status = ScanStatus(is_active=True, total_files=1, last_updated=time.time())
+    active_scans[job_key] = status
+    
+    try:
+        conn = db._connect()
+        c = conn.cursor()
+        c.execute("SELECT file_path FROM files WHERE id = ?", (file_id,))
+        row = c.fetchone()
+        conn.close()
+        
+        if not row:
+            status.error = "File not found"
+            return
+            
+        file_path = row[0]
+        status.current_file = os.path.basename(file_path)
+        
+        # 1. Inspect
+        item = processor.scanner.inspect_file(file_path)
+        
+        try:
+            # Process with skip flags to ensure thread safety
+            result = processor._process_item(item, skip_face=True, skip_whisper=True)
+            
+            if not result.success:
+                status.error = result.media_item.error_msg
+                return
+
+            # Handle Merge (Append) vs Overwrite
+            if mode == "append":
+                # Fetch existing tags
+                conn = db._connect()
+                conn.row_factory = sqlite3.Row
+                c = conn.cursor()
+                c.execute("SELECT tags, character_tags, series_tags, caption FROM files WHERE id = ?", (file_id,))
+                old = c.fetchone()
+                conn.close()
+                
+                if old:
+                    def safe_parse(v):
+                        try: return json.loads(v) if v else []
+                        except: return []
+                    
+                    # Merge using DBManager helper
+                    result.media_item.tags = db._deduplicate_tags_ci(safe_parse(old['tags']) + result.media_item.tags)
+                    result.media_item.character_tags = db._deduplicate_tags_ci(safe_parse(old['character_tags']) + result.media_item.character_tags)
+                    result.media_item.series_tags = db._deduplicate_tags_ci(safe_parse(old['series_tags']) + result.media_item.series_tags)
+                    # If caption exists and not overwriting, keep it if new one is empty
+                    if old['caption'] and not result.media_item.caption:
+                         result.media_item.caption = old['caption']
+            
+            # Save
+            db.add_result(result)
+            status.processed_count = 1
+            status.progress_percent = 100.0
+        finally:
+            processor.ai_engine.face_app = old_face_app
+            processor.video_processor.ai_engine.face_app = old_vid_face_app
+            processor.ai_engine.extract_face_features = old_extract_faces
+            processor.video_processor.ai_engine.extract_face_features = old_vid_extract_faces
+            processor.video_processor.ai_engine.transcribe_audio = old_transcribe
+
+    except Exception as e:
+        status.error = str(e)
+    finally:
+        status.is_active = False
+        status.last_updated = time.time()
+
+@router.post("/{file_id}/rescan")
+def rescan_media_endpoint(
+    file_id: int, 
+    req: RescanRequest, 
+    background_tasks: BackgroundTasks,
+    db: DBManager = Depends(get_db_manager),
+    processor: Processor = Depends(get_processor)
+):
+    """Trigger AI re-processing for a single file."""
+    # Quick check if file exists
+    conn = db._connect()
+    c = conn.cursor()
+    c.execute("SELECT id FROM files WHERE id = ?", (file_id,))
+    if not c.fetchone():
+        conn.close()
+        raise HTTPException(status_code=404, detail="File not found")
+    conn.close()
+
+    background_tasks.add_task(_rescan_file_worker, file_id, req.mode, db, processor)
+    return {"status": "processing", "file_id": file_id}
+
+
+def _bulk_rescan_worker(file_ids: List[int], mode: str, db: DBManager, processor: Processor, job_id: int):
+    """Background worker for bulk rescan."""
+    job_manager = ScanJobManager(db.sqlite_path)
+    job_manager.update_total(job_id, len(file_ids))
+    job_manager.mark_running(job_id)
+
+    status = ScanStatus(is_active=True, total_files=len(file_ids), last_updated=time.time())
+    active_scans[job_id] = status
+
+    try:
+        def safe_parse(v):
+            try: return json.loads(v) if v else []
+            except: return []
+
+        for i, fid in enumerate(file_ids):
+            try:
+                # Fetch path
+                conn = db._connect()
+                c = conn.cursor()
+                c.execute("SELECT file_path FROM files WHERE id = ?", (fid,))
+                row = c.fetchone()
+                conn.close()
+                if not row:
+                    job_manager.log_error(job_id, f"ID:{fid}", "File not found in DB")
+                    continue
+                
+                file_path = row[0]
+                status.current_file = os.path.basename(file_path)
+                
+                # Inspect & Process
+                item = processor.scanner.inspect_file(file_path)
+                result = processor._process_item(item, skip_face=True, skip_whisper=True)
+                
+                if result.success:
+                    if mode == "append":
+                        conn = db._connect()
+                        conn.row_factory = sqlite3.Row
+                        c = conn.cursor()
+                        c.execute("SELECT tags, character_tags, series_tags, caption FROM files WHERE id = ?", (fid,))
+                        old = c.fetchone()
+                        conn.close()
+                        if old:
+                            result.media_item.tags = db._deduplicate_tags_ci(safe_parse(old['tags']) + result.media_item.tags)
+                            result.media_item.character_tags = db._deduplicate_tags_ci(safe_parse(old['character_tags']) + result.media_item.character_tags)
+                            result.media_item.series_tags = db._deduplicate_tags_ci(safe_parse(old['series_tags']) + result.media_item.series_tags)
+                            if old['caption'] and not result.media_item.caption:
+                                result.media_item.caption = old['caption']
+                    
+                    db.add_result(result)
+                    job_manager.increment_processed(job_id, file_path)
+                else:
+                    job_manager.log_error(job_id, file_path, result.media_item.error_msg or "Unknown error")
+
+                # Update Status
+                status.processed_count = i + 1
+                status.progress_percent = ((i + 1) / len(file_ids)) * 100
+                status.last_updated = time.time()
+
+            except Exception as e:
+                job_manager.log_error(job_id, f"ID:{fid}", str(e))
+
+        job_manager.mark_completed(job_id)
+    except Exception as e:
+        job_manager.mark_failed(job_id, str(e))
+        status.error = str(e)
+    finally:
+        status.is_active = False
+        status.last_updated = time.time()
+
+
+@router.post("/bulk-rescan")
+def bulk_rescan_endpoint(
+    req: BulkRescanRequest,
+    background_tasks: BackgroundTasks,
+    db: DBManager = Depends(get_db_manager),
+    processor: Processor = Depends(get_processor)
+):
+    """Bulk rescan multiple files with AI."""
+    if len(req.file_ids) > 50:
+        raise HTTPException(status_code=422, detail="Maximum 50 files per rescan operation")
+
+    job_manager = ScanJobManager(db.sqlite_path)
+    # Use a dummy path for rescan jobs
+    job = job_manager.create_job(f"Bulk Rescan ({len(req.file_ids)} files)")
+    
+    background_tasks.add_task(_bulk_rescan_worker, req.file_ids, req.mode, db, processor, job.id)
+    
+    return {
+        "status": "processing",
+        "job_id": job.id,
+        "file_count": len(req.file_ids)
+    }

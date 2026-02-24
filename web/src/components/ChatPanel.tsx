@@ -1,15 +1,17 @@
 "use client"
 
 import React, { useState, useRef, useEffect } from "react"
-import { MediaItem, getOriginalUrl, chatWithImage, FaceData, getFaces, nameFace, exportMetadata } from "@/lib/api"
-import { X, Send, Loader2, Users, MessageSquare, Search, Edit2, Check, Save, Settings2 } from "lucide-react"
+import { MediaItem, getOriginalUrl, chatWithImage, FaceData, getFaces, nameFace, exportMetadata, TagCategory, rescanFile, RescanMode, getScanStatus } from "@/lib/api"
+import { X, Send, Loader2, Users, MessageSquare, Search, Edit2, Check, Save, Settings2, Tags as TagsIcon, RefreshCw, ChevronDown } from "lucide-react"
 import Image from "next/image"
 import { MetadataExportOptions, ExportMode } from "./MetadataExportOptions"
+import { TagEditorPanel } from "./TagEditorPanel"
 
 interface ChatPanelProps {
     item: MediaItem | null
     onClose: () => void
     onFaceSearch?: (faceId: number) => void
+    onItemUpdate?: (newItem: MediaItem) => void
 }
 
 interface Message {
@@ -17,19 +19,21 @@ interface Message {
     content: string
 }
 
-export function ChatPanel({ item, onClose, onFaceSearch }: ChatPanelProps) {
+export function ChatPanel({ item, onClose, onFaceSearch, onItemUpdate }: ChatPanelProps) {
     const [messages, setMessages] = useState<Message[]>([])
     const [input, setInput] = useState("")
     const [isLoading, setIsLoading] = useState(false)
     const messagesEndRef = useRef<HTMLDivElement>(null)
 
-    const [activeTab, setActiveTab] = useState<"chat" | "faces">("chat")
+    const [activeTab, setActiveTab] = useState<"chat" | "faces" | "tags">("chat")
     const [faces, setFaces] = useState<FaceData[]>([])
     const [editingFaceId, setEditingFaceId] = useState<number | null>(null)
     const [editName, setEditName] = useState("")
     const [isExporting, setIsExporting] = useState(false)
     const [exportMode, setExportMode] = useState<ExportMode>("xmp")
     const [showExportOptions, setShowExportOptions] = useState(false)
+    const [isRescanning, setIsRescanning] = useState(false)
+    const [showRescanOptions, setShowRescanOptions] = useState(false)
 
     // Reset chat and faces when item changes
     useEffect(() => {
@@ -47,7 +51,7 @@ export function ChatPanel({ item, onClose, onFaceSearch }: ChatPanelProps) {
             ])
             getFaces(item.id).then(setFaces).catch(console.error)
         }
-    }, [item])
+    }, [item?.id, item])
 
     // Auto-scroll to bottom
     useEffect(() => {
@@ -55,6 +59,51 @@ export function ChatPanel({ item, onClose, onFaceSearch }: ChatPanelProps) {
     }, [messages])
 
     if (!item) return null
+
+    const handleTagUpdate = (category: TagCategory, newTags: string[]) => {
+        if (!item || !onItemUpdate) return
+        const updatedItem = { ...item }
+        if (category === "general") updatedItem.tags = newTags
+        else if (category === "character") updatedItem.character_tags = newTags
+        else if (category === "series") updatedItem.series_tags = newTags
+        onItemUpdate(updatedItem)
+    }
+
+    const handleRescan = async (mode: RescanMode) => {
+        if (!item || isRescanning) return
+        setIsRescanning(true)
+        setShowRescanOptions(false)
+        try {
+            await rescanFile(item.id, mode)
+            // Poll for completion
+            const pollingKey = 1000000 + item.id
+            let completed = false
+            while (!completed) {
+                await new Promise(r => setTimeout(r, 1000))
+                const status = await getScanStatus(pollingKey)
+                if (status.progress_percent >= 100) {
+                    completed = true
+                }
+                if (status.error) throw new Error(status.error)
+            }
+            alert("AI Rescan completed successfully!")
+            // Force a refresh of the item in the UI
+            if (onItemUpdate) {
+                // We'd ideally re-fetch the item from the API here to get the new tags
+                // For now, let's just refresh the window or wait for user to re-select
+                // Better: fetch single item from API
+                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/gallery/${item.id}`)
+                if (res.ok) {
+                    const newItem = await res.json()
+                    onItemUpdate(newItem)
+                }
+            }
+        } catch (err) {
+            alert(err instanceof Error ? err.message : "Rescan failed")
+        } finally {
+            setIsRescanning(false)
+        }
+    }
 
     const handleSend = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -126,6 +175,12 @@ export function ChatPanel({ item, onClose, onFaceSearch }: ChatPanelProps) {
                         className={`font-semibold flex items-center gap-2 transition-colors ${activeTab === 'faces' ? 'text-indigo-400' : 'text-zinc-500 hover:text-zinc-300'}`}
                     >
                         <Users className="w-4 h-4" /> Faces {faces.length > 0 && `(${faces.length})`}
+                    </button>
+                    <button
+                        onClick={() => setActiveTab("tags")}
+                        className={`font-semibold flex items-center gap-2 transition-colors ${activeTab === 'tags' ? 'text-indigo-400' : 'text-zinc-500 hover:text-zinc-300'}`}
+                    >
+                        <TagsIcon className="w-4 h-4" /> Tags
                     </button>
                 </div>
                 <div className="flex gap-2 items-center">
@@ -229,7 +284,7 @@ export function ChatPanel({ item, onClose, onFaceSearch }: ChatPanelProps) {
                         </form>
                     </div>
                 </>
-            ) : (
+            ) : activeTab === "faces" ? (
                 <div className="flex-1 overflow-y-auto p-4 space-y-3">
                     {faces.length === 0 ? (
                         <div className="text-zinc-500 text-sm text-center py-8">
@@ -296,6 +351,47 @@ export function ChatPanel({ item, onClose, onFaceSearch }: ChatPanelProps) {
                             </div>
                         ))
                     )}
+                </div>
+            ) : (
+                <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-4">
+                    <div className="relative">
+                        <button
+                            onClick={() => setShowRescanOptions(!showRescanOptions)}
+                            disabled={isRescanning}
+                            className={`w-full py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${isRescanning ? 'bg-zinc-800 text-zinc-500' : 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/30 hover:bg-indigo-600/20'}`}
+                        >
+                            {isRescanning ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                            {isRescanning ? "Rescanning AI Tags..." : "Rescan with AI"}
+                            <ChevronDown className={`w-4 h-4 transition-transform ${showRescanOptions ? 'rotate-180' : ''}`} />
+                        </button>
+
+                        {showRescanOptions && (
+                            <div className="absolute top-full left-0 right-0 mt-2 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl z-10 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                <button
+                                    onClick={() => handleRescan("append")}
+                                    className="w-full text-left px-4 py-3 text-xs font-medium text-zinc-300 hover:text-white hover:bg-zinc-800 transition-all border-b border-zinc-800/50 flex flex-col gap-0.5"
+                                >
+                                    <span>Add missing tags</span>
+                                    <span className="text-[10px] text-zinc-500">Keep existing, add new detections</span>
+                                </button>
+                                <button
+                                    onClick={() => handleRescan("overwrite")}
+                                    className="w-full text-left px-4 py-3 text-xs font-medium text-red-400 hover:text-red-300 hover:bg-red-500/5 transition-all flex flex-col gap-0.5"
+                                >
+                                    <span>Overwrite tags</span>
+                                    <span className="text-[10px] text-red-500/60">Delete current AI tags and start fresh</span>
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    <TagEditorPanel
+                        fileId={item.id}
+                        generalTags={item.tags || []}
+                        characterTags={item.character_tags || []}
+                        seriesTags={item.series_tags || []}
+                        onUpdate={handleTagUpdate}
+                    />
                 </div>
             )}
         </div>

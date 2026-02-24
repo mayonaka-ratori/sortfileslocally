@@ -138,7 +138,7 @@ class Processor:
 
         yield {'status': 'complete', 'processed': processed_new, 'scanned': count, 'resume_skipped': resume_skipped}
 
-    def _process_item(self, item: MediaItem) -> ProcessingResult:
+    def _process_item(self, item: MediaItem, skip_face: bool = False, skip_whisper: bool = False) -> ProcessingResult:
         """Analyze a single item."""
         
         vec_data = None
@@ -154,7 +154,7 @@ class Processor:
                 item.width, item.height = img.size
                 
                 # Orchestrated Inference
-                res = self.inference.process_image(img)
+                res = self.inference.process_image(img, skip_face=skip_face)
                 
                 # Unpack Results
                 clip_vec = res['clip']
@@ -183,7 +183,7 @@ class Processor:
             elif item.media_type == 'video':
                 # Use VideoProcessor
                 # It returns dictionary
-                res = self.video_processor.process_video(item.file_path)
+                res = self.video_processor.process_video(item.file_path, skip_face=skip_face, skip_whisper=skip_whisper)
                 if not res:
                      raise ValueError("Video processing returned None")
                 
@@ -307,7 +307,7 @@ class Processor:
 
         yield f"Completed! Processed {count} new files (Batch Mode)."
 
-    def _process_batch(self, items: List[MediaItem]) -> List[ProcessingResult]:
+    def _process_batch(self, items: List[MediaItem], skip_face: bool = False, skip_whisper: bool = False) -> List[ProcessingResult]:
         """Process a list of items using batch inference where possible."""
         
         results = []
@@ -353,7 +353,7 @@ class Processor:
 
                 if pil_images:
                     # Run Orchestrated Inference Batch (CLIP, Faces, Style, Char Tag)
-                    batch_results = self.inference.process_batch(pil_images)
+                    batch_results = self.inference.process_batch(pil_images, skip_face=skip_face)
                     
                     # Auto Tagging Batch (needs clip vecs)
                     clip_vecs = np.array([res['clip'] for res in batch_results])
@@ -434,7 +434,7 @@ class Processor:
                 
                 if all_frames:
                     # Batch Inference via Orchestrator
-                    batch_results = self.inference.process_batch(all_frames)
+                    batch_results = self.inference.process_batch(all_frames, skip_face=skip_face)
                     
                     # 4. Aggregate results back to videos
                     video_outputs = {v_idx: {'clips': [], 'faces': [], 'general_tags': [], 'char_tags': [], 'series_tags': [], 'styles': []} for v_idx in range(len(vid_results))}

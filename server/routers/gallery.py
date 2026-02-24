@@ -59,6 +59,24 @@ class SearchHistoryResponse(BaseModel):
     result_count: int
     executed_at: str
 
+from typing import Dict, Any
+
+class TagStatsResponse(BaseModel):
+    general: List[Dict[str, Any]]
+    character: List[Dict[str, Any]]
+    series: List[Dict[str, Any]]
+    total_tags: int
+    untagged_count: int
+
+class UntaggedFilesResponse(BaseModel):
+    files: List[MediaItemResponse]
+    total_count: int
+
+class RenameTagRequest(BaseModel):
+    old_tag: str
+    new_tag: str
+    category: str
+
 @router.get("/", response_model=List[MediaItemResponse])
 def list_media(
     limit: int = 50,
@@ -399,4 +417,61 @@ def name_face(face_id: int, request: NameFaceRequest, db: DBManager = Depends(ge
     if not success:
          raise HTTPException(status_code=500, detail="Failed to update name")
     return {"success": True}
+
+@router.get("/tags/suggest")
+def suggest_tags(
+    q: str = Query(..., min_length=1),
+    category: str = "general",
+    limit: int = 10,
+    db: DBManager = Depends(get_db_manager)
+):
+    """Search existing tags with prefix match."""
+    try:
+        suggestions = db.suggest_tags(q, category, limit)
+        return suggestions
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/tags/stats", response_model=TagStatsResponse)
+def get_tag_stats(db: DBManager = Depends(get_db_manager)):
+    """Returns all tags with usage counts grouped by category."""
+    return db.get_tag_stats()
+
+@router.get("/untagged", response_model=UntaggedFilesResponse)
+def get_untagged_files(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=100),
+    db: DBManager = Depends(get_db_manager)
+):
+    """Returns files with no tags."""
+    res = db.get_untagged_files(page, per_page)
+    # Convert rows to MediaItemResponse
+    formatted_files = []
+    for r in res['files']:
+        formatted_files.append(MediaItemResponse(
+            id=r['id'],
+            file_path=r['file_path'],
+            media_type=r['media_type'],
+            width=r['width'],
+            height=r['height'],
+            tags=safe_parse_json(r['tags']),
+            character_tags=safe_parse_json(r['character_tags']),
+            series_tags=safe_parse_json(r['series_tags']),
+            caption=r.get('caption')
+        ))
+    return {
+        "files": formatted_files,
+        "total_count": res['total_count']
+    }
+
+@router.post("/tags/rename")
+def rename_tag(request: RenameTagRequest, db: DBManager = Depends(get_db_manager)):
+    """Rename or delete a tag across all files."""
+    try:
+        res = db.rename_tag(request.old_tag, request.new_tag, request.category)
+        return res
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 

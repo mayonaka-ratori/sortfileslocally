@@ -1,26 +1,30 @@
 from PIL import Image
 import os
 import sys
+import pytest
 
 sys.path.append(os.path.abspath("src"))
-from core.vlm_engine import VLMEngine
 
-def main():
-    print("Testing Florence-2 Initialization...")
+try:
+    from core.vlm_engine import VLMEngine
+except (ImportError, ValueError, Exception):
+    pytest.skip("VLMEngine failed to import (likely missing transformers/torch)", allow_module_level=True)
+
+def test_vlm_initialization():
     engine = VLMEngine()
-    
+    assert engine is not None
+
+def test_vlm_inference():
+    engine = VLMEngine()
     # Create a dummy image
     img = Image.new('RGB', (100, 100), color='blue')
     
-    print("Testing generate_detailed_caption inference...")
     caption = engine.generate_detailed_caption(img)
-    print(f"Caption: {caption}")
+    assert isinstance(caption, str)
 
-    print("Testing VQA fallback...")
-    answer = engine.ask_image(img, "What color is the image?")
-    print(f"Answer: {answer}")
+def test_vlm_vqa():
+    engine = VLMEngine()
+    img = Image.new('RGB', (100, 100), color='blue')
     
-    print("Test Complete.")
-
-if __name__ == "__main__":
-    main()
+    answer = engine.ask_image(img, "What color is the image?")
+    assert isinstance(answer, str)

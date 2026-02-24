@@ -1,5 +1,4 @@
 import sqlite3
-import pandas as pd
 import numpy as np
 import os
 import pickle
@@ -778,6 +777,182 @@ class DBManager:
             conn.close()
 
     # ------------------------------------------------------------------ #
+    # Tag Editing Methods
+    # ------------------------------------------------------------------ #
+
+    def _get_tag_column(self, category: str) -> str:
+        mapping = {
+            "general": "tags",
+            "character": "character_tags",
+            "series": "series_tags"
+        }
+        if category not in mapping:
+            raise ValueError(f"Invalid tag category: {category}")
+        return mapping[category]
+    def _deduplicate_tags_ci(self, tags: List[str]) -> List[str]:
+        seen = set()
+        result = []
+        for tag in tags:
+            clean = tag.strip()
+            if not clean:
+                continue
+            if clean.lower() not in seen:
+                seen.add(clean.lower())
+                result.append(clean)
+        return result
+
+    def add_tags(self, file_id: int, tags: List[str], category: str = "general") -> List[str]:
+        """Append tags to the specified category, deduplicate, and return updated list."""
+        tags = self._deduplicate_tags_ci(tags)
+        column = self._get_tag_column(category)
+        conn = self._connect()
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        
+        try:
+            c.execute(f"SELECT {column} FROM files WHERE id = ?", (file_id,))
+            row = c.fetchone()
+            if not row:
+                raise ValueError(f"File ID {file_id} not found")
+            
+            def safe_parse(val):
+                if not val: return []
+                try: return json.loads(val)
+                except: return []
+            
+            current_tags = safe_parse(row[0])
+            # Case-insensitive deduplication while preserving original case if already present
+            # For simplicity, we'll just use a set of lowercase to check, but keep original if it exists
+            new_tags_set = set(t.strip() for t in tags if t.strip())
+            updated_tags = current_tags[:]
+            
+            lowercase_current = [t.lower() for t in current_tags]
+            for nt in new_tags_set:
+                if nt.lower() not in lowercase_current:
+                    updated_tags.append(nt)
+            
+            c.execute(f"UPDATE files SET {column} = ? WHERE id = ?", (json.dumps(updated_tags), file_id))
+            conn.commit()
+            return updated_tags
+        except Exception as e:
+            conn.rollback()
+            raise e
+        finally:
+            conn.close()
+
+    def remove_tags(self, file_id: int, tags: List[str], category: str = "general") -> List[str]:
+        """Remove tags from the specified category and return updated list."""
+        column = self._get_tag_column(category)
+        conn = self._connect()
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        
+        try:
+            c.execute(f"SELECT {column} FROM files WHERE id = ?", (file_id,))
+            row = c.fetchone()
+            if not row:
+                raise ValueError(f"File ID {file_id} not found")
+            
+            def safe_parse(val):
+                if not val: return []
+                try: return json.loads(val)
+                except: return []
+                
+            current_tags = safe_parse(row[0])
+            to_remove = set(t.lower() for t in tags)
+            updated_tags = [t for t in current_tags if t.lower() not in to_remove]
+            
+            c.execute(f"UPDATE files SET {column} = ? WHERE id = ?", (json.dumps(updated_tags), file_id))
+            conn.commit()
+            return updated_tags
+        except Exception as e:
+            conn.rollback()
+            raise e
+        finally:
+            conn.close()
+
+    def bulk_update_tags(self, file_ids: List[int], action: str, tags: List[str], category: str = "general") -> Dict[str, Any]:
+        """Update tags for multiple files in a single transaction."""
+        tags = self._deduplicate_tags_ci(tags)
+        column = self._get_tag_column(category)
+        conn = self._connect()
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        
+        affected_count = 0
+        errors = []
+        
+        def safe_parse(val):
+            if not val: return []
+            try: return json.loads(val)
+            except: return []
+
+        try:
+            # We use a single transaction for efficiency
+            for fid in file_ids:
+                try:
+                    c.execute(f"SELECT {column} FROM files WHERE id = ?", (fid,))
+                    row = c.fetchone()
+                    if not row:
+                        errors.append({"file_id": fid, "error": "File not found"})
+                        continue
+                    
+                    current_tags = safe_parse(row[0])
+                    updated_tags = current_tags[:]
+                    
+                    if action == "add":
+                        new_tags_set = set(t.strip() for t in tags if t.strip())
+                        lowercase_current = [t.lower() for t in current_tags]
+                        for nt in new_tags_set:
+                            if nt.lower() not in lowercase_current:
+                                updated_tags.append(nt)
+                    elif action == "remove":
+                        to_remove = set(t.lower() for t in tags)
+                        updated_tags = [t for t in current_tags if t.lower() not in to_remove]
+                    elif action == "replace":
+                        updated_tags = [t.strip() for t in tags if t.strip()]
+                    else:
+                        raise ValueError(f"Invalid action: {action}")
+                    
+                    c.execute(f"UPDATE files SET {column} = ? WHERE id = ?", (json.dumps(updated_tags), fid))
+                    affected_count += 1
+                except Exception as e:
+                    errors.append({"file_id": fid, "error": str(e)})
+            
+            conn.commit()
+            return {"affected_count": affected_count, "errors": errors}
+        except Exception as e:
+            conn.rollback()
+            raise e
+        finally:
+            conn.close()
+
+    def suggest_tags(self, query: str, category: str = "general", limit: int = 10) -> List[Dict[str, Any]]:
+        """Autocomplete suggestions based on prefix match, ordered by usage count."""
+        column = self._get_tag_column(category)
+        conn = self._connect()
+        c = conn.cursor()
+        
+        try:
+            # Use json_each to flatten the array of tags
+            # We want to count occurrences of each tag that matches the prefix
+            # Note: prefix match is case-insensitive by default in some SQLite setups, 
+            # but we'll use LOWER() for safety.
+            sql = f"""
+                SELECT value as tag, COUNT(*) as count
+                FROM files, json_each({column})
+                WHERE LOWER(value) LIKE ?
+                GROUP BY value
+                ORDER BY count DESC
+                LIMIT ?
+            """
+            c.execute(sql, (f"{query.lower()}%", limit))
+            rows = c.fetchall()
+            return [{"tag": row[0], "count": row[1]} for row in rows]
+        finally:
+            conn.close()
+
+    # ------------------------------------------------------------------ #
     # Hybrid Search Methods
     # ------------------------------------------------------------------ #
 
@@ -1099,3 +1274,254 @@ class DBManager:
             conn.commit()
         finally:
             conn.close()
+
+    # ------------------------------------------------------------------ #
+    # Tag Dashboard Methods
+    # ------------------------------------------------------------------ #
+
+    def get_tag_stats(self) -> Dict[str, Any]:
+        """Returns all tags with usage counts grouped by category."""
+        conn = self._connect()
+        c = conn.cursor()
+        
+        try:
+            stats = {}
+            total_unique_tags = set()
+            
+            for category, column in [("general", "tags"), ("character", "character_tags"), ("series", "series_tags")]:
+                # Use json_each to flatten and count
+                sql = f"""
+                    SELECT value as tag, COUNT(*) as count
+                    FROM files, json_each(files.{column})
+                    GROUP BY value
+                    ORDER BY count DESC
+                """
+                c.execute(sql)
+                rows = c.fetchall()
+                category_tags = [{"tag": row[0], "count": row[1]} for row in rows]
+                stats[category] = category_tags
+                for row in rows:
+                    total_unique_tags.add((category, row[0]))
+            
+            stats["total_tags"] = len(total_unique_tags)
+            
+            # untagged_count: COUNT of files where tags is NULL or empty JSON array '[]'
+            c.execute("SELECT COUNT(*) FROM files WHERE tags IS NULL OR tags = '[]'")
+            stats["untagged_count"] = c.fetchone()[0]
+            
+            return stats
+        finally:
+            conn.close()
+
+    def get_untagged_files(self, page: int = 1, per_page: int = 50) -> Dict[str, Any]:
+        """Returns files with no tags."""
+        conn = self._connect()
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        
+        offset = (page - 1) * per_page
+        
+        try:
+            # Files with no tags - following spec: tags IS NULL OR tags = '[]'
+            where_clause = "tags IS NULL OR tags = '[]'"
+            
+            c.execute(f"SELECT COUNT(*) FROM files WHERE {where_clause}")
+            total_count = c.fetchone()[0]
+            
+            c.execute(f"""
+                SELECT id, file_path, media_type, width, height, tags, character_tags, series_tags, caption
+                FROM files
+                WHERE {where_clause}
+                ORDER BY created_at DESC
+                LIMIT ? OFFSET ?
+            """, (per_page, offset))
+            
+            rows = c.fetchall()
+            return {
+                "files": [dict(r) for r in rows],
+                "total_count": total_count
+            }
+        finally:
+            conn.close()
+
+    def rename_tag(self, old_tag: str, new_tag: str, category: str) -> Dict[str, int]:
+        """
+        Rename or delete a tag across all files.
+        If new_tag is empty, it's a deletion.
+        """
+        column = self._get_tag_column(category)
+        conn = self._connect()
+        c = conn.cursor()
+        
+        renamed_count = 0
+        merged_count = 0
+        
+        try:
+            # Find all files containing the old tag
+            c.execute(f"""
+                SELECT DISTINCT files.id FROM files, json_each(files.{column})
+                WHERE value = ?
+            """, (old_tag,))
+            file_ids = [row[0] for row in c.fetchall()]
+            
+            for fid in file_ids:
+                c.execute(f"SELECT {column} FROM files WHERE id = ?", (fid,))
+                row = c.fetchone()
+                if not row: continue
+                
+                tags = json.loads(row[0]) if row[0] else []
+                
+                # Check if new_tag already exists in this file (case-insensitive check but original preserve)
+                has_new = False
+                if new_tag:
+                    has_new = any(t.lower() == new_tag.lower() for t in tags)
+                
+                # Remove old tag (exact match)
+                new_tags_list = [t for t in tags if t != old_tag]
+                
+                if new_tag:
+                    if not has_new:
+                        new_tags_list.append(new_tag)
+                        renamed_count += 1
+                    else:
+                        # old_tag removed, new_tag already there.
+                        merged_count += 1
+                else:
+                    # Deletion case: old tag matched and removed
+                    renamed_count += 1
+                
+                c.execute(f"UPDATE files SET {column} = ? WHERE id = ?", (json.dumps(new_tags_list), fid))
+            
+            conn.commit()
+            return {"renamed_count": renamed_count, "merged_count": merged_count}
+        except Exception as e:
+            conn.rollback()
+            raise e
+        finally:
+            conn.close()
+    def get_insights(self) -> List[Dict[str, Any]]:
+        """
+        Analyze the library and return actionable suggestions.
+        """
+        insights = []
+        insights.extend(self._insight_duplicates())
+        insights.extend(self._insight_untagged())
+        insights.extend(self._insight_album_suggestions())
+        insights.extend(self._insight_low_quality_tags())
+        return insights
+
+    def _insight_duplicates(self) -> List[Dict[str, Any]]:
+        from src.core.deduplication import Deduplicator
+        deduper = Deduplicator(self)
+        try:
+            # Quick check: do we have enough vectors to even have duplicates?
+            if self.clip_index.ntotal < 2:
+                return []
+                
+            # We use a relatively high threshold for insights to avoid noise
+            pairs = deduper.find_duplicates(threshold_img=0.98, threshold_vid=0.99)
+            if len(pairs) > 0:
+                return [{
+                    "type": "duplicate_found",
+                    "title": "Similar images detected",
+                    "message": f"{len(pairs)} groups of similar images found in your library",
+                    "action_url": "/settings",
+                    "action_label": "Open Cleaner",
+                    "priority": "high",
+                    "count": len(pairs)
+                }]
+        except Exception as e:
+            logger.error(f"Insight duplication check failed: {e}")
+        return []
+
+    def _insight_untagged(self) -> List[Dict[str, Any]]:
+        conn = self._connect()
+        c = conn.cursor()
+        try:
+            c.execute("SELECT COUNT(*) FROM files WHERE tags IS NULL OR tags = '[]' OR tags = ''")
+            count = c.fetchone()[0]
+            if count > 0:
+                return [{
+                    "type": "untagged_files",
+                    "title": "Untagged files",
+                    "message": f"{count} files categorized as untagged",
+                    "action_url": "/tags",
+                    "action_label": "Tag Dashboard",
+                    "priority": "high" if count > 50 else "medium",
+                    "count": count
+                }]
+        finally:
+            conn.close()
+        return []
+
+    def _insight_album_suggestions(self) -> List[Dict[str, Any]]:
+        conn = self._connect()
+        c = conn.cursor()
+        try:
+            # Find top 3 tags with 20+ files
+            c.execute("""
+                SELECT value as tag, COUNT(*) as count
+                FROM files, json_each(files.tags)
+                GROUP BY value
+                HAVING count >= 20
+                ORDER BY count DESC
+                LIMIT 10
+            """)
+            top_tags = c.fetchall()
+            
+            # Check if any of these already have an album
+            c.execute("SELECT name FROM albums")
+            existing_albums = {row[0].lower() for row in c.fetchall()}
+            
+            suggestions = []
+            for tag, count in top_tags:
+                if tag.lower() not in existing_albums:
+                    query_json = json.dumps({
+                        "query": "",
+                        "filters": {"tags": [tag]},
+                        "top_k": 100
+                    })
+                    suggestions.append({
+                        "type": "album_suggestion",
+                        "title": "New Smart Album?",
+                        "message": f'"{tag}" appears in {count} files — create a Smart Album?',
+                        "action_url": f"/api/albums", # Handled specially by frontend
+                        "action_label": "Create Album",
+                        "priority": "medium",
+                        "tag": tag,
+                        "query_json": query_json,
+                        "count": count
+                    })
+                    if len(suggestions) >= 3:
+                        break
+            return suggestions
+        finally:
+            conn.close()
+        return []
+
+    def _insight_low_quality_tags(self) -> List[Dict[str, Any]]:
+        conn = self._connect()
+        c = conn.cursor()
+        try:
+            # Files with 1-2 tags that HAVE been processed (so we actually extracted something but it's sparse)
+            c.execute("""
+                SELECT COUNT(*) FROM files 
+                WHERE is_processed = 1 
+                AND tags IS NOT NULL 
+                AND json_array_length(tags) > 0 
+                AND json_array_length(tags) <= 2
+            """)
+            count = c.fetchone()[0]
+            if count > 10:
+                return [{
+                    "type": "low_quality_tags",
+                    "title": "Sparse metadata",
+                    "message": f"{count} files have very few tags — consider rescanning them",
+                    "action_url": "/tags",
+                    "action_label": "View Tags",
+                    "priority": "low",
+                    "count": count
+                }]
+        finally:
+            conn.close()
+        return []

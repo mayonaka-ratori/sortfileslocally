@@ -21,7 +21,7 @@ class InferenceOrchestrator:
     def classify_style(self, img: Image.Image) -> str:
         return self.ai_engine.classify_style(img)
         
-    def process_image(self, img: Image.Image) -> Dict[str, Any]:
+    def process_image(self, img: Image.Image, skip_face: bool = False) -> Dict[str, Any]:
         """
         Process a single image.
         Returns dictionary with keys: 'clip', 'faces', 'general_tags', 'char_tags', 'series_tags', 'style'
@@ -48,7 +48,7 @@ class InferenceOrchestrator:
         
         # 3. Face Detection
         # Needs BGR numpy
-        if self.ai_engine.face_app:
+        if self.ai_engine.face_app and not skip_face:
             img_np = np.array(img.convert('RGB'))
             img_bgr = img_np[:, :, ::-1]
             raw_faces = self.ai_engine.extract_face_features(img_bgr)
@@ -69,7 +69,7 @@ class InferenceOrchestrator:
             
         return result
 
-    def process_batch(self, images: List[Image.Image]) -> List[Dict[str, Any]]:
+    def process_batch(self, images: List[Image.Image], skip_face: bool = False) -> List[Dict[str, Any]]:
         """
         Process a batch of images.
         Used for video frames.
@@ -97,7 +97,7 @@ class InferenceOrchestrator:
         
         # 2. Face Batch
         faces_list = [[]] * len(images)
-        if self.ai_engine.face_app:
+        if self.ai_engine.face_app and not skip_face:
             bgr_stack = [np.array(img.convert('RGB'))[:, :, ::-1] for img in images]
             faces_list = self.ai_engine.extract_face_features_batch(bgr_stack)
         

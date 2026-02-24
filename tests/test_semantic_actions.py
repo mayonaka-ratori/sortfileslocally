@@ -1,5 +1,12 @@
 import unittest
+import pytest
 from unittest.mock import patch, MagicMock
+
+try:
+    import ollama
+except ImportError:
+    pytest.skip("ollama not installed", allow_module_level=True)
+
 from src.core.semantic_actions import SemanticEngine
 
 class TestSemanticEngine(unittest.TestCase):
@@ -75,6 +82,3 @@ class TestSemanticEngine(unittest.TestCase):
         self.assertEqual(called_item.file_path, 'C:/fake/img1.png')
         self.assertEqual(called_args[2], 'trash') # destination_folder
         self.assertEqual(called_args[3], 'dry_run') # operation
-
-if __name__ == '__main__':
-    unittest.main()

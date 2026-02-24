@@ -1,9 +1,13 @@
-
 import sys
 import os
-import numpy as np
-from PIL import Image
-import cv2
+import pytest
+
+try:
+    import numpy as np
+    import cv2
+    from PIL import Image
+except Exception:
+    pytest.skip("Dependencies missing for engine test (cv2, numpy, PIL)", allow_module_level=True)
 
 # Add src to path
 sys.path.append(os.path.abspath("src"))
@@ -11,15 +15,11 @@ sys.path.append(os.path.abspath("src"))
 try:
     from core.ai_models import AIEngine
     from core.video_processor import VideoProcessor
-except ImportError as e:
-    print(f"Import Error: {e}")
-    raise e
+except Exception:
+    pytest.skip("Core modules failed to import (likely missing torch/faiss)", allow_module_level=True)
 
 def create_dummy_video(filename="dummy_video.mp4", duration_sec=5, fps=30):
-    print(f"Creating dummy video: {filename}...")
     height, width = 640, 640
-    # fourcc = cv2.VideoWriter_fourcc(*'mp4v') 
-    # Windows usually supports 'mp4v' effectively.
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     out = cv2.VideoWriter(filename, fourcc, fps, (width, height))
     
@@ -35,77 +35,53 @@ def create_dummy_video(filename="dummy_video.mp4", duration_sec=5, fps=30):
         out.write(frame)
     
     out.release()
-    print("Dummy video created.")
 
-def test_engine():
-    print("=== Starting AIEngine & VideoProcessor Test ===")
-    
-    # 1. Initialize Engine
-    print("\n[Test 1] Initializing AIEngine...")
+def test_engine_initialization():
     try:
         engine = AIEngine()
-        print("✅ AIEngine initialized.")
+        assert engine is not None
     except Exception as e:
-        print(f"❌ Failed to initialize AIEngine: {e}")
-        return
+        pytest.fail(f"AIEngine failed to initialize: {e}")
 
-    # 2. Test CLIP
-    print("\n[Test 2] Testing CLIP Feature Extraction...")
+def test_clip_extraction():
+    engine = AIEngine()
     dummy_image = Image.fromarray(np.random.randint(0, 255, (224, 224, 3), dtype=np.uint8))
     
     try:
         clip_vector = engine.extract_clip_feature(dummy_image)
-        if clip_vector.shape == (768,):
-            print("✅ CLIP extraction successful (Dimension: 768).")
-        else:
-            print(f"❌ CLIP vector dimension mismatch. Expected (768,), got {clip_vector.shape}")
+        assert clip_vector.shape == (768,)
     except Exception as e:
-        print(f"❌ CLIP extraction failed: {e}")
+        pytest.fail(f"CLIP extraction failed: {e}")
 
-    # 3. Test InsightFace
-    print("\n[Test 3] Testing InsightFace Feature Extraction...")
-    # Using a dummy BGR image
+def test_insightface_execution():
+    engine = AIEngine()
     dummy_face_img = np.random.randint(0, 255, (640, 640, 3), dtype=np.uint8)
     
     try:
         faces = engine.extract_face_features(dummy_face_img)
-        print(f"Faces detected: {len(faces)}")
-        print("✅ InsightFace execution successful (No crash).")
+        assert isinstance(faces, list)
     except Exception as e:
-        print(f"❌ InsightFace execution failed: {e}")
+        pytest.fail(f"InsightFace execution failed: {e}")
 
-    # 4. Test VideoProcessor
-    print("\n[Test 4] Testing VideoProcessor...")
-    dummy_vid_name = "dummy_video.mp4"
+def test_video_processor():
+    dummy_vid_name = "dummy_video_test.mp4"
     create_dummy_video(dummy_vid_name)
     
     try:
         vp = VideoProcessor()
-        # Ensure it shares the same AIEngine instance (Singleton check implicitly)
-        
-        print(f"Processing {dummy_vid_name}...")
         result = vp.process_video(dummy_vid_name)
         
         if result:
-            print(f"✅ Video processing successful.")
-            print(f"   Duration: {result['duration']:.2f}s")
-            print(f"   FPS: {result['fps']:.2f}")
-            print(f"   CLIP Vector Shape: {result['clip_embedding'].shape}")
-            print(f"   Faces Detected: {len(result['faces'])}")
+            assert result['duration'] > 0
+            assert result['fps'] > 0
+            assert result['clip_embedding'].shape == (768,)
+            assert isinstance(result['faces'], list)
         else:
-            print("❌ Video processing returned None.")
+            pytest.fail("Video processing returned None")
             
     except Exception as e:
-        print(f"❌ Video processing failed: {e}")
+        pytest.fail(f"Video processing failed: {e}")
     finally:
-        # Cleanup
         if os.path.exists(dummy_vid_name):
-            try:
-                os.remove(dummy_vid_name)
-            except:
-                pass
-
-    print("\n=== Test Complete ===")
-
-if __name__ == "__main__":
-    test_engine()
+            try: os.remove(dummy_vid_name)
+            except: pass

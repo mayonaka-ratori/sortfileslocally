@@ -8,6 +8,7 @@ import { Sidebar } from "@/components/Sidebar"
 import { HybridSearchBar } from "@/components/HybridSearchBar"
 import { Menu, Save } from "lucide-react"
 import SaveAlbumModal from "@/components/SaveAlbumModal"
+import { InsightsPanel } from "@/components/InsightsPanel"
 
 export default function Home() {
   const [media, setMedia] = useState<MediaItem[]>([])
@@ -199,14 +200,19 @@ export default function Home() {
                 </div>
               )}
             </div>
-            <div className="flex-1 min-h-0">
-              <GalleryGrid
-                media={media}
-                onSelect={setSelectedItem}
-                onLoadMore={handleLoadMore}
-                hasMore={hasMore}
-                onImageDrop={handleImageDrop}
-              />
+
+            <div className="flex-1 min-h-0 overflow-y-auto">
+              <div className="max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8">
+                <InsightsPanel />
+
+                <GalleryGrid
+                  media={media}
+                  onSelect={setSelectedItem}
+                  onLoadMore={handleLoadMore}
+                  hasMore={hasMore}
+                  onImageDrop={handleImageDrop}
+                />
+              </div>
             </div>
           </div>
         )}
@@ -219,6 +225,11 @@ export default function Home() {
             item={selectedItem}
             onClose={() => setSelectedItem(null)}
             onFaceSearch={handleFaceSearch}
+            onItemUpdate={(newItem) => {
+              setSelectedItem(newItem)
+              // Also update the item in the main media list to keep them in sync
+              setMedia(prev => prev.map(m => m.id === newItem.id ? newItem : m))
+            }}
           />
         )
       }

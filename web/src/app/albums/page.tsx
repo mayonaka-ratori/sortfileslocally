@@ -5,6 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { fetchAlbums, Album, getThumbnailUrl } from '@/lib/api';
 import { Sidebar } from '@/components/Sidebar';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Sparkles, Folder, Plus, ChevronRight, Image as ImageIcon } from 'lucide-react';
 
 export default function AlbumsPage() {
@@ -65,10 +66,11 @@ export default function AlbumsPage() {
                                 >
                                     <div className="aspect-[4/3] relative bg-zinc-950 flex items-center justify-center overflow-hidden">
                                         {album.cover_file_id ? (
-                                            <img
+                                            <Image
                                                 src={getThumbnailUrl(album.cover_file_id, 600)}
                                                 alt={album.name}
-                                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 opacity-60 group-hover:opacity-100"
+                                                fill
+                                                className="object-cover transition-transform duration-500 group-hover:scale-110 opacity-60 group-hover:opacity-100"
                                             />
                                         ) : (
                                             <div className="flex flex-col items-center gap-3 text-zinc-800 group-hover:text-zinc-500 transition-colors">

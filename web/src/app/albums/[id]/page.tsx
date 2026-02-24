@@ -123,7 +123,7 @@ export default function AlbumDetailPage() {
                                 <div className="h-px flex-1 bg-zinc-800" />
                             </div>
                             <div className="flex items-center gap-4">
-                                <span className="text-zinc-300 italic text-sm">"{queryInfo.query}"</span>
+                                <span className="text-zinc-300 italic text-sm">&quot;{queryInfo.query}&quot;</span>
                                 {Object.values(queryInfo.filters || {}).some(v => Array.isArray(v) ? v.length > 0 : !!v) && (
                                     <div className="flex flex-wrap gap-1.5 border-l border-zinc-800 pl-4">
                                         {Object.entries(queryInfo.filters || {}).flatMap(([key, val]) => (

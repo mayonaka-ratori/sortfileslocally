@@ -6,6 +6,10 @@ import { Search, Loader2, Menu, PlayCircle, FileText, CheckCircle2, Download, X 
 import { useInView } from "react-intersection-observer"
 import Image from "next/image"
 import { BulkExportModal } from "./BulkExportModal"
+import { BulkTagModal } from "./BulkTagModal"
+import { Album, fetchAlbums, addItemsToAlbum } from "@/lib/api"
+import { Tag, FolderPlus, Folder, RefreshCw } from "lucide-react"
+import { BulkRescanModal } from "./BulkRescanModal"
 
 const MediaCard = ({
     item,
@@ -132,6 +136,10 @@ export function GalleryGrid({ media, onSelect, onSearch, onLoadMore, hasMore, on
     const [isDragging, setIsDragging] = useState(false)
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
     const [showBulkModal, setShowBulkModal] = useState(false)
+    const [showBulkTagModal, setShowBulkTagModal] = useState(false)
+    const [showBulkRescanModal, setShowBulkRescanModal] = useState(false)
+    const [showAlbumDropdown, setShowAlbumDropdown] = useState(false)
+    const [albums, setAlbums] = useState<Album[]>([])
     const { ref, inView } = useInView()
 
     useEffect(() => {
@@ -154,6 +162,33 @@ export function GalleryGrid({ media, onSelect, onSearch, onLoadMore, hasMore, on
 
     const clearSelection = () => {
         setSelectedIds(new Set())
+        setShowAlbumDropdown(false)
+    }
+
+    const handleAddToAlbumClick = async () => {
+        if (!showAlbumDropdown) {
+            try {
+                const data = await fetchAlbums()
+                setAlbums(data.filter(a => !a.is_dynamic))
+                setShowAlbumDropdown(true)
+            } catch (err) {
+                console.error("Failed to fetch albums", err)
+            }
+        } else {
+            setShowAlbumDropdown(false)
+        }
+    }
+
+    const handleAlbumSelect = async (albumId: number) => {
+        try {
+            await addItemsToAlbum(albumId, Array.from(selectedIds))
+            const albumName = albums.find(a => a.id === albumId)?.name || 'album'
+            alert(`Added ${selectedIds.size} files to ${albumName}`)
+            clearSelection()
+        } catch (err) {
+            console.error("Failed to add items to album", err)
+            alert("Failed to add items to album")
+        }
     }
 
     const handleDragOver = (e: React.DragEvent) => {
@@ -217,12 +252,64 @@ export function GalleryGrid({ media, onSelect, onSearch, onLoadMore, hasMore, on
                         <span className="text-white font-bold text-sm leading-none">{selectedIds.size}</span>
                         <span className="text-indigo-100 text-xs font-medium uppercase tracking-tight">Selected</span>
                     </div>
+
+                    <button
+                        onClick={() => setShowBulkTagModal(true)}
+                        className="flex items-center gap-2 text-white hover:text-indigo-100 transition-colors py-1"
+                    >
+                        <Tag className="w-4 h-4" />
+                        <span className="text-xs font-bold uppercase tracking-wider">Edit Tags</span>
+                    </button>
+
+                    <div className="relative">
+                        <button
+                            onClick={handleAddToAlbumClick}
+                            className="flex items-center gap-2 text-white hover:text-indigo-100 transition-colors py-1"
+                        >
+                            <FolderPlus className="w-4 h-4" />
+                            <span className="text-xs font-bold uppercase tracking-wider">Add to Album</span>
+                        </button>
+
+                        {showAlbumDropdown && (
+                            <div className="absolute bottom-full mb-2 left-0 w-48 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200">
+                                <div className="p-2 border-b border-zinc-800">
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 px-2">Select Album</span>
+                                </div>
+                                <div className="max-h-60 overflow-y-auto p-1">
+                                    {albums.length === 0 ? (
+                                        <div className="p-4 text-center">
+                                            <p className="text-xs text-zinc-500">No static albums found</p>
+                                        </div>
+                                    ) : (
+                                        albums.map(album => (
+                                            <button
+                                                key={album.id}
+                                                onClick={() => handleAlbumSelect(album.id)}
+                                                className="w-full text-left px-3 py-2 rounded-lg text-xs font-medium text-zinc-300 hover:text-white hover:bg-indigo-600 transition-all flex items-center gap-2"
+                                            >
+                                                <Folder className="w-3.5 h-3.5 opacity-50" />
+                                                <span className="truncate">{album.name}</span>
+                                            </button>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
                     <button
                         onClick={() => setShowBulkModal(true)}
                         className="flex items-center gap-2 text-white hover:text-indigo-100 transition-colors py-1"
                     >
                         <Download className="w-4 h-4" />
                         <span className="text-xs font-bold uppercase tracking-wider">Export Meta</span>
+                    </button>
+                    <button
+                        onClick={() => setShowBulkRescanModal(true)}
+                        className="flex items-center gap-2 text-white hover:text-indigo-100 transition-colors py-1"
+                    >
+                        <RefreshCw className="w-4 h-4" />
+                        <span className="text-xs font-bold uppercase tracking-wider">Rescan</span>
                     </button>
                     <button
                         onClick={clearSelection}
@@ -262,12 +349,32 @@ export function GalleryGrid({ media, onSelect, onSearch, onLoadMore, hasMore, on
                 )}
             </div>
 
+            {showBulkTagModal && (
+                <BulkTagModal
+                    selectedItems={selectedItems}
+                    onClose={() => setShowBulkTagModal(false)}
+                    onSuccess={(res) => {
+                        alert(`Successfully updated tags for ${res.affected_count} files.`);
+                        clearSelection();
+                    }}
+                />
+            )}
             {showBulkModal && (
                 <BulkExportModal
                     selectedItems={selectedItems}
                     onClose={() => setShowBulkModal(false)}
                     onSuccess={(success, failed) => {
                         alert(`Successfully exported metadata for ${success} files.${failed > 0 ? ` (${failed} failed)` : ''}`);
+                        clearSelection();
+                    }}
+                />
+            )}
+            {showBulkRescanModal && (
+                <BulkRescanModal
+                    selectedItems={selectedItems}
+                    onClose={() => setShowBulkRescanModal(false)}
+                    onSuccess={() => {
+                        alert("Bulk rescan completed!");
                         clearSelection();
                     }}
                 />

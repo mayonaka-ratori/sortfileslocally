@@ -517,3 +517,167 @@ export const browseFolder = async (): Promise<{ path: string | null; cancelled: 
     if (!res.ok) throw new Error("Failed to open folder dialog");
     return res.json();
 };
+
+// ------------------------------------------------------------------ #
+// Tag Editor APIs
+// ------------------------------------------------------------------ #
+
+export interface TagSuggestion {
+    tag: string;
+    count: number;
+}
+
+export type TagCategory = "general" | "character" | "series";
+
+export const addTags = async (fileId: number, tags: string[], category: TagCategory = "general"): Promise<{ tags: string[]; updated_count: number }> => {
+    const res = await fetch(`${API_BASE_URL}/media/${fileId}/tags`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tags, category }),
+    });
+    if (!res.ok) throw new Error("Failed to add tags");
+    return res.json();
+};
+
+export const removeTags = async (fileId: number, tags: string[], category: TagCategory = "general"): Promise<{ tags: string[]; removed_count: number }> => {
+    const res = await fetch(`${API_BASE_URL}/media/${fileId}/tags`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tags, category }),
+    });
+    if (!res.ok) throw new Error("Failed to remove tags");
+    return res.json();
+};
+
+export const suggestTags = async (query: string, category?: TagCategory, limit: number = 10): Promise<TagSuggestion[]> => {
+    const params = new URLSearchParams({ q: query, limit: limit.toString() });
+    if (category) params.append("category", category);
+    const res = await fetch(`${API_BASE_URL}/gallery/tags/suggest?${params.toString()}`);
+    if (!res.ok) throw new Error("Failed to fetch tag suggestions");
+    return res.json();
+};
+
+export interface BulkTagResponse {
+    affected_count: number;
+    action: string;
+    tags: string[];
+    errors: { file_id: number; error: string }[];
+}
+
+export const bulkUpdateTags = async (
+    fileIds: number[],
+    action: "add" | "remove" | "replace",
+    tags: string[],
+    category: TagCategory = "general"
+): Promise<BulkTagResponse> => {
+    const res = await fetch(`${API_BASE_URL}/media/bulk-tags`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ file_ids: fileIds, action, tags, category }),
+    });
+    if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ detail: "Bulk update failed" }));
+        throw new Error(errorData.detail || "Bulk update failed");
+    }
+    return res.json();
+};
+
+// ------------------------------------------------------------------ #
+// Tag Dashboard APIs
+// ------------------------------------------------------------------ #
+
+export interface TagStat {
+    tag: string;
+    count: number;
+}
+
+export interface TagStats {
+    general: TagStat[];
+    character: TagStat[];
+    series: TagStat[];
+    total_tags: number;
+    untagged_count: number;
+}
+
+export interface UntaggedFilesResponse {
+    files: MediaItem[];
+    total_count: number;
+}
+
+export const getTagStats = async (): Promise<TagStats> => {
+    const res = await fetch(`${API_BASE_URL}/gallery/tags/stats`);
+    if (!res.ok) throw new Error("Failed to fetch tag stats");
+    return res.json();
+};
+
+export const getUntaggedFiles = async (page: number = 1, perPage: number = 50): Promise<UntaggedFilesResponse> => {
+    const params = new URLSearchParams({ page: page.toString(), per_page: perPage.toString() });
+    const res = await fetch(`${API_BASE_URL}/gallery/untagged?${params.toString()}`);
+    if (!res.ok) throw new Error("Failed to fetch untagged files");
+    return res.json();
+};
+
+export const renameTag = async (oldTag: string, newTag: string, category: TagCategory): Promise<{ renamed_count: number; merged_count: number }> => {
+    const res = await fetch(`${API_BASE_URL}/gallery/tags/rename`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ old_tag: oldTag, new_tag: newTag, category }),
+    });
+    if (!res.ok) throw new Error("Failed to rename tag");
+    return res.json();
+};
+
+// ------------------------------------------------------------------ #
+// AI Rescan APIs
+// ------------------------------------------------------------------ #
+
+export type RescanMode = "overwrite" | "append";
+
+export const rescanFile = async (fileId: number, mode: RescanMode = "append"): Promise<{ status: string; file_id: number }> => {
+    const res = await fetch(`${API_BASE_URL}/media/${fileId}/rescan`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode }),
+    });
+    if (!res.ok) throw new Error("Failed to trigger rescan");
+    return res.json();
+};
+
+export const bulkRescan = async (fileIds: number[], mode: RescanMode = "append"): Promise<{ status: string; job_id: number; file_count: number }> => {
+    const res = await fetch(`${API_BASE_URL}/media/bulk-rescan`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ file_ids: fileIds, mode }),
+    });
+    if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ detail: "Bulk rescan failed" }));
+        throw new Error(errorData.detail || "Bulk rescan failed");
+    }
+    return res.json();
+};
+// ------------------------------------------------------------------ #
+// Insights APIs
+// ------------------------------------------------------------------ #
+
+export interface InsightItem {
+    type: "duplicate_found" | "untagged_files" | "album_suggestion" | "low_quality_tags";
+    title: string;
+    message: string;
+    action_url: string;
+    action_label: string;
+    priority: "high" | "medium" | "low";
+    count: number;
+    tag?: string;
+    query_json?: string;
+}
+
+export interface InsightsResponse {
+    insights: InsightItem[];
+    generated_at: string;
+}
+
+export const getInsights = async (): Promise<InsightsResponse> => {
+    const res = await fetch(`${API_BASE_URL}/insights`);
+    if (!res.ok) throw new Error("Failed to fetch insights");
+    return res.json();
+};
