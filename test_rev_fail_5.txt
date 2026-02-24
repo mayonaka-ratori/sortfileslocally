@@ -1,0 +1,58 @@
+============================= test session starts =============================
+platform win32 -- Python 3.14.0, pytest-9.0.2, pluggy-1.6.0 -- C:\Python314\python.exe
+cachedir: .pytest_cache
+rootdir: C:\tools\organizefiles0112\LocalCuratorPrime
+plugins: anyio-4.12.1
+collecting ... collected 1 item
+
+tests/test_reverse_search.py::test_reverse_search_endpoint FAILED
+
+================================== FAILURES ===================================
+________________________ test_reverse_search_endpoint _________________________
+
+mock_db_rev_search = (<src.data.db_manager.DBManager object at 0x0000029C5431CC20>, 'C:\\Users\\hosom\\AppData\\Local\\Temp\\pytest-of-hosom\\pytest-40\\test_reverse_search_endpoint0\\data\\test_db_rev_search')
+
+    def test_reverse_search_endpoint(mock_db_rev_search):
+        db, test_db_dir = mock_db_rev_search
+    
+        def override_get_db_manager():
+            return db
+    
+        def override_get_ai_engine():
+            return MockAIEngine()
+    
+        app.dependency_overrides[get_db_manager] = override_get_db_manager
+        app.dependency_overrides[get_ai_engine] = override_get_ai_engine
+    
+        with TestClient(app) as client:
+            # We need a real Image if possible, or mock it if PIL is missing
+            # Since PIL is mocked, Image.new returns a mock
+            img = Image.new('RGB', (100, 100), color='red')
+            img_byte_arr = io.BytesIO()
+            # Mock save if Image is a mock
+            if hasattr(img, 'save'):
+                 img.save(img_byte_arr, format='JPEG')
+            else:
+                 img_byte_arr.write(b"fake jpeg data")
+            img_byte_arr.seek(0)
+    
+            response = client.post(
+                "/dedup/reverse-search",
+                files={"file": ("test.jpg", img_byte_arr, "image/jpeg")},
+                params={"top_k": 5}
+            )
+    
+            if response.status_code != 200:
+                print(f"Error detail: {response.text}")
+            assert response.status_code == 200
+    
+            data = response.json()
+            assert isinstance(data, list)
+>           assert len(data) > 0
+E           assert 0 > 0
+E            +  where 0 = len([])
+
+tests\test_reverse_search.py:116: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_reverse_search.py::test_reverse_search_endpoint - assert 0 > 0
+============================== 1 failed in 2.22s ==============================

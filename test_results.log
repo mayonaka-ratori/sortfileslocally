@@ -1,0 +1,121 @@
+============================= test session starts =============================
+platform win32 -- Python 3.10.11, pytest-9.0.2, pluggy-1.6.0 -- C:\tools\organizefiles0112\LocalCuratorPrime\venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\tools\organizefiles0112\LocalCuratorPrime
+plugins: anyio-4.12.1
+collecting ... collected 22 items / 9 errors / 5 skipped
+
+=================================== ERRORS ====================================
+__________________ ERROR collecting tests/test_album_api.py ___________________
+tests\test_album_api.py:31: in <module>
+    from server.main import app
+server\main.py:10: in <module>
+    from server.routers import gallery, media, scan, setup, dedup, albums, insights
+server\routers\gallery.py:25: in <module>
+    class MediaItemResponse(BaseModel):
+server\routers\gallery.py:37: in MediaItemResponse
+    matched_scene: Optional[Dict[str, Any]] = None
+E   NameError: name 'Dict' is not defined
+__________________ ERROR collecting tests/test_bulk_tags.py ___________________
+tests\test_bulk_tags.py:18: in <module>
+    from server.main import app
+server\main.py:10: in <module>
+    from server.routers import gallery, media, scan, setup, dedup, albums, insights
+server\routers\gallery.py:25: in <module>
+    class MediaItemResponse(BaseModel):
+server\routers\gallery.py:37: in MediaItemResponse
+    matched_scene: Optional[Dict[str, Any]] = None
+E   NameError: name 'Dict' is not defined
+___________________ ERROR collecting tests/test_insights.py ___________________
+tests\test_insights.py:18: in <module>
+    from server.main import app
+server\main.py:10: in <module>
+    from server.routers import gallery, media, scan, setup, dedup, albums, insights
+server\routers\gallery.py:25: in <module>
+    class MediaItemResponse(BaseModel):
+server\routers\gallery.py:37: in MediaItemResponse
+    matched_scene: Optional[Dict[str, Any]] = None
+E   NameError: name 'Dict' is not defined
+___________ ERROR collecting tests/test_integration_export_dedup.py ___________
+tests\test_integration_export_dedup.py:26: in <module>
+    from server.main import app
+server\main.py:10: in <module>
+    from server.routers import gallery, media, scan, setup, dedup, albums, insights
+server\routers\gallery.py:25: in <module>
+    class MediaItemResponse(BaseModel):
+server\routers\gallery.py:37: in MediaItemResponse
+    matched_scene: Optional[Dict[str, Any]] = None
+E   NameError: name 'Dict' is not defined
+____________________ ERROR collecting tests/test_rescan.py ____________________
+tests\test_rescan.py:24: in <module>
+    from server.main import app
+server\main.py:10: in <module>
+    from server.routers import gallery, media, scan, setup, dedup, albums, insights
+server\routers\gallery.py:25: in <module>
+    class MediaItemResponse(BaseModel):
+server\routers\gallery.py:37: in MediaItemResponse
+    matched_scene: Optional[Dict[str, Any]] = None
+E   NameError: name 'Dict' is not defined
+________________ ERROR collecting tests/test_reverse_search.py ________________
+tests\test_reverse_search.py:46: in <module>
+    from server.main import app
+server\main.py:10: in <module>
+    from server.routers import gallery, media, scan, setup, dedup, albums, insights
+server\routers\gallery.py:25: in <module>
+    class MediaItemResponse(BaseModel):
+server\routers\gallery.py:37: in MediaItemResponse
+    matched_scene: Optional[Dict[str, Any]] = None
+E   NameError: name 'Dict' is not defined
+____________________ ERROR collecting tests/test_setup.py _____________________
+tests\test_setup.py:4: in <module>
+    from server.main import app
+server\main.py:10: in <module>
+    from server.routers import gallery, media, scan, setup, dedup, albums, insights
+server\routers\gallery.py:25: in <module>
+    class MediaItemResponse(BaseModel):
+server\routers\gallery.py:37: in MediaItemResponse
+    matched_scene: Optional[Dict[str, Any]] = None
+E   NameError: name 'Dict' is not defined
+___________________ ERROR collecting tests/test_tag_edit.py ___________________
+tests\test_tag_edit.py:18: in <module>
+    from server.main import app
+server\main.py:10: in <module>
+    from server.routers import gallery, media, scan, setup, dedup, albums, insights
+server\routers\gallery.py:25: in <module>
+    class MediaItemResponse(BaseModel):
+server\routers\gallery.py:37: in MediaItemResponse
+    matched_scene: Optional[Dict[str, Any]] = None
+E   NameError: name 'Dict' is not defined
+_____________________ ERROR collecting tests/test_tags.py _____________________
+tests\test_tags.py:18: in <module>
+    from server.main import app
+server\main.py:10: in <module>
+    from server.routers import gallery, media, scan, setup, dedup, albums, insights
+server\routers\gallery.py:25: in <module>
+    class MediaItemResponse(BaseModel):
+server\routers\gallery.py:37: in MediaItemResponse
+    matched_scene: Optional[Dict[str, Any]] = None
+E   NameError: name 'Dict' is not defined
+============================== warnings summary ===============================
+<frozen importlib._bootstrap>:241
+  <frozen importlib._bootstrap>:241: DeprecationWarning: builtin type SwigPyPacked has no __module__ attribute
+
+<frozen importlib._bootstrap>:241
+  <frozen importlib._bootstrap>:241: DeprecationWarning: builtin type SwigPyObject has no __module__ attribute
+
+<frozen importlib._bootstrap>:241
+  <frozen importlib._bootstrap>:241: DeprecationWarning: builtin type swigvarlink has no __module__ attribute
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+ERROR tests/test_album_api.py - NameError: name 'Dict' is not defined
+ERROR tests/test_bulk_tags.py - NameError: name 'Dict' is not defined
+ERROR tests/test_insights.py - NameError: name 'Dict' is not defined
+ERROR tests/test_integration_export_dedup.py - NameError: name 'Dict' is not ...
+ERROR tests/test_rescan.py - NameError: name 'Dict' is not defined
+ERROR tests/test_reverse_search.py - NameError: name 'Dict' is not defined
+ERROR tests/test_setup.py - NameError: name 'Dict' is not defined
+ERROR tests/test_tag_edit.py - NameError: name 'Dict' is not defined
+ERROR tests/test_tags.py - NameError: name 'Dict' is not defined
+!!!!!!!!!!!!!!!!!!! Interrupted: 9 errors during collection !!!!!!!!!!!!!!!!!!!
+================== 5 skipped, 3 warnings, 9 errors in 6.55s ===================

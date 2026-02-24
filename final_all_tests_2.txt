@@ -1,0 +1,155 @@
+============================= test session starts =============================
+platform win32 -- Python 3.14.0, pytest-9.0.2, pluggy-1.6.0 -- C:\Python314\python.exe
+cachedir: .pytest_cache
+rootdir: C:\tools\organizefiles0112\LocalCuratorPrime
+plugins: anyio-4.12.1
+collecting ... collected 65 items / 7 skipped
+
+tests/test_album_api.py::test_create_dynamic_album_validation FAILED     [  1%]
+tests/test_album_api.py::test_update_dynamic_album_validation FAILED     [  3%]
+tests/test_albums.py::test_create_static_album PASSED                    [  4%]
+tests/test_albums.py::test_create_dynamic_album PASSED                   [  6%]
+tests/test_albums.py::test_add_remove_items_static PASSED                [  7%]
+tests/test_albums.py::test_dynamic_album_results PASSED                  [  9%]
+tests/test_albums.py::test_delete_album PASSED                           [ 10%]
+tests/test_albums.py::test_update_album PASSED                           [ 12%]
+tests/test_bulk_tags.py::test_bulk_add_tags PASSED                       [ 13%]
+tests/test_bulk_tags.py::test_bulk_remove_tags PASSED                    [ 15%]
+tests/test_bulk_tags.py::test_bulk_replace_tags PASSED                   [ 16%]
+tests/test_bulk_tags.py::test_bulk_limit_exceeded PASSED                 [ 18%]
+tests/test_bulk_tags.py::test_bulk_mixed_results PASSED                  [ 20%]
+tests/test_bulk_tags.py::test_bulk_empty_tags PASSED                     [ 21%]
+tests/test_bulk_tags.py::test_bulk_add_tags_deduplication PASSED         [ 23%]
+tests/test_debug_unpacking.py::test_batch_unpacking PASSED               [ 24%]
+tests/test_deduplication_merge.py::test_metadata_merge PASSED            [ 26%]
+tests/test_exporter.py::test_export_to_xmp_sidecar PASSED                [ 27%]
+tests/test_exporter.py::test_export_to_exif_jpeg PASSED                  [ 29%]
+tests/test_exporter.py::test_export_exif_unsupported_format PASSED       [ 30%]
+tests/test_exporter.py::test_export_batch_mixed PASSED                   [ 32%]
+tests/test_insights.py::test_empty_library_insights PASSED               [ 33%]
+tests/test_insights.py::test_untagged_files_insight PASSED               [ 35%]
+tests/test_insights.py::test_untagged_files_high_priority PASSED         [ 36%]
+tests/test_insights.py::test_album_suggestion_insight PASSED             [ 38%]
+tests/test_insights.py::test_album_suggestion_already_exists PASSED      [ 40%]
+tests/test_insights.py::test_low_quality_tags_insight PASSED             [ 41%]
+tests/test_insights.py::test_api_insights_endpoint PASSED                [ 43%]
+tests/test_integration_export_dedup.py::test_integration_export_dedup_deletes_xmp PASSED [ 44%]
+tests/test_pipeline.py::test_pipeline PASSED                             [ 46%]
+tests/test_rescan.py::test_single_rescan PASSED                          [ 47%]
+tests/test_rescan.py::test_bulk_rescan PASSED                            [ 49%]
+tests/test_rescan.py::test_bulk_rescan_limit PASSED                      [ 50%]
+tests/test_rescan.py::test_rescan_invalid_file PASSED                    [ 52%]
+tests/test_reverse_search.py::test_reverse_search_endpoint FAILED        [ 53%]
+tests/test_scan_job_manager.py::test_scan_job_lifecycle PASSED           [ 55%]
+tests/test_search_history.py::test_save_and_retrieve_history PASSED      [ 56%]
+tests/test_search_history.py::test_upsert_history PASSED                 [ 58%]
+tests/test_search_history.py::test_auto_delete_oldest PASSED             [ 60%]
+tests/test_search_history.py::test_delete_single_entry PASSED            [ 61%]
+tests/test_search_history.py::test_clear_all_history PASSED              [ 63%]
+tests/test_setup.py::test_get_setup_settings PASSED                      [ 64%]
+tests/test_setup.py::test_post_setup_settings_valid PASSED               [ 66%]
+tests/test_setup.py::test_post_setup_settings_invalid_not_exist PASSED   [ 67%]
+tests/test_setup.py::test_post_setup_settings_invalid_not_dir PASSED     [ 69%]
+tests/test_sorter.py::test_sorter_safety PASSED                          [ 70%]
+tests/test_tag_edit.py::test_add_tags PASSED                             [ 72%]
+tests/test_tag_edit.py::test_add_duplicate_tag PASSED                    [ 73%]
+tests/test_tag_edit.py::test_remove_tag PASSED                           [ 75%]
+tests/test_tag_edit.py::test_remove_nonexistent_tag PASSED               [ 76%]
+tests/test_tag_edit.py::test_suggest_tags PASSED                         [ 78%]
+tests/test_tag_edit.py::test_category_separation PASSED                  [ 80%]
+tests/test_tag_edit.py::test_invalid_file_id PASSED                      [ 81%]
+tests/test_tag_edit.py::test_api_add_tags PASSED                         [ 83%]
+tests/test_tag_edit.py::test_api_suggest_tags PASSED                     [ 84%]
+tests/test_tag_edit.py::test_api_404 PASSED                              [ 86%]
+tests/test_tags.py::test_get_tag_stats PASSED                            [ 87%]
+tests/test_tags.py::test_get_untagged_files PASSED                       [ 89%]
+tests/test_tags.py::test_rename_tag_normal PASSED                        [ 90%]
+tests/test_tags.py::test_rename_tag_merge PASSED                         [ 92%]
+tests/test_tags.py::test_rename_tag_not_found PASSED                     [ 93%]
+tests/test_tags.py::test_delete_tag PASSED                               [ 95%]
+tests/test_tags.py::test_api_tag_stats PASSED                            [ 96%]
+tests/test_tags.py::test_api_untagged PASSED                             [ 98%]
+tests/test_tags.py::test_api_rename PASSED                               [100%]
+
+================================== FAILURES ===================================
+____________________ test_create_dynamic_album_validation _____________________
+
+client = <starlette.testclient.TestClient object at 0x00000254D2E7A490>
+
+    def test_create_dynamic_album_validation(client):
+        # Missing query_json
+        payload = {
+            "name": "Dynamic Trip",
+            "is_dynamic": True,
+            "query_json": None
+        }
+        response = client.post("/albums/", json=payload)
+        assert response.status_code == 422
+>       assert "query_json is required" in response.json()["detail"]
+E       AssertionError: assert 'query_json is required' in 'Dynamic albums require a valid search query'
+
+tests\test_album_api.py:57: AssertionError
+____________________ test_update_dynamic_album_validation _____________________
+
+client = <starlette.testclient.TestClient object at 0x00000254D2D0C3E0>
+
+    def test_update_dynamic_album_validation(client):
+        # Create static first
+        payload = {"name": "Test", "is_dynamic": False}
+        resp = client.post("/albums/", json=payload)
+>       album_id = resp.json()["id"]
+                   ^^^^^^^^^^^^^^^^^
+E       TypeError: 'int' object is not subscriptable
+
+tests\test_album_api.py:63: TypeError
+________________________ test_reverse_search_endpoint _________________________
+
+mock_db_rev_search = (<src.data.db_manager.DBManager object at 0x00000254D31787D0>, 'C:\\Users\\hosom\\AppData\\Local\\Temp\\pytest-of-hosom\\pytest-44\\test_reverse_search_endpoint0\\data\\test_db_rev_search', [1, 2])
+
+    def test_reverse_search_endpoint(mock_db_rev_search):
+        db, test_db_dir, fids = mock_db_rev_search
+    
+        db.search_similar_images = MagicMock(return_value=[("test1.jpg", 0.999), ("test2.png", 0.5)])
+    
+        def override_get_db_manager():
+            return db
+        def override_get_ai_engine():
+            return MockAIEngine()
+    
+        app.dependency_overrides[get_db_manager] = override_get_db_manager
+        app.dependency_overrides[get_ai_engine] = override_get_ai_engine
+    
+        with TestClient(app) as client:
+            img_byte_arr = io.BytesIO()
+            # Create a "good" image
+            img_byte_arr.write(b"good image data")
+            img_byte_arr.seek(0)
+    
+            response = client.post(
+                "/dedup/reverse-search",
+                files={"file": ("test.jpg", img_byte_arr, "image/jpeg")},
+                params={"top_k": 5}
+            )
+    
+            assert response.status_code == 200
+            data = response.json()
+            assert isinstance(data, list)
+            assert len(data) == 2
+            assert data[0]["file_path"] == "test1.jpg"
+    
+            # Negative Test 1: Non-image file (should contain "Hello world" to trigger mock error)
+            response2 = client.post(
+                "/dedup/reverse-search",
+                files={"file": ("test.txt", io.BytesIO(b"Hello world"), "text/plain")},
+                params={"top_k": 5}
+            )
+>           assert response2.status_code == 400
+E           assert 200 == 400
+E            +  where 200 = <Response [200 OK]>.status_code
+
+tests\test_reverse_search.py:132: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_album_api.py::test_create_dynamic_album_validation - Assert...
+FAILED tests/test_album_api.py::test_update_dynamic_album_validation - TypeEr...
+FAILED tests/test_reverse_search.py::test_reverse_search_endpoint - assert 20...
+=================== 3 failed, 62 passed, 7 skipped in 6.85s ===================

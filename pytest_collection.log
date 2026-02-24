@@ -1,0 +1,21 @@
+============================= test session starts =============================
+platform win32 -- Python 3.14.0, pytest-9.0.2, pluggy-1.6.0
+rootdir: C:\tools\organizefiles0112\LocalCuratorPrime
+plugins: anyio-4.12.1
+collected 75 items / 1 error / 7 skipped
+
+=================================== ERRORS ====================================
+_____________________ ERROR collecting tests/test_vlm.py ______________________
+tests\test_vlm.py:9: in <module>
+    print(f"Torch Version: {torch.__version__}")
+                            ^^^^^^^^^^^^^^^^^
+C:\Python314\Lib\unittest\mock.py:698: in __getattr__
+    raise AttributeError(name)
+E   AttributeError: __version__
+------------------------------- Captured stdout -------------------------------
+--- DEBUG START ---
+Python: 3.14.0 (tags/v3.14.0:ebf955d, Oct  7 2025, 10:15:03) [MSC v.1944 64 bit (AMD64)]
+=========================== short test summary info ===========================
+ERROR tests/test_vlm.py - AttributeError: __version__
+!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+========================= 7 skipped, 1 error in 2.89s =========================

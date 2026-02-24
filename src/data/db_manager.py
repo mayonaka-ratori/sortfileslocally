@@ -147,6 +147,76 @@ class DBManager:
             ''')
             c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_search_history_query ON search_history(query_text, filters_json)")
 
+        # Video Scenes Table
+        c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='video_scenes'")
+        if not c.fetchone():
+            print("Migrating DB: Creating video_scenes table")
+            c.execute('''
+                CREATE TABLE video_scenes (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    file_id INTEGER NOT NULL,
+                    start_time REAL NOT NULL,
+                    end_time REAL NOT NULL,
+                    caption TEXT,
+                    tags TEXT, -- JSON List
+                    character_tags TEXT, -- JSON List
+                    series_tags TEXT, -- JSON List
+                    FOREIGN KEY(file_id) REFERENCES files(id) ON DELETE CASCADE
+                )
+            ''')
+        
+        # Add missing columns to video_scenes (for 4.7 upgrade)
+        for col, definition in [
+            ("scene_index", "INTEGER DEFAULT 0"),
+            ("thumbnail_path", "TEXT"),
+            ("clip_vector_id", "INTEGER"),
+            ("start_frame", "INTEGER DEFAULT 0"),
+            ("end_frame", "INTEGER DEFAULT 0"),
+        ]:
+            try:
+                c.execute(f"ALTER TABLE video_scenes ADD COLUMN {col} {definition}")
+            except Exception:
+                pass # Column already exists
+        
+        try:
+            c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_scene_file_index ON video_scenes(file_id, scene_index)")
+        except Exception:
+            pass
+        
+        # Vector Mapping Table
+        c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='vector_mapping'")
+        if not c.fetchone():
+            print("Migrating DB: Creating vector_mapping table")
+            c.execute('''
+                CREATE TABLE vector_mapping (
+                    faiss_id INTEGER PRIMARY KEY,
+                    entity_type TEXT NOT NULL, -- 'file' or 'scene'
+                    entity_id INTEGER NOT NULL
+                )
+            ''')
+            # [Migration] Map existing file-level vectors
+            # Existing users have faiss_id == file_id in the clip_index.
+            # We can't easily iterate FAISS here without loading it, but we can assume
+            # that any already-processed file has a vector in the clip_index.
+            # To be safe, we insert mapping for all processed files.
+            c.execute('''
+                INSERT INTO vector_mapping (faiss_id, entity_type, entity_id)
+                SELECT id, 'file', id FROM files WHERE is_processed = 1
+            ''')
+
+        # Default Settings for Video Scenes
+        for key, default in [
+            ("scene_threshold", "27.0"),
+            ("auto_scene_detection", "false"),
+            ("max_video_duration", "7200"),
+        ]:
+            try:
+                c.execute("SELECT 1 FROM app_settings WHERE key = ?", (key,))
+                if not c.fetchone():
+                    c.execute("INSERT INTO app_settings (key, value) VALUES (?, ?)", (key, default))
+            except Exception:
+                pass
+
         conn.commit()
         conn.close()
 
@@ -232,6 +302,30 @@ class DBManager:
                 key TEXT PRIMARY KEY,
                 value TEXT,
                 updated_at REAL
+            )
+        ''')
+
+        # Video Scenes Table
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS video_scenes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                file_id INTEGER NOT NULL,
+                start_time REAL NOT NULL,
+                end_time REAL NOT NULL,
+                caption TEXT,
+                tags TEXT, -- JSON List
+                character_tags TEXT, -- JSON List
+                series_tags TEXT, -- JSON List
+                FOREIGN KEY(file_id) REFERENCES files(id) ON DELETE CASCADE
+            )
+        ''')
+
+        # Vector Mapping Table
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS vector_mapping (
+                faiss_id INTEGER PRIMARY KEY,
+                entity_type TEXT NOT NULL, -- 'file' or 'scene'
+                entity_id INTEGER NOT NULL
             )
         ''')
 
@@ -354,39 +448,94 @@ class DBManager:
                  c.execute('SELECT id FROM files WHERE file_path = ?', (item.file_path,))
                  file_id = c.fetchone()[0]
                  
-                 # Remove old embeddings from faiss explicitly before re-adding
-                 try:
-                     with self._faiss_lock:
-                         self.clip_index.remove_ids(np.array([file_id], dtype='int64'))
-                 except Exception as e:
-                     logger.error(f"FAISS operation failed during clip index removal: {e}")
-                     
-                 # Remove old face mappings
-                 c.execute('SELECT id FROM faces WHERE file_id = ?', (file_id,))
-                 old_face_ids = [row[0] for row in c.fetchall()]
-                 if old_face_ids:
-                     try:
-                         with self._faiss_lock:
-                             self.face_index.remove_ids(np.array(old_face_ids, dtype='int64'))
-                     except Exception as e:
-                         logger.error(f"FAISS operation failed during face index removal: {e}")
-                     c.execute('DELETE FROM faces WHERE file_id = ?', (file_id,))
+            # --- Cleanup Old Data (for re-processing) ---
+            
+            # 1. Cleanup CLIP vectors via vector_mapping
+            # Get all FAISS IDs related to this file (the file itself and its scenes)
+            c.execute('''
+                SELECT faiss_id FROM vector_mapping 
+                WHERE (entity_type = 'file' AND entity_id = ?)
+                OR (entity_type = 'scene' AND entity_id IN (SELECT id FROM video_scenes WHERE file_id = ?))
+            ''', (file_id, file_id))
+            old_faiss_ids = [row[0] for row in c.fetchall()]
+            
+            # Fallback for legacy data (where faiss_id was file_id and no mapping existed)
+            # We check if file_id exists in clip_index but not in vector_mapping
+            c.execute('SELECT 1 FROM vector_mapping WHERE entity_type = "file" AND entity_id = ?', (file_id,))
+            if not c.fetchone():
+                old_faiss_ids.append(file_id)
 
-            if result.success and vec_data:
-                # 1. Add CLIP Vector
-                clip_vec = np.array([vec_data.clip_vector], dtype='float32') # (1, 768)
-                faiss.normalize_L2(clip_vec) # Ensure normalized
-                with self._faiss_lock:
-                    self.clip_index.add_with_ids(clip_vec, np.array([file_id], dtype='int64'))
+            if old_faiss_ids:
+                try:
+                    with self._faiss_lock:
+                        self.clip_index.remove_ids(np.array(old_faiss_ids, dtype='int64'))
+                except Exception as e:
+                    logger.error(f"FAISS operation failed during clip index removal: {e}")
                 
-                # 2. Add Face Vectors
-                if vec_data.face_vectors:
+                # Delete mapping entries
+                placeholders = ','.join(['?'] * len(old_faiss_ids))
+                c.execute(f'DELETE FROM vector_mapping WHERE faiss_id IN ({placeholders})', old_faiss_ids)
+
+            # 2. Cleanup Scenes & Faces
+            c.execute('DELETE FROM video_scenes WHERE file_id = ?', (file_id,))
+            
+            c.execute('SELECT id FROM faces WHERE file_id = ?', (file_id,))
+            old_face_ids = [row[0] for row in c.fetchall()]
+            if old_face_ids:
+                try:
+                    with self._faiss_lock:
+                        self.face_index.remove_ids(np.array(old_face_ids, dtype='int64'))
+                except Exception as e:
+                    logger.error(f"FAISS operation failed during face index removal: {e}")
+                c.execute('DELETE FROM faces WHERE file_id = ?', (file_id,))
+
+            # --- Add New Data ---
+
+            if result.success:
+                # 1. Add File CLIP Vector
+                if vec_data and vec_data.clip_vector:
+                    clip_vec = np.array([vec_data.clip_vector], dtype='float32')
+                    faiss.normalize_L2(clip_vec)
+                    
+                    c.execute('INSERT INTO vector_mapping (entity_type, entity_id) VALUES (?, ?)', ('file', file_id))
+                    faiss_id = c.lastrowid
+                    
+                    with self._faiss_lock:
+                        self.clip_index.add_with_ids(clip_vec, np.array([faiss_id], dtype='int64'))
+                
+                # 2. Add Video Scenes
+                if result.scenes:
+                    for scene in result.scenes:
+                        c.execute('''
+                            INSERT INTO video_scenes (
+                                file_id, start_time, end_time, scene_index, thumbnail_path, 
+                                start_frame, end_frame, caption, tags, character_tags, series_tags
+                            )
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ''', (
+                            file_id, scene.start_time, scene.end_time, scene.scene_index, scene.thumbnail_path,
+                            scene.start_frame, scene.end_frame, scene.caption,
+                            json.dumps(scene.tags), json.dumps(scene.character_tags), json.dumps(scene.series_tags)
+                        ))
+                        scene_id = c.lastrowid
+                        
+                        if scene.clip_vector:
+                            scene_vec = np.array([scene.clip_vector], dtype='float32')
+                            faiss.normalize_L2(scene_vec)
+                            
+                            c.execute('INSERT INTO vector_mapping (entity_type, entity_id) VALUES (?, ?)', ('scene', scene_id))
+                            scene_faiss_id = c.lastrowid
+                            
+                            # Store the faiss_id in video_scenes for easy lookup
+                            c.execute('UPDATE video_scenes SET clip_vector_id = ? WHERE id = ?', (scene_faiss_id, scene_id))
+                            
+                            with self._faiss_lock:
+                                self.clip_index.add_with_ids(scene_vec, np.array([scene_faiss_id], dtype='int64'))
+
+                # 3. Add Faces
+                if vec_data and vec_data.face_vectors:
                     face_vecs = np.array(vec_data.face_vectors, dtype='float32')
                     faiss.normalize_L2(face_vecs)
-                    
-                    # We need unique IDs for faces. 
-                    # Strategy: Use a large offset or separate logic. 
-                    # Simple approach: Store metadata in SQLite 'faces' table, use its ID.
                     
                     for i, face_vec in enumerate(face_vecs):
                         timestamp = result.faces[i].timestamp if i < len(result.faces) else 0.0
@@ -395,7 +544,6 @@ class DBManager:
                         c.execute('INSERT INTO faces (file_id, face_index, timestamp, bbox) VALUES (?, ?, ?, ?)', (file_id, i, timestamp, bbox_json))
                         face_db_id = c.lastrowid
                         
-                        # Add to FAISS
                         with self._faiss_lock:
                             self.face_index.add_with_ids(np.array([face_vec]), np.array([face_db_id], dtype='int64'))
 
@@ -422,30 +570,55 @@ class DBManager:
         
         D, I = self.clip_index.search(params, top_k)
         
-        # I[0] contains IDs (file_ids)
-        file_ids = [int(idx) for idx in I[0] if idx != -1]
+        faiss_ids = [int(idx) for idx in I[0] if idx != -1]
         scores = [float(s) for s, idx in zip(D[0], I[0]) if idx != -1]
         
-        if not file_ids:
+        if not faiss_ids:
             return []
             
-        # Resolve File Paths
         conn = self._connect()
         c = conn.cursor()
         
-        placeholders = ','.join(['?'] * len(file_ids))
-        # Preserving order is tricky in SQL IN clause.
-        # Format: (id, path)
-        c.execute(f'SELECT id, file_path FROM files WHERE id IN ({placeholders})', file_ids)
-        rows = {row[0]: row[1] for row in c.fetchall()}
+        # Resolve Mapping efficiently
+        placeholders = ','.join(['?'] * len(faiss_ids))
+        c.execute(f'''
+            SELECT m.faiss_id, m.entity_type, f.file_path, sf.file_path as scene_file_path
+            FROM vector_mapping m
+            LEFT JOIN files f ON m.entity_type = 'file' AND m.entity_id = f.id
+            LEFT JOIN video_scenes s ON m.entity_type = 'scene' AND m.entity_id = s.id
+            LEFT JOIN files sf ON s.file_id = sf.id
+            WHERE m.faiss_id IN ({placeholders})
+        ''', faiss_ids)
+        
+        mapping = {} # faiss_id -> file_path
+        for row in c.fetchall():
+            fid, etype, fpath, sfpath = row
+            if etype == 'file' and fpath:
+                mapping[fid] = fpath
+            elif etype == 'scene' and sfpath:
+                mapping[fid] = sfpath
+
+        # Legacy fallback
+        missing_ids = [fid for fid in faiss_ids if fid not in mapping]
+        if missing_ids:
+            # Assume missing mappings were direct file_ids (legacy)
+            placeholders = ','.join(['?'] * len(missing_ids))
+            c.execute(f"SELECT id, file_path FROM files WHERE id IN ({placeholders})", missing_ids)
+            for row in c.fetchall():
+                mapping[row[0]] = row[1]
+
         conn.close()
         
         results = []
-        for fid, score in zip(file_ids, scores):
-            if fid in rows:
-                results.append((rows[fid], score))
+        seen_paths = set()
+        for fid, score in zip(faiss_ids, scores):
+            if fid in mapping:
+                path = mapping[fid]
+                if path not in seen_paths:
+                    results.append((path, score))
+                    seen_paths.add(path)
                 
-        return results
+        return results[:top_k]
 
     def add_results_batch(self, results: List[ProcessingResult]):
         """
@@ -460,8 +633,6 @@ class DBManager:
         
         try:
             # 1. Upsert files in batch
-            # Prepare data
-            # Format: (path, hash, size, type, created, modified, width, height, duration, is_processed, error_msg)
             files_data = []
             for r in results:
                 item = r.media_item
@@ -491,37 +662,47 @@ class DBManager:
                     caption=excluded.caption
             ''', files_data)
             
-            # Need to get IDs Back. 
-            # In SQLite, executemany doesn't return list of IDs.
-            # We must query them back efficiently.
-            
             paths = [r.media_item.file_path for r in results]
             placeholders = ','.join(['?'] * len(paths))
             c.execute(f"SELECT file_path, id FROM files WHERE file_path IN ({placeholders})", paths)
             path_to_id = {row[0]: row[1] for row in c.fetchall()}
+            file_ids = list(path_to_id.values())
             
-            # 2. Prepare Vectors
-            clip_vectors_list = []
-            clip_ids_list = []
-            
-            face_vectors_list = []
-            face_metadata_list = [] # (file_id, face_index, timestamp)
-            
-            for r in results:
-                if not r.success or not r.vector_data:
-                    continue
+            # --- Cleanup Old Data in Batch ---
+            if file_ids:
+                fid_placeholders = ','.join(['?'] * len(file_ids))
+                
+                # Get all CLIP FAISS IDs
+                c.execute(f'''
+                    SELECT faiss_id FROM vector_mapping 
+                    WHERE (entity_type = 'file' AND entity_id IN ({fid_placeholders}))
+                    OR (entity_type = 'scene' AND entity_id IN (SELECT id FROM video_scenes WHERE file_id IN ({fid_placeholders})))
+                ''', file_ids + file_ids)
+                old_faiss_ids = [row[0] for row in c.fetchall()]
+                
+                # Legacy fallback check
+                # IDs that are in files but not in vector_mapping as 'file'
+                c.execute(f'''
+                    SELECT id FROM files 
+                    WHERE id IN ({fid_placeholders}) 
+                    AND id NOT IN (SELECT entity_id FROM vector_mapping WHERE entity_type = 'file')
+                ''', file_ids)
+                old_faiss_ids.extend([row[0] for row in c.fetchall()])
+
+                if old_faiss_ids:
+                    try:
+                        with self._faiss_lock:
+                            self.clip_index.remove_ids(np.array(old_faiss_ids, dtype='int64'))
+                    except Exception as e:
+                        logger.error(f"FAISS operation failed during clip index batch removal: {e}")
                     
-                fid = path_to_id.get(r.media_item.file_path)
-                if fid is None:
-                    continue
-                    
-                # Clean up old vectors/faces to prevent duplicates on upsert
-                try:
-                    with self._faiss_lock:
-                        self.clip_index.remove_ids(np.array([fid], dtype='int64'))
-                except Exception as e:
-                    logger.error(f"FAISS operation failed during clip index batch removal: {e}")
-                c.execute('SELECT id FROM faces WHERE file_id = ?', (fid,))
+                    mapping_placeholders = ','.join(['?'] * len(old_faiss_ids))
+                    c.execute(f'DELETE FROM vector_mapping WHERE faiss_id IN ({mapping_placeholders})', old_faiss_ids)
+
+                # Cleanup scenes & faces
+                c.execute(f'DELETE FROM video_scenes WHERE file_id IN ({fid_placeholders})', file_ids)
+                
+                c.execute(f'SELECT id FROM faces WHERE file_id IN ({fid_placeholders})', file_ids)
                 old_face_ids = [row[0] for row in c.fetchall()]
                 if old_face_ids:
                     try:
@@ -529,48 +710,82 @@ class DBManager:
                             self.face_index.remove_ids(np.array(old_face_ids, dtype='int64'))
                     except Exception as e:
                         logger.error(f"FAISS operation failed during face index batch removal: {e}")
-                    c.execute('DELETE FROM faces WHERE file_id = ?', (fid,))
-                    
-                # CLIP Result
-                clip_vectors_list.append(r.vector_data.clip_vector)
-                clip_ids_list.append(fid)
-                
-                # Face Results
-                if r.vector_data.face_vectors:
-                     for i, fvec in enumerate(r.vector_data.face_vectors):
-                         timestamp = r.faces[i].timestamp if i < len(r.faces) else 0.0
-                         bbox = json.dumps(r.faces[i].bbox) if i < len(r.faces) else "[]"
-                         face_vectors_list.append(fvec)
-                         face_metadata_list.append((fid, i, timestamp, bbox))
+                    c.execute(f'DELETE FROM faces WHERE id IN ({",".join(["?"] * len(old_face_ids))})', old_face_ids)
 
-            # --- Commit to FAISS & DB (Faces) ---
+            # --- Add New Data ---
+            clip_vectors_to_add = []
+            clip_ids_to_add = []
             
-            # A. CLIP FAISS
-            if clip_vectors_list:
-                 # Add to FAISS
-                 vecs = np.array(clip_vectors_list, dtype='float32')
-                 ids = np.array(clip_ids_list, dtype='int64')
-                 faiss.normalize_L2(vecs)
-                 with self._faiss_lock:
-                     self.clip_index.add_with_ids(vecs, ids)
+            face_vectors_to_add = []
+            face_ids_to_add = []
             
-            # B. Face Metadata (SQLite) (One by one loop for safety to get IDs) & Face FAISS
-            if face_vectors_list:
-                f_vecs_to_add = []
-                f_ids_to_add = []
+            for r in results:
+                if not r.success:
+                    continue
                 
-                for i, (fid, fidx, ts, bbox) in enumerate(face_metadata_list):
-                    c.execute('INSERT INTO faces (file_id, face_index, timestamp, bbox) VALUES (?, ?, ?, ?)', (fid, fidx, ts, bbox))
-                    face_row_id = c.lastrowid
-                    f_vecs_to_add.append(face_vectors_list[i])
-                    f_ids_to_add.append(face_row_id)
+                fid = path_to_id.get(r.media_item.file_path)
+                if fid is None:
+                    continue
+
+                # 1. File CLIP Vector
+                if r.vector_data and r.vector_data.clip_vector:
+                    c.execute('INSERT INTO vector_mapping (entity_type, entity_id) VALUES (?, ?)', ('file', fid))
+                    faiss_id = c.lastrowid
+                    clip_vectors_to_add.append(r.vector_data.clip_vector)
+                    clip_ids_to_add.append(faiss_id)
                 
-                if f_vecs_to_add:
-                    f_vecs = np.array(f_vecs_to_add, dtype='float32')
-                    f_ids = np.array(f_ids_to_add, dtype='int64')
-                    faiss.normalize_L2(f_vecs)
-                    with self._faiss_lock:
-                        self.face_index.add_with_ids(f_vecs, f_ids)
+                # 2. Video Scenes
+                if r.scenes:
+                    for scene in r.scenes:
+                        c.execute('''
+                            INSERT INTO video_scenes (
+                                file_id, start_time, end_time, scene_index, thumbnail_path, 
+                                start_frame, end_frame, caption, tags, character_tags, series_tags
+                            )
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ''', (
+                            fid, scene.start_time, scene.end_time, scene.scene_index, scene.thumbnail_path,
+                            scene.start_frame, scene.end_frame, scene.caption,
+                            json.dumps(scene.tags), json.dumps(scene.character_tags), json.dumps(scene.series_tags)
+                        ))
+                        scene_id = c.lastrowid
+                        
+                        if scene.clip_vector:
+                            c.execute('INSERT INTO vector_mapping (entity_type, entity_id) VALUES (?, ?)', ('scene', scene_id))
+                            scene_faiss_id = c.lastrowid
+                            
+                            # Store the faiss_id in video_scenes for easy lookup
+                            c.execute('UPDATE video_scenes SET clip_vector_id = ? WHERE id = ?', (scene_faiss_id, scene_id))
+                            
+                            clip_vectors_to_add.append(scene.clip_vector)
+                            clip_ids_to_add.append(scene_faiss_id)
+
+                # 3. Faces
+                if r.vector_data and r.vector_data.face_vectors:
+                    for i, fvec in enumerate(r.vector_data.face_vectors):
+                        timestamp = r.faces[i].timestamp if i < len(r.faces) else 0.0
+                        bbox = json.dumps(r.faces[i].bbox) if i < len(r.faces) else "[]"
+                        
+                        c.execute('INSERT INTO faces (file_id, face_index, timestamp, bbox) VALUES (?, ?, ?, ?)', (fid, i, timestamp, bbox))
+                        face_db_id = c.lastrowid
+                        face_vectors_to_add.append(fvec)
+                        face_ids_to_add.append(face_db_id)
+
+            # --- Commit to FAISS ---
+            if clip_vectors_to_add:
+                vecs = np.array(clip_vectors_to_add, dtype='float32')
+                ids = np.array(clip_ids_list if 'clip_ids_list' in locals() else clip_ids_to_add, dtype='int64') # Wait, clip_ids_list was old name
+                ids = np.array(clip_ids_to_add, dtype='int64')
+                faiss.normalize_L2(vecs)
+                with self._faiss_lock:
+                    self.clip_index.add_with_ids(vecs, ids)
+            
+            if face_vectors_to_add:
+                f_vecs = np.array(face_vectors_to_add, dtype='float32')
+                f_ids = np.array(face_ids_to_add, dtype='int64')
+                faiss.normalize_L2(f_vecs)
+                with self._faiss_lock:
+                    self.face_index.add_with_ids(f_vecs, f_ids)
 
             conn.commit()
             self.save_indices()
@@ -622,6 +837,22 @@ class DBManager:
             c.execute('SELECT id, file_id, face_index, timestamp, bbox, person_name FROM faces WHERE file_id = ? ORDER BY face_index ASC', (file_id,))
             rows = c.fetchall()
             return [dict(r) for r in rows]
+        finally:
+            conn.close()
+
+    def get_video_scenes(self, file_id: int) -> List[Dict]:
+        """Get all scenes for a specific video file."""
+        conn = self._connect()
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        try:
+            c.execute('''
+                SELECT id, start_time, end_time, caption, tags, character_tags, series_tags
+                FROM video_scenes WHERE file_id = ?
+                ORDER BY start_time ASC
+            ''', (file_id,))
+            rows = c.fetchall()
+            return [dict(row) for row in rows]
         finally:
             conn.close()
 
@@ -952,6 +1183,53 @@ class DBManager:
         finally:
             conn.close()
 
+    def search_scenes(self, query_vector: List[float], top_k: int = 20) -> List[Dict[str, Any]]:
+        """Semantic search specifically for video scenes."""
+        if self.clip_index is None:
+            return []
+            
+        params = np.array([query_vector], dtype='float32')
+        faiss.normalize_L2(params)
+        
+        # We need to search more than top_k because some hits might be files
+        k_search = top_k * 5
+        D, I = self.clip_index.search(params, k_search)
+        
+        faiss_ids = [int(idx) for idx in I[0] if idx != -1]
+        faiss_id_to_score = {int(idx): float(score) for idx, score in zip(I[0], D[0]) if idx != -1}
+        
+        if not faiss_ids:
+            return []
+            
+        conn = self._connect()
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        
+        placeholders = ','.join(['?'] * len(faiss_ids))
+        # Filter vector_mapping for 'scene' type
+        c.execute(f'''
+            SELECT m.faiss_id, m.entity_id as scene_id, s.file_id, f.file_path, 
+                   s.scene_index, s.start_time, s.end_time, s.thumbnail_path,
+                   s.caption, s.tags, s.character_tags, s.series_tags
+            FROM vector_mapping m
+            JOIN video_scenes s ON m.entity_id = s.id
+            JOIN files f ON s.file_id = f.id
+            WHERE m.entity_type = 'scene' AND m.faiss_id IN ({placeholders})
+        ''', faiss_ids)
+        
+        results = []
+        for row in c.fetchall():
+            res = dict(row)
+            res['score'] = faiss_id_to_score.get(res['faiss_id'], 0.0)
+            # Remove faiss_id from final output if desired
+            results.append(res)
+            
+        conn.close()
+        
+        # Sort by score and limit
+        results.sort(key=lambda x: x['score'], reverse=True)
+        return results[:top_k]
+
     # ------------------------------------------------------------------ #
     # Hybrid Search Methods
     # ------------------------------------------------------------------ #
@@ -999,10 +1277,66 @@ class DBManager:
         if not candidates:
             return []
             
-        file_id_to_score = {idx: score for idx, score in candidates}
-        file_ids = [idx for idx, _ in candidates]
+        faiss_id_to_score = {idx: score for idx, score in candidates}
+        faiss_ids = [idx for idx, _ in candidates]
         
-        # Build SQL filters
+        conn = self._connect()
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        
+        # 1. Resolve faiss_ids to file_ids and metadata
+        placeholders = ','.join(['?'] * len(faiss_ids))
+        c.execute(f'''
+            SELECT m.faiss_id, m.entity_type, m.entity_id, 
+                   s.file_id as scene_parent_id, s.start_time, s.end_time, s.caption as scene_caption
+            FROM vector_mapping m
+            LEFT JOIN video_scenes s ON m.entity_type = 'scene' AND m.entity_id = s.id
+            WHERE m.faiss_id IN ({placeholders})
+        ''', faiss_ids)
+        
+        mapping = {} # faiss_id -> {file_id, is_scene, scene_id, ...}
+        for row in c.fetchall():
+            fid = row['faiss_id']
+            if row['entity_type'] == 'file':
+                mapping[fid] = {'file_id': row['entity_id'], 'is_scene': False}
+            else:
+                mapping[fid] = {
+                    'file_id': row['scene_parent_id'], 
+                    'is_scene': True,
+                    'scene_id': row['entity_id'],
+                    'start_time': row['start_time'],
+                    'end_time': row['end_time'],
+                    'scene_caption': row['scene_caption']
+                }
+
+        # Legacy fallback
+        missing_ids = [fid for fid in faiss_ids if fid not in mapping]
+        if missing_ids:
+            for fid in missing_ids:
+                mapping[fid] = {'file_id': fid, 'is_scene': False}
+
+        file_id_to_max_score = {} # Highest score per file
+        file_id_to_best_scene = {} # Best scene metadata if multiple match
+        
+        for fid, score in faiss_id_to_score.items():
+            if fid in mapping:
+                m = mapping[fid]
+                file_id = m['file_id']
+                if not file_id: continue # Should not happen with clean DB
+                
+                if score > file_id_to_max_score.get(file_id, 0.0):
+                    file_id_to_max_score[file_id] = score
+                    if m['is_scene']:
+                        file_id_to_best_scene[file_id] = m
+                    else:
+                        file_id_to_best_scene.pop(file_id, None)
+
+        relevant_file_ids = list(file_id_to_max_score.keys())
+        if not relevant_file_ids:
+            conn.close()
+            return []
+            
+        # 2. Build SQL filters
         where_clauses = []
         sql_params = []
         
@@ -1023,14 +1357,10 @@ class DBManager:
                     # SQLite JSON match workaround
                     sql_params.append(f'%"{val}"%')
 
-        conn = self._connect()
-        conn.row_factory = sqlite3.Row
-        c = conn.cursor()
-        
-        final_rows = []
+        final_results = []
         # Chunk file_ids by 500 to avoid SQL variable limits
-        for i in range(0, len(file_ids), 500):
-            chunk = file_ids[i:i+500]
+        for i in range(0, len(relevant_file_ids), 500):
+            chunk = relevant_file_ids[i:i+500]
             placeholders = ','.join(['?'] * len(chunk))
             
             query = f"SELECT id, file_path, media_type, width, height, tags, character_tags, series_tags, caption FROM files WHERE id IN ({placeholders})"
@@ -1038,16 +1368,18 @@ class DBManager:
                 query += " AND " + " AND ".join(where_clauses)
             
             c.execute(query, chunk + sql_params)
-            final_rows.extend([dict(r) for r in c.fetchall()])
+            for r in c.fetchall():
+                row = dict(r)
+                fid = row['id']
+                row['score'] = file_id_to_max_score[fid]
+                if fid in file_id_to_best_scene:
+                    row['matched_scene'] = file_id_to_best_scene[fid]
+                final_results.append(row)
             
         conn.close()
         
-        # Merge scores and sort
-        for row in final_rows:
-            row['score'] = file_id_to_score.get(row['id'], 0.0)
-            
-        final_rows.sort(key=lambda x: x['score'], reverse=True)
-        return final_rows[:top_k]
+        final_results.sort(key=lambda x: x['score'], reverse=True)
+        return final_results[:top_k]
 
     # ------------------------------------------------------------------ #
     # Album Methods

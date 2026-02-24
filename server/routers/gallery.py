@@ -1,6 +1,6 @@
 
 from fastapi import APIRouter, Depends, Query, HTTPException, BackgroundTasks
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
 import json
 import os
@@ -34,6 +34,7 @@ class MediaItemResponse(BaseModel):
     caption: Optional[str] = None
     score: Optional[float] = None
     snippet: Optional[str] = None
+    matched_scene: Optional[Dict[str, Any]] = None
 
 class SearchFilters(BaseModel):
     tags: Optional[List[str]] = None
@@ -59,7 +60,6 @@ class SearchHistoryResponse(BaseModel):
     result_count: int
     executed_at: str
 
-from typing import Dict, Any
 
 class TagStatsResponse(BaseModel):
     general: List[Dict[str, Any]]
@@ -220,7 +220,8 @@ def search_media(
             series_tags=safe_parse_json(r['series_tags']),
             caption=r.get('caption'),
             score=r.get('score', 0.0),
-            snippet=snippet
+            snippet=snippet,
+            matched_scene=r.get('matched_scene')
         ))
         
     # Auto-save search history (excluding empty query)

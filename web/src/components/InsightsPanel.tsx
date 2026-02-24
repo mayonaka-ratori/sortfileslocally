@@ -63,7 +63,7 @@ export const InsightsPanel: React.FC = () => {
         const saved = localStorage.getItem('dismissed_insights');
         let parsed: { type: string, expiry: number }[] = [];
         if (saved) {
-            try { parsed = JSON.parse(saved); } catch (e) { }
+            try { parsed = JSON.parse(saved); } catch { }
         }
 
         parsed.push({ type, expiry: Date.now() + 24 * 60 * 60 * 1000 });

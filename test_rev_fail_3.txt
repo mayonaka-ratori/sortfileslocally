@@ -1,0 +1,46 @@
+============================= test session starts =============================
+platform win32 -- Python 3.14.0, pytest-9.0.2, pluggy-1.6.0 -- C:\Python314\python.exe
+cachedir: .pytest_cache
+rootdir: C:\tools\organizefiles0112\LocalCuratorPrime
+plugins: anyio-4.12.1
+collecting ... collected 1 item
+
+tests/test_reverse_search.py::test_reverse_search_endpoint FAILED
+
+================================== FAILURES ===================================
+________________________ test_reverse_search_endpoint _________________________
+
+mock_db_rev_search = (<src.data.db_manager.DBManager object at 0x000001E0EF0F5A90>, 'C:\\Users\\hosom\\AppData\\Local\\Temp\\pytest-of-hosom\\pytest-37\\test_reverse_search_endpoint0\\data\\test_db_rev_search')
+
+    def test_reverse_search_endpoint(mock_db_rev_search):
+        db, test_db_dir = mock_db_rev_search
+    
+        def override_get_db_manager():
+            return db
+    
+        def override_get_ai_engine():
+            return MockAIEngine()
+    
+        app.dependency_overrides[get_db_manager] = override_get_db_manager
+        app.dependency_overrides[get_ai_engine] = override_get_ai_engine
+    
+        with TestClient(app) as client:
+            img = Image.new('RGB', (100, 100), color='red')
+            img_byte_arr = io.BytesIO()
+            img.save(img_byte_arr, format='JPEG')
+            img_byte_arr.seek(0)
+    
+            response = client.post(
+                "/dedup/reverse-search",
+                files={"file": ("test.jpg", img_byte_arr, "image/jpeg")},
+                params={"top_k": 5}
+            )
+    
+>           assert response.status_code == 200
+E           assert 500 == 200
+E            +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+tests\test_reverse_search.py:110: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_reverse_search.py::test_reverse_search_endpoint - assert 50...
+============================== 1 failed in 0.73s ==============================

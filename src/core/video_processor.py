@@ -4,9 +4,11 @@ import numpy as np
 from PIL import Image
 import decord
 from decord import VideoReader, cpu, gpu
-from typing import List, Dict, Any, Union
+from typing import List, Dict, Any, Union, Tuple
 import tempfile
 import subprocess
+import logging
+from scenedetect import detect, ContentDetector
 from .ai_models import AIEngine
 from .vlm_engine import VLMEngine
 
@@ -97,7 +99,19 @@ class VideoProcessor:
                 
         return results
 
-    def process_video(self, video_path: str, skip_face: bool = False, skip_whisper: bool = False) -> Dict[str, Any]:
+    def _detect_scenes(self, video_path: str, threshold: float = 27.0) -> List[Tuple[float, float]]:
+        """Detect scenes in video using PySceneDetect."""
+        try:
+            # Using ContentDetector with configurable threshold.
+            scene_list = detect(video_path, ContentDetector(threshold=threshold))
+            # scene_list is a list of (start_time, end_time) as FrameTimecode objects
+            return [(s[0].get_seconds(), s[1].get_seconds()) for s in scene_list]
+        except Exception as e:
+            # logging.error(f"Scene detection failed for {video_path}: {e}")
+            print(f"Scene detection failed for {video_path}: {e}")
+            return []
+
+    def process_video(self, video_path: str, skip_face: bool = False, skip_whisper: bool = False, scene_threshold: float = 27.0) -> Dict[str, Any]:
         """
         Process a video file: extract keyframes, compute averaged CLIP embedding, and pool face detections.
         """
@@ -186,6 +200,53 @@ class VideoProcessor:
         else:
             avg_clip_embedding = np.zeros(768, dtype=np.float32)
 
+        # --- NEW: Scene Segmentation & Per-Scene Analysis ---
+        scenes_data = []
+        try:
+             scene_boundaries = self._detect_scenes(video_path, threshold=scene_threshold)
+             if scene_boundaries:
+                 # Limit to reasonable number of scenes to prevent processing indefinitely
+                 # e.g. Max 50 scenes per video
+                 processed_scenes = scene_boundaries[:50]
+                 
+                 for idx, (start_s, end_s) in enumerate(processed_scenes):
+                     # Calculate middle frame of scene
+                     mid_s = (start_s + end_s) / 2
+                     mid_frame_idx = int(mid_s * fps)
+                     mid_frame_idx = max(0, min(mid_frame_idx, frame_count - 1))
+                     
+                     # Extract middle frame
+                     scene_frame_np = vr[mid_frame_idx].asnumpy()
+                     pil_scene = Image.fromarray(scene_frame_np)
+                     
+                     # 1. CLIP Embedding
+                     scene_clip_vec = self.ai_engine.extract_clip_feature(pil_scene)
+                     
+                     # 2. Caption
+                     scene_caption = ""
+                     try:
+                         if self._vlm_engine is None:
+                             from .vlm_engine import VLMEngine as _VLMEngine
+                             self._vlm_engine = _VLMEngine()
+                         scene_caption = self._vlm_engine.generate_detailed_caption(pil_scene) or ""
+                     except Exception as ve:
+                         print(f"Scene captioning failed: {ve}")
+
+                     scenes_data.append({
+                         'start_time': start_s,
+                         'end_time': end_s,
+                         'scene_index': idx,
+                         'start_frame': int(start_s * fps),
+                         'end_frame': int(end_s * fps),
+                         'clip_vector': scene_clip_vec,
+                         'caption': scene_caption,
+                         'tags': [], # For now
+                         'character_tags': [],
+                         'series_tags': []
+                     })
+        except Exception as se:
+            print(f"Scene analysis failed for {video_path}: {se}")
+
         return {
             'file_path': video_path,
             'duration': duration,
@@ -194,5 +255,6 @@ class VideoProcessor:
             'clip_embedding': avg_clip_embedding, # (768,)
             'faces': all_faces, # List of dicts
             'audio_transcription': audio_transcription,
-            'frame_descriptions': frame_descriptions
+            'frame_descriptions': frame_descriptions,
+            'scenes': scenes_data
         }

@@ -7,9 +7,14 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from server.routers import gallery, media, scan, setup, dedup, albums, insights
+from server.routers import gallery, media, scan, setup, dedup, albums, insights, scenes
+from fastapi.staticfiles import StaticFiles
 
 app = FastAPI(title="LocalCurator Prime API", version="1.0.0")
+
+# Scenes Thumbnails Static Mount
+os.makedirs(".thumbnails/scenes", exist_ok=True)
+app.mount("/thumbnails/scenes", StaticFiles(directory=".thumbnails/scenes"), name="scene_thumbnails")
 
 # CORS
 app.add_middleware(
@@ -28,6 +33,7 @@ app.include_router(setup.router)
 app.include_router(dedup.router)
 app.include_router(albums.router)
 app.include_router(insights.router)
+app.include_router(scenes.router)
 
 @app.get("/health")
 async def health_check():

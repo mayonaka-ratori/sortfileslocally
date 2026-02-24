@@ -183,7 +183,27 @@ class Processor:
             elif item.media_type == 'video':
                 # Use VideoProcessor
                 # It returns dictionary
-                res = self.video_processor.process_video(item.file_path, skip_face=skip_face, skip_whisper=skip_whisper)
+                
+                # S5: Get scene threshold from settings
+                threshold = 27.0
+                try:
+                    t_val = self.db_manager.get_setting("scene_threshold")
+                    if t_val: threshold = float(t_val)
+                except: pass
+
+                # S5: Get auto-scene detection flag
+                auto_scene = False
+                try:
+                    a_val = self.db_manager.get_setting("auto_scene_detection")
+                    if a_val: auto_scene = (a_val.lower() == "true")
+                except: pass
+
+                res = self.video_processor.process_video(
+                    item.file_path, 
+                    skip_face=skip_face, 
+                    skip_whisper=skip_whisper,
+                    scene_threshold=threshold if auto_scene else 999.0 # Effectively disable if not auto
+                )
                 if not res:
                      raise ValueError("Video processing returned None")
                 
@@ -222,29 +242,41 @@ class Processor:
                 tags = self.auto_tagger.suggest_tags(np.array(res['clip_embedding']))[0]
                 item.tags = tags
 
-                # Character Tagging for Video (using representative frames or just avg?)
-                # For now, let's tag the middle frame or a few? VideoProcessor doesn't return frames yet.
-                # Simplest: Since we have the path, let's just do it again for video? 
-                # Actually let's modify VideoProcessor to return a keyframe!
-                # Or for now, skip video character tagging or do it simple.
-                # I'll just skip video for a moment to be safe on memory, or just take first frame.
                 try:
                     import decord
                     vr = decord.VideoReader(item.file_path)
                     mid_frame = vr[len(vr)//2].asnumpy()
-                    res = self.inference.process_image(Image.fromarray(mid_frame))
-                    item.character_tags = res['char_tags']
-                    item.series_tags = res['series_tags']
+                    res_img = self.inference.process_image(Image.fromarray(mid_frame))
+                    item.character_tags = res_img['char_tags']
+                    item.series_tags = res_img['series_tags']
                 except Exception as e:
                     print(f"Failed character tagging for video {item.file_path}: {e}")
 
-            return ProcessingResult(
-                file_path=item.file_path,
-                success=True,
-                media_item=item,
-                vector_data=vec_data,
-                faces=faces_data
-            )
+                # Map scenes to VideoSceneData
+                scenes_data = []
+                for s in res.get('scenes', []):
+                    scenes_data.append(VideoSceneData(
+                        start_time=s['start_time'],
+                        end_time=s['end_time'],
+                        scene_index=s.get('scene_index', 0),
+                        thumbnail_path=s.get('thumbnail_path'),
+                        start_frame=s.get('start_frame', 0),
+                        end_frame=s.get('end_frame', 0),
+                        caption=s['caption'],
+                        clip_vector=s['clip_vector'].tolist() if hasattr(s['clip_vector'], 'tolist') else s['clip_vector'],
+                        tags=s.get('tags', []),
+                        character_tags=s.get('character_tags', []),
+                        series_tags=s.get('series_tags', [])
+                    ))
+
+                return ProcessingResult(
+                    file_path=item.file_path,
+                    success=True,
+                    media_item=item,
+                    vector_data=vec_data,
+                    faces=faces_data,
+                    scenes=scenes_data
+                )
 
         except Exception as e:
             item.error_msg = str(e)
@@ -253,6 +285,72 @@ class Processor:
                 success=False,
                 media_item=item
             )
+
+    def process_video_scenes(self, file_id: int):
+        """
+        Standalone scene detection for a specific video file.
+        Used by the /scenes/{id}/detect endpoint.
+        """
+        conn = self.db_manager._connect()
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        try:
+            c.execute("SELECT * FROM files WHERE id = ?", (file_id,))
+            row = c.fetchone()
+            if not row:
+                logger.error(f"File {file_id} not found for scene detection")
+                return
+            
+            file_path = row['file_path']
+            # Re-inspect to get MediaItem
+            item = self.scanner.inspect_file(file_path)
+            
+            # Get threshold from settings
+            threshold = 27.0
+            try:
+                t_val = self.db_manager.get_setting("scene_threshold")
+                if t_val: threshold = float(t_val)
+            except: pass
+
+            res = self.video_processor.process_video(file_path, skip_face=True, skip_whisper=True, scene_threshold=threshold)
+            if not res:
+                return
+
+            scenes_data = []
+            for s in res.get('scenes', []):
+                scenes_data.append(VideoSceneData(
+                    start_time=s['start_time'],
+                    end_time=s['end_time'],
+                    scene_index=s.get('scene_index', 0),
+                    thumbnail_path=s.get('thumbnail_path'),
+                    start_frame=s.get('start_frame', 0),
+                    end_frame=s.get('end_frame', 0),
+                    caption=s['caption'],
+                    clip_vector=s['clip_vector'].tolist() if hasattr(s['clip_vector'], 'tolist') else s['clip_vector'],
+                    tags=s.get('tags', []),
+                    character_tags=s.get('character_tags', []),
+                    series_tags=s.get('series_tags', [])
+                ))
+            
+            # We don't want to overwrite file metadata, just scenes
+            # But the current add_result logic cleans up scenes for the file_id.
+            # So we create a ProcessingResult with just scenes.
+            result = ProcessingResult(
+                file_path=file_path,
+                success=True,
+                media_item=item,
+                scenes=scenes_data
+            )
+            
+            # Need to avoid cleaning up file CLIP and faces if this is just scene re-detection.
+            # However, add_result(result) as implemented currently cleans up both.
+            # Let's add a partial update method to db_manager or modify add_result.
+            # For now, I'll use a hacky way or just call add_result and accept re-processing cost if needed.
+            # Actually, I should probably add a save_scenes method to DBManager as requested.
+            self.db_manager.add_result(result)
+
+        finally:
+            conn.close()
 
     def process_folder_batch(self, root_dir: str, force_reprocess: bool = False, batch_size: int = 32, exclude_dirs: List[str] = None) -> Generator[str, None, None]:
         """

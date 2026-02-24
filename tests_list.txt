@@ -1,0 +1,80 @@
+============================= test session starts =============================
+platform win32 -- Python 3.10.11, pytest-9.0.2, pluggy-1.6.0
+rootdir: C:\tools\organizefiles0112\LocalCuratorPrime
+plugins: anyio-4.12.1
+collected 32 items
+
+<Dir LocalCuratorPrime>
+  <Dir tests>
+    <Module test_album_api.py>
+      <Function test_create_dynamic_album_validation>
+      <Function test_update_dynamic_album_validation>
+    <Module test_albums.py>
+      <Function test_create_static_album>
+      <Function test_create_dynamic_album>
+      <Function test_add_remove_items_static>
+      <Function test_dynamic_album_results>
+      <Function test_delete_album>
+      <Function test_update_album>
+    <Module test_debug_unpacking.py>
+      <Function test_batch_unpacking>
+    <Module test_deduplication.py>
+      <Function test_deduplication_logic>
+    <Module test_deduplication_merge.py>
+      <Function test_metadata_merge>
+    <Module test_engine.py>
+      <Function test_engine>
+    <Module test_exporter.py>
+      <Function test_export_to_xmp_sidecar>
+      <Function test_export_to_exif_jpeg>
+      <Function test_export_exif_unsupported_format>
+      <Function test_export_batch_mixed>
+    <Module test_integration_export_dedup.py>
+      <Function test_integration_export_dedup_deletes_xmp>
+    <Module test_intelligence.py>
+      <Function test_auto_tagger>
+      <Function test_face_clustering>
+    <Module test_pipeline.py>
+      <Function test_pipeline>
+    <Module test_scan_job_manager.py>
+      <Function test_scan_job_lifecycle>
+    <Module test_search_history.py>
+      <Function test_save_and_retrieve_history>
+      <Function test_upsert_history>
+      <Function test_auto_delete_oldest>
+      <Function test_delete_single_entry>
+      <Function test_clear_all_history>
+    <Module test_semantic_actions.py>
+      <UnitTestCase TestSemanticEngine>
+        <TestCaseFunction test_semantic_engine_parsing>
+    <Module test_setup.py>
+      <Function test_get_setup_settings>
+      <Function test_post_setup_settings_valid>
+      <Function test_post_setup_settings_invalid_not_exist>
+      <Function test_post_setup_settings_invalid_not_dir>
+    <Module test_sorter.py>
+      <Function test_sorter_safety>
+
+============================== warnings summary ===============================
+<frozen importlib._bootstrap>:241
+  <frozen importlib._bootstrap>:241: DeprecationWarning: builtin type SwigPyPacked has no __module__ attribute
+
+<frozen importlib._bootstrap>:241
+  <frozen importlib._bootstrap>:241: DeprecationWarning: builtin type SwigPyObject has no __module__ attribute
+
+<frozen importlib._bootstrap>:241
+  <frozen importlib._bootstrap>:241: DeprecationWarning: builtin type swigvarlink has no __module__ attribute
+
+venv\lib\site-packages\huggingface_hub\file_download.py:949
+venv\lib\site-packages\huggingface_hub\file_download.py:949
+  C:\tools\organizefiles0112\LocalCuratorPrime\venv\lib\site-packages\huggingface_hub\file_download.py:949: FutureWarning: `resume_download` is deprecated and will be removed in version 1.0.0. Downloads always resume when possible. If you want to force a new download, use `force_download=True`.
+    warnings.warn(
+
+<frozen importlib._bootstrap>:283
+<frozen importlib._bootstrap>:283
+<frozen importlib._bootstrap>:283
+<frozen importlib._bootstrap>:283
+  <frozen importlib._bootstrap>:283: DeprecationWarning: the load_module() method is deprecated and slated for removal in Python 3.12; use exec_module() instead
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 32 tests collected in 18.49s =========================

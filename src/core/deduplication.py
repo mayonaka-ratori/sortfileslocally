@@ -55,16 +55,40 @@ class Deduplicator:
             # Use offset based reconstruction safe for IDMap
             sub_index = index.index if hasattr(index, 'index') else index
             
+            # Resolve all IDs in CLIP index to find which ones are files
+            ids = faiss.vector_to_array(index.id_map).astype('int64')
+            
+            # Use vector_mapping to distinguish files from scenes
+            conn = self.db_manager._connect()
+            c = conn.cursor()
+            placeholders = ','.join(['?'] * len(ids))
+            c.execute(f"SELECT faiss_id FROM vector_mapping WHERE faiss_id IN ({placeholders}) AND entity_type = 'file'", ids.tolist())
+            file_faiss_ids = set(row[0] for row in c.fetchall())
+            
+            # Fallback for legacy (if not in vector_mapping, assume it's a file)
+            c.execute(f"SELECT faiss_id FROM vector_mapping WHERE faiss_id IN ({placeholders})", ids.tolist())
+            mapped_ids = set(row[0] for row in c.fetchall())
+            for fid in ids:
+                if fid not in mapped_ids:
+                    file_faiss_ids.add(fid)
+            conn.close()
+
+            # Filter vectors and IDs to only including files
+            valid_indices = [i for i, fid in enumerate(ids) if fid in file_faiss_ids]
+            
+            if not valid_indices:
+                return []
+
             vectors = []
-            for i in range(ntotal):
-                 vec = sub_index.reconstruct(i)
-                 vectors.append(vec)
-            vectors = np.array(vectors)
-                 
-            print(f"Vectors shape: {vectors.shape}")
-            # IDs
-            ids = faiss.vector_to_array(index.id_map)
-            print(f"IDs shape: {ids.shape}")
+            filtered_ids = []
+            for idx in valid_indices:
+                vectors.append(sub_index.reconstruct(idx))
+                filtered_ids.append(ids[idx])
+            
+            vectors = np.array(vectors, dtype='float32')
+            filtered_ids = np.array(filtered_ids, dtype='int64')
+            
+            print(f"File vectors shape: {vectors.shape}")
             
             # Range Search
             # limit query? O(N^2) naive, FAISS optimizes a bit.
@@ -107,8 +131,8 @@ class Deduplicator:
             
             checked = set()
             
-            for i in range(ntotal):
-                query_id = ids[i]
+            for i in range(len(valid_indices)):
+                query_id = filtered_ids[i]
                 start = res_lims[i]
                 end = res_lims[i+1]
                 

@@ -65,6 +65,24 @@ class FaceData:
         return asdict(self)
 
 @dataclass
+class VideoSceneData:
+    """Represents a detected scene in a video."""
+    start_time: float
+    end_time: float
+    scene_index: int = 0
+    thumbnail_path: Optional[str] = None
+    start_frame: int = 0
+    end_frame: int = 0
+    caption: Optional[str] = None
+    tags: List[str] = field(default_factory=list)
+    character_tags: List[str] = field(default_factory=list)
+    series_tags: List[str] = field(default_factory=list)
+    clip_vector: Optional[List[float]] = None # 768 dim
+
+    def to_dict(self):
+        return asdict(self)
+
+@dataclass
 class ProcessingResult:
     """Result returned from Processor."""
     file_path: str
@@ -72,3 +90,4 @@ class ProcessingResult:
     media_item: MediaItem
     vector_data: Optional[VectorData] = None
     faces: List[FaceData] = field(default_factory=list)
+    scenes: List[VideoSceneData] = field(default_factory=list)

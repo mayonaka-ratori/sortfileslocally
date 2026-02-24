@@ -113,6 +113,32 @@ def get_thumbnail(file_id: int, size: int = 300, db: DBManager = Depends(get_db_
         print(f"Thumbnail Error: {e}")
         raise HTTPException(status_code=500, detail="Thumbnail generation failed")
 
+class SceneResponse(BaseModel):
+    id: int
+    start_time: float
+    end_time: float
+    caption: Optional[str] = None
+    tags: List[str]
+    character_tags: List[str]
+    series_tags: List[str]
+
+@router.get("/{file_id}/scenes", response_model=List[SceneResponse])
+def get_media_scenes(file_id: int, db: DBManager = Depends(get_db_manager)):
+    """Get all scenes for a specific video file."""
+    scenes = db.get_video_scenes(file_id)
+    results = []
+    for s in scenes:
+        results.append(SceneResponse(
+            id=s['id'],
+            start_time=s['start_time'],
+            end_time=s['end_time'],
+            caption=s['caption'],
+            tags=_safe_parse(s['tags']),
+            character_tags=_safe_parse(s['character_tags']),
+            series_tags=_safe_parse(s['series_tags'])
+        ))
+    return results
+
 
 # ------------------------------------------------------------------ #
 # Metadata Export Endpoints

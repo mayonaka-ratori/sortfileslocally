@@ -1,0 +1,87 @@
+============================= test session starts =============================
+platform win32 -- Python 3.10.11, pytest-9.0.2, pluggy-1.6.0 -- C:\tools\organizefiles0112\LocalCuratorPrime\venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\tools\organizefiles0112\LocalCuratorPrime
+plugins: anyio-4.12.1
+collecting ... collected 67 items / 5 skipped
+
+tests/test_album_api.py::test_create_dynamic_album_validation PASSED     [  1%]
+tests/test_album_api.py::test_update_dynamic_album_validation PASSED     [  2%]
+tests/test_albums.py::test_create_static_album PASSED                    [  4%]
+tests/test_albums.py::test_create_dynamic_album PASSED                   [  5%]
+tests/test_albums.py::test_add_remove_items_static PASSED                [  7%]
+tests/test_albums.py::test_dynamic_album_results PASSED                  [  8%]
+tests/test_albums.py::test_delete_album PASSED                           [ 10%]
+tests/test_albums.py::test_update_album PASSED                           [ 11%]
+tests/test_bulk_tags.py::test_bulk_add_tags PASSED                       [ 13%]
+tests/test_bulk_tags.py::test_bulk_remove_tags PASSED                    [ 14%]
+tests/test_bulk_tags.py::test_bulk_replace_tags PASSED                   [ 16%]
+tests/test_bulk_tags.py::test_bulk_limit_exceeded PASSED                 [ 17%]
+tests/test_bulk_tags.py::test_bulk_mixed_results PASSED                  [ 19%]
+tests/test_bulk_tags.py::test_bulk_empty_tags PASSED                     [ 20%]
+tests/test_bulk_tags.py::test_bulk_add_tags_deduplication PASSED         [ 22%]
+tests/test_debug_unpacking.py::test_batch_unpacking PASSED               [ 23%]
+tests/test_deduplication_merge.py::test_metadata_merge PASSED            [ 25%]
+tests/test_exporter.py::test_export_to_xmp_sidecar PASSED                [ 26%]
+tests/test_exporter.py::test_export_to_exif_jpeg PASSED                  [ 28%]
+tests/test_exporter.py::test_export_exif_unsupported_format PASSED       [ 29%]
+tests/test_exporter.py::test_export_batch_mixed PASSED                   [ 31%]
+tests/test_insights.py::test_empty_library_insights PASSED               [ 32%]
+tests/test_insights.py::test_untagged_files_insight PASSED               [ 34%]
+tests/test_insights.py::test_untagged_files_high_priority PASSED         [ 35%]
+tests/test_insights.py::test_album_suggestion_insight PASSED             [ 37%]
+tests/test_insights.py::test_album_suggestion_already_exists PASSED      [ 38%]
+tests/test_insights.py::test_low_quality_tags_insight PASSED             [ 40%]
+tests/test_insights.py::test_api_insights_endpoint PASSED                [ 41%]
+tests/test_integration_export_dedup.py::test_integration_export_dedup_deletes_xmp PASSED [ 43%]
+tests/test_pipeline.py::test_pipeline PASSED                             [ 44%]
+tests/test_rescan.py::test_single_rescan PASSED                          [ 46%]
+tests/test_rescan.py::test_bulk_rescan PASSED                            [ 47%]
+tests/test_rescan.py::test_bulk_rescan_limit PASSED                      [ 49%]
+tests/test_rescan.py::test_rescan_invalid_file PASSED                    [ 50%]
+tests/test_reverse_search.py::test_reverse_search_endpoint PASSED        [ 52%]
+tests/test_scan_job_manager.py::test_scan_job_lifecycle PASSED           [ 53%]
+tests/test_search_history.py::test_save_and_retrieve_history PASSED      [ 55%]
+tests/test_search_history.py::test_upsert_history PASSED                 [ 56%]
+tests/test_search_history.py::test_auto_delete_oldest PASSED             [ 58%]
+tests/test_search_history.py::test_delete_single_entry PASSED            [ 59%]
+tests/test_search_history.py::test_clear_all_history PASSED              [ 61%]
+tests/test_semantic_actions.py::TestSemanticEngine::test_semantic_engine_parsing PASSED [ 62%]
+tests/test_setup.py::test_get_setup_settings PASSED                      [ 64%]
+tests/test_setup.py::test_post_setup_settings_valid PASSED               [ 65%]
+tests/test_setup.py::test_post_setup_settings_invalid_not_exist PASSED   [ 67%]
+tests/test_setup.py::test_post_setup_settings_invalid_not_dir PASSED     [ 68%]
+tests/test_sorter.py::test_sorter_safety PASSED                          [ 70%]
+tests/test_tag_edit.py::test_add_tags PASSED                             [ 71%]
+tests/test_tag_edit.py::test_add_duplicate_tag PASSED                    [ 73%]
+tests/test_tag_edit.py::test_remove_tag PASSED                           [ 74%]
+tests/test_tag_edit.py::test_remove_nonexistent_tag PASSED               [ 76%]
+tests/test_tag_edit.py::test_suggest_tags PASSED                         [ 77%]
+tests/test_tag_edit.py::test_category_separation PASSED                  [ 79%]
+tests/test_tag_edit.py::test_invalid_file_id PASSED                      [ 80%]
+tests/test_tag_edit.py::test_api_add_tags PASSED                         [ 82%]
+tests/test_tag_edit.py::test_api_suggest_tags PASSED                     [ 83%]
+tests/test_tag_edit.py::test_api_404 PASSED                              [ 85%]
+tests/test_tags.py::test_get_tag_stats PASSED                            [ 86%]
+tests/test_tags.py::test_get_untagged_files PASSED                       [ 88%]
+tests/test_tags.py::test_rename_tag_normal PASSED                        [ 89%]
+tests/test_tags.py::test_rename_tag_merge PASSED                         [ 91%]
+tests/test_tags.py::test_rename_tag_not_found PASSED                     [ 92%]
+tests/test_tags.py::test_delete_tag PASSED                               [ 94%]
+tests/test_tags.py::test_api_tag_stats PASSED                            [ 95%]
+tests/test_tags.py::test_api_untagged PASSED                             [ 97%]
+tests/test_tags.py::test_api_rename PASSED                               [ 98%]
+tests/test_whisper_sub.py::test_whisper_transcription PASSED             [100%]
+
+============================== warnings summary ===============================
+<frozen importlib._bootstrap>:241
+  <frozen importlib._bootstrap>:241: DeprecationWarning: builtin type SwigPyPacked has no __module__ attribute
+
+<frozen importlib._bootstrap>:241
+  <frozen importlib._bootstrap>:241: DeprecationWarning: builtin type SwigPyObject has no __module__ attribute
+
+<frozen importlib._bootstrap>:241
+  <frozen importlib._bootstrap>:241: DeprecationWarning: builtin type swigvarlink has no __module__ attribute
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================= 67 passed, 5 skipped, 3 warnings in 18.38s ==================
