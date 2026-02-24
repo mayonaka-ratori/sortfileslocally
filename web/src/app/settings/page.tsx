@@ -5,6 +5,7 @@ import { ModelManagerUI } from '@/components/Settings/ModelManagerUI';
 import { DataManagementUI } from '@/components/Settings/DataManagementUI';
 import { CleanerUI } from '@/components/Settings/CleanerUI';
 import { SceneSettings } from '@/components/SceneSettings';
+import { NetworkPrivacyUI } from '@/components/Settings/NetworkPrivacyUI';
 
 export default function SettingsPage() {
     return (
@@ -56,6 +57,11 @@ export default function SettingsPage() {
                     </div>
 
                     <SceneSettings />
+                </section>
+
+                {/* Network & Privacy Section */}
+                <section className="flex flex-col gap-4">
+                    <NetworkPrivacyUI />
                 </section>
 
                 {/* Deduplication Section */}

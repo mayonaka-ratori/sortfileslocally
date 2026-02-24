@@ -15,17 +15,26 @@ const MediaCard = ({
     item,
     onSelect,
     isSelected,
+    isFocused,
     isSelectionMode,
     onToggleSelect
 }: {
     item: MediaItem,
     onSelect: (item: MediaItem) => void,
     isSelected: boolean,
+    isFocused?: boolean,
     isSelectionMode: boolean,
     onToggleSelect: (id: number) => void
 }) => {
+    const cardRef = useRef<HTMLDivElement>(null);
     const [isHovered, setIsHovered] = useState(false);
     const hoverTimeout = useRef<NodeJS.Timeout | null>(null);
+
+    useEffect(() => {
+        if (isFocused && cardRef.current) {
+            cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    }, [isFocused]);
 
     const handleMouseEnter = () => {
         if (item.media_type === "video") {
@@ -52,10 +61,11 @@ const MediaCard = ({
 
     return (
         <div
+            ref={cardRef}
             onClick={handleClick}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
-            className={`relative group cursor-pointer overflow-hidden rounded-xl bg-zinc-900 border transition-all duration-300 break-inside-avoid shadow-lg flex flex-col ${isSelected ? 'border-indigo-500 ring-2 ring-indigo-500/50' : 'border-zinc-800 hover:border-zinc-700'}`}
+            className={`relative group cursor-pointer overflow-hidden rounded-xl bg-zinc-900 border transition-all duration-300 break-inside-avoid shadow-lg flex flex-col ${isSelected ? 'border-indigo-500 ring-2 ring-indigo-500/50' : isFocused ? 'border-indigo-400 ring-1 ring-indigo-400/30' : 'border-zinc-800 hover:border-zinc-700'}`}
         >
             <div className="relative w-full aspect-auto bg-zinc-900">
                 <Image
@@ -129,12 +139,30 @@ interface GalleryGridProps {
     hasMore?: boolean
     onMenuClick?: () => void
     onImageDrop?: (file: File) => void
+    focusedIndex?: number
+    selectedIds?: Set<number>
+    onSelectionChange?: (ids: Set<number>) => void
 }
 
-export function GalleryGrid({ media, onSelect, onSearch, onLoadMore, hasMore, onMenuClick, onImageDrop }: GalleryGridProps) {
+export function GalleryGrid({
+    media,
+    onSelect,
+    onSearch,
+    onLoadMore,
+    hasMore,
+    onMenuClick,
+    onImageDrop,
+    focusedIndex = -1,
+    selectedIds: externalSelectedIds,
+    onSelectionChange
+}: GalleryGridProps) {
     const [query, setQuery] = useState("")
     const [isDragging, setIsDragging] = useState(false)
-    const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+    const [internalSelectedIds, setInternalSelectedIds] = useState<Set<number>>(new Set())
+
+    const selectedIds = externalSelectedIds || internalSelectedIds
+    const setSelectedIds = onSelectionChange || setInternalSelectedIds
+
     const [showBulkModal, setShowBulkModal] = useState(false)
     const [showBulkTagModal, setShowBulkTagModal] = useState(false)
     const [showBulkRescanModal, setShowBulkRescanModal] = useState(false)
@@ -330,12 +358,13 @@ export function GalleryGrid({ media, onSelect, onSearch, onLoadMore, hasMore, on
                     </div>
                 ) : (
                     <div className="columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4 space-y-4">
-                        {media.map((item) => (
+                        {media.map((item, index) => (
                             <MediaCard
                                 key={item.id}
                                 item={item}
                                 onSelect={onSelect}
                                 isSelected={selectedIds.has(item.id)}
+                                isFocused={index === focusedIndex}
                                 isSelectionMode={selectedIds.size > 0}
                                 onToggleSelect={toggleSelect}
                             />

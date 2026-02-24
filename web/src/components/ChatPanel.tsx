@@ -2,11 +2,12 @@
 
 import React, { useState, useRef, useEffect } from "react"
 import { MediaItem, getOriginalUrl, chatWithImage, FaceData, getFaces, nameFace, exportMetadata, TagCategory, rescanFile, RescanMode, getScanStatus } from "@/lib/api"
-import { X, Send, Loader2, Users, MessageSquare, Search, Edit2, Check, Save, Settings2, Tags as TagsIcon, RefreshCw, ChevronDown, Clapperboard } from "lucide-react"
+import { X, Send, Loader2, Users, MessageSquare, Search, Edit2, Check, Save, Settings2, Tags as TagsIcon, RefreshCw, ChevronDown, Clapperboard, Heart } from "lucide-react"
 import { SceneTimeline } from "./SceneTimeline"
 import Image from "next/image"
 import { MetadataExportOptions, ExportMode } from "./MetadataExportOptions"
 import { TagEditorPanel } from "./TagEditorPanel"
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts"
 
 interface ChatPanelProps {
     item: MediaItem | null
@@ -52,7 +53,37 @@ export function ChatPanel({ item, onClose, onFaceSearch, onItemUpdate }: ChatPan
             ])
             getFaces(item.id).then(setFaces).catch(console.error)
         }
-    }, [item?.id, item])
+
+        const handleGlobalClose = () => onClose()
+        window.addEventListener('close-modals', handleGlobalClose)
+        return () => window.removeEventListener('close-modals', handleGlobalClose)
+    }, [item?.id, item, onClose])
+
+    useKeyboardShortcuts({
+        'f': () => {
+            if (!item) return
+            // Toggle favorite - if no API, just UI feedback for now
+            console.log("Toggle favorite for item", item.id)
+            // If onItemUpdate is available, we could update it
+            if (onItemUpdate) {
+                onItemUpdate({
+                    ...item,
+                    // @ts-expect-error - favorite might not be in type but requested
+                    favorite: !item.favorite
+                })
+            }
+        },
+        'e': () => {
+            if (!item) return
+            setShowExportOptions(prev => !prev)
+        },
+        't': () => {
+            if (!item) return
+            setActiveTab("tags")
+            // TagEditorPanel handles its own refocusing via custom event usually
+            // but we can ensure the tab is active first.
+        }
+    })
 
     // Auto-scroll to bottom
     useEffect(() => {
@@ -202,9 +233,30 @@ export function ChatPanel({ item, onClose, onFaceSearch, onItemUpdate }: ChatPan
                 </div>
                 <div className="flex gap-2 items-center">
                     <button
+                        onClick={() => {
+                            if (item && onItemUpdate) {
+                                onItemUpdate({
+                                    ...item,
+                                    // @ts-expect-error - favorite may not be in type
+                                    favorite: !item.favorite
+                                })
+                            }
+                        }}
+                        className={`p-1.5 rounded-md transition-colors ${
+                            // @ts-expect-error - favorite may not be in type
+                            item?.favorite ? 'text-red-500 bg-red-500/10' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+                            }`}
+                        title="Toggle Favorite (F)"
+                    >
+                        <Heart className={`w-4 h-4 ${
+                            // @ts-expect-error - favorite may not be in type
+                            item?.favorite ? 'fill-current' : ''
+                            }`} />
+                    </button>
+                    <button
                         onClick={() => setShowExportOptions(!showExportOptions)}
                         className={`p-1.5 rounded-md transition-colors ${showExportOptions ? 'bg-indigo-600 text-white' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'}`}
-                        title="Export Options"
+                        title="Export Options (E)"
                     >
                         <Settings2 className="w-4 h-4" />
                     </button>

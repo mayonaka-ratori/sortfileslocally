@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { SetupGuard } from "@/components/SetupGuard";
+import { GlobalShortcuts } from "@/components/GlobalShortcuts";
+import { NetworkStatus } from "@/components/NetworkStatus";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,7 +38,9 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <SetupGuard>
+            <NetworkStatus />
             {children}
+            <GlobalShortcuts />
           </SetupGuard>
         </ThemeProvider>
       </body>

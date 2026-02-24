@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react"
 import { MediaItem, fetchMedia, searchMedia, searchByFace, reverseImageSearch, SearchFilters, SceneSearchResult, searchScenes } from "@/lib/api"
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts"
 import { GalleryGrid } from "@/components/GalleryGrid"
 import { ChatPanel } from "@/components/ChatPanel"
 import { Sidebar } from "@/components/Sidebar"
@@ -14,6 +15,8 @@ import { InsightsPanel } from "@/components/InsightsPanel"
 export default function Home() {
   const [media, setMedia] = useState<MediaItem[]>([])
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null)
+  const [focusedIndex, setFocusedIndex] = useState(-1)
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [currentSearch, setCurrentSearch] = useState("")
@@ -163,6 +166,45 @@ export default function Home() {
     }
   }, [currentFilters, currentSearch, loadMedia])
 
+  const selectNext = useCallback(() => {
+    setFocusedIndex(prev => (prev < media.length - 1 ? prev + 1 : prev))
+  }, [media.length])
+
+  const selectPrev = useCallback(() => {
+    setFocusedIndex(prev => (prev > 0 ? prev - 1 : prev))
+  }, [])
+
+  const openSelected = useCallback(() => {
+    if (focusedIndex >= 0 && focusedIndex < media.length) {
+      setSelectedItem(media[focusedIndex])
+      setFocusedIndex(focusedIndex) // Ensure it stays focused
+    }
+  }, [focusedIndex, media])
+
+  const selectAll = useCallback(() => {
+    setSelectedIds(new Set(media.map(m => m.id)))
+  }, [media])
+
+  const deselectAll = useCallback(() => {
+    setSelectedIds(new Set())
+  }, [])
+
+  useKeyboardShortcuts({
+    'j': selectNext,
+    'k': selectPrev,
+    'enter': openSelected,
+    'a': selectAll,
+    'shift+a': deselectAll,
+  })
+
+  // Sync focused index with selectedItem if it changes via click
+  useEffect(() => {
+    if (selectedItem) {
+      const idx = media.findIndex(m => m.id === selectedItem.id)
+      if (idx !== -1) setFocusedIndex(idx)
+    }
+  }, [selectedItem, media])
+
   return (
     <main className="flex h-screen w-full bg-zinc-950 overflow-hidden font-sans">
       <Sidebar
@@ -268,6 +310,9 @@ export default function Home() {
                     onLoadMore={handleLoadMore}
                     hasMore={hasMore}
                     onImageDrop={handleImageDrop}
+                    focusedIndex={focusedIndex}
+                    selectedIds={selectedIds}
+                    onSelectionChange={setSelectedIds}
                   />
                 )}
               </div>
