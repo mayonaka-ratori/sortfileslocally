@@ -1,0 +1,8 @@
+feat: First-Run Experience Phase 3 – Onboarding Tour (5.2)
+
+- Custom 6-step guided tour (no external deps, framer-motion)
+- Focus trap, keyboard nav (Esc/Tab), aria-labels
+- Dismiss persists via onboarding_dismissed setting
+- Home page conditional rendering (z-50 overlay)
+- i18n: 20 new onboarding.* keys (430 total, en/ja matched)
+- Suite: 75 passed, 0 failed, 7 skipped, ESLint 0/0

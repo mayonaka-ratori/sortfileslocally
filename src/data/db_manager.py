@@ -212,6 +212,7 @@ class DBManager:
             ("locale", "en"),
             ("demo_mode", "0"),
             ("last_opened", "0"),
+            ("onboarding_dismissed", "false"),
         ]:
             try:
                 c.execute("SELECT 1 FROM app_settings WHERE key = ?", (key,))

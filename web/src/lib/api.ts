@@ -341,6 +341,9 @@ export interface AppSettings {
     execution_profile: string;
     theme: string;
     locale: string;
+    demo_mode: boolean;
+    last_opened: number;
+    onboarding_dismissed: string;
 }
 
 export const getAppSettings = async (): Promise<AppSettings> => {

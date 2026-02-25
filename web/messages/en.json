@@ -487,5 +487,26 @@
         "processing": "Processing AI Tags...",
         "preparing": "Preparing models...",
         "done": "Done"
+    },
+    "onboarding": {
+        "step1Title": "Search your library",
+        "step1Desc": "Type anything in natural language — AI understands your intent.",
+        "step2Title": "AI Tags",
+        "step2Desc": "Every image is automatically tagged with characters, series, and style.",
+        "step3Title": "Smart Albums",
+        "step3Desc": "Save any search as an album that auto-updates.",
+        "step4Title": "AI Chat",
+        "step4Desc": "Click any image to chat with the AI about it.",
+        "step5Title": "Keyboard Shortcuts",
+        "step5Desc": "Press ? to see all shortcuts. Press / to search instantly.",
+        "step6Title": "You're all set!",
+        "step6Desc": "Your media is waiting. Start exploring.",
+        "skip": "Skip tour",
+        "next": "Next",
+        "back": "Back",
+        "finish": "Start exploring",
+        "stepOf": "Step {current} of {total}",
+        "progress": "{percent}% complete",
+        "restartHint": "You can restart this tour from Settings."
     }
 }

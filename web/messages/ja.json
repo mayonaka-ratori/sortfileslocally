@@ -487,5 +487,26 @@
         "processing": "AIタグを処理中...",
         "preparing": "モデルを準備中...",
         "done": "完了"
+    },
+    "onboarding": {
+        "step1Title": "ライブラリを検索",
+        "step1Desc": "自然言語で何でも入力 — AIがあなたの意図を理解します。",
+        "step2Title": "AIタグ",
+        "step2Desc": "すべての画像に自動でキャラクター、シリーズ、スタイルのタグが付きます。",
+        "step3Title": "スマートアルバム",
+        "step3Desc": "検索結果をアルバムとして保存すると、自動で更新されます。",
+        "step4Title": "AIチャット",
+        "step4Desc": "画像をクリックしてAIと会話できます。",
+        "step5Title": "キーボードショートカット",
+        "step5Desc": "?で全ショートカット表示、/で即座に検索。",
+        "step6Title": "準備完了！",
+        "step6Desc": "メディアが待っています。探索を始めましょう。",
+        "skip": "ツアーをスキップ",
+        "next": "次へ",
+        "back": "戻る",
+        "finish": "探索を始める",
+        "stepOf": "ステップ {current}/{total}",
+        "progress": "{percent}% 完了",
+        "restartHint": "このツアーは設定から再開できます。"
     }
 }

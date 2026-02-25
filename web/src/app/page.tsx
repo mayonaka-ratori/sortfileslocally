@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { MediaItem, fetchMedia, searchMedia, searchByFace, reverseImageSearch, SearchFilters, SceneSearchResult, searchScenes } from "@/lib/api"
+import { MediaItem, fetchMedia, searchMedia, searchByFace, reverseImageSearch, SearchFilters, SceneSearchResult, searchScenes, getAppSettings } from "@/lib/api"
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts"
 import { GalleryGrid } from "@/components/GalleryGrid"
 import { ChatPanel } from "@/components/ChatPanel"
@@ -13,6 +13,7 @@ import SaveAlbumModal from "@/components/SaveAlbumModal"
 import { InsightsPanel } from "@/components/InsightsPanel"
 import { useTranslations } from "next-intl"
 import { WelcomeBackBanner } from "@/components/WelcomeBackBanner"
+import { OnboardingTour } from "@/components/OnboardingTour"
 
 export default function Home() {
   const t = useTranslations("gallery")
@@ -33,6 +34,7 @@ export default function Home() {
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false)
+  const [showTour, setShowTour] = useState(false)
 
   const loadMedia = useCallback(async (currentOffset: number = 0) => {
     try {
@@ -168,6 +170,14 @@ export default function Home() {
       loadMedia(0)
     }
   }, [currentFilters, currentSearch, loadMedia])
+
+  useEffect(() => {
+    getAppSettings().then((settings) => {
+      if (settings.setup_completed && settings.onboarding_dismissed !== "true") {
+        setShowTour(true)
+      }
+    }).catch(console.error)
+  }, [])
 
   const selectNext = useCallback(() => {
     setFocusedIndex(prev => (prev < media.length - 1 ? prev + 1 : prev))
@@ -347,6 +357,7 @@ export default function Home() {
         currentQuery={currentSearch}
         currentFilters={currentFilters}
       />
+      {showTour && <OnboardingTour onComplete={() => setShowTour(false)} />}
     </main >
   )
 }

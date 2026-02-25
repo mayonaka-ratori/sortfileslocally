@@ -60,6 +60,7 @@ class AppSettingsResponse(BaseModel):
     locale: str = "en"
     demo_mode: bool = False
     last_opened: float = 0.0
+    onboarding_dismissed: str = "false"
 
 class SettingUpdateResponse(BaseModel):
     status: str
@@ -135,7 +136,8 @@ def get_settings():
         "theme": db.get_setting("theme", "system"),
         "locale": db.get_setting("locale", "en"),
         "demo_mode": db.get_setting("demo_mode") == "1",
-        "last_opened": float(db.get_setting("last_opened", "0"))
+        "last_opened": float(db.get_setting("last_opened", "0")),
+        "onboarding_dismissed": db.get_setting("onboarding_dismissed", "false")
     }
 
 @router.post("/complete")
