@@ -342,47 +342,40 @@ def _rescan_file_worker(file_id: int, mode: str, db: DBManager, processor: Proce
         # 1. Inspect
         item = processor.scanner.inspect_file(file_path)
         
-        try:
-            # Process with skip flags to ensure thread safety
-            result = processor._process_item(item, skip_face=True, skip_whisper=True)
-            
-            if not result.success:
-                status.error = result.media_item.error_msg
-                return
+        # Process with skip flags to ensure thread safety
+        result = processor._process_item(item, skip_face=True, skip_whisper=True)
+        
+        if not result.success:
+            status.error = result.media_item.error_msg
+            return
 
-            # Handle Merge (Append) vs Overwrite
-            if mode == "append":
-                # Fetch existing tags
-                conn = db._connect()
-                conn.row_factory = sqlite3.Row
-                c = conn.cursor()
-                c.execute("SELECT tags, character_tags, series_tags, caption FROM files WHERE id = ?", (file_id,))
-                old = c.fetchone()
-                conn.close()
-                
-                if old:
-                    def safe_parse(v):
-                        try: return json.loads(v) if v else []
-                        except: return []
-                    
-                    # Merge using DBManager helper
-                    result.media_item.tags = db._deduplicate_tags_ci(safe_parse(old['tags']) + result.media_item.tags)
-                    result.media_item.character_tags = db._deduplicate_tags_ci(safe_parse(old['character_tags']) + result.media_item.character_tags)
-                    result.media_item.series_tags = db._deduplicate_tags_ci(safe_parse(old['series_tags']) + result.media_item.series_tags)
-                    # If caption exists and not overwriting, keep it if new one is empty
-                    if old['caption'] and not result.media_item.caption:
-                         result.media_item.caption = old['caption']
+        # Handle Merge (Append) vs Overwrite
+        if mode == "append":
+            # Fetch existing tags
+            conn = db._connect()
+            conn.row_factory = sqlite3.Row
+            c = conn.cursor()
+            c.execute("SELECT tags, character_tags, series_tags, caption FROM files WHERE id = ?", (file_id,))
+            old = c.fetchone()
+            conn.close()
             
-            # Save
-            db.add_result(result)
-            status.processed_count = 1
-            status.progress_percent = 100.0
-        finally:
-            processor.ai_engine.face_app = old_face_app
-            processor.video_processor.ai_engine.face_app = old_vid_face_app
-            processor.ai_engine.extract_face_features = old_extract_faces
-            processor.video_processor.ai_engine.extract_face_features = old_vid_extract_faces
-            processor.video_processor.ai_engine.transcribe_audio = old_transcribe
+            if old:
+                def safe_parse(v):
+                    try: return json.loads(v) if v else []
+                    except: return []
+                
+                # Merge using DBManager helper
+                result.media_item.tags = db._deduplicate_tags_ci(safe_parse(old['tags']) + result.media_item.tags)
+                result.media_item.character_tags = db._deduplicate_tags_ci(safe_parse(old['character_tags']) + result.media_item.character_tags)
+                result.media_item.series_tags = db._deduplicate_tags_ci(safe_parse(old['series_tags']) + result.media_item.series_tags)
+                # If caption exists and not overwriting, keep it if new one is empty
+                if old['caption'] and not result.media_item.caption:
+                        result.media_item.caption = old['caption']
+        
+        # Save
+        db.add_result(result)
+        status.processed_count = 1
+        status.progress_percent = 100.0
 
     except Exception as e:
         status.error = str(e)

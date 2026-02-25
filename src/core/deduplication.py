@@ -104,30 +104,47 @@ class Deduplicator:
             # Resolve to pairs
             # res_lims is standard start-end ptrs
             
-            # Fetch Metadata Cache
-            conn = self.db_manager._connect()
-            conn.row_factory = sqlite3.Row
-            c = conn.cursor()
-            
-            # Need to map ID -> MediaItem
-            # Query all files
-            c.execute("SELECT * FROM files WHERE is_processed=1")
-            file_map = {}
-            for row in c.fetchall():
-                 item = MediaItem(
-                     file_path=row['file_path'],
-                     file_hash=row['file_hash'],
-                     file_size=row['file_size'],
-                     media_type=row['media_type'],
-                     created_at=row['created_at'],
-                     modified_at=row['modified_at'],
-                     width=row['width'],
-                     height=row['height'],
-                     duration=row['duration'],
-                     error_msg=row['error_msg']
-                 )
-                 file_map[row['id']] = item
-            conn.close()
+            # File metadata cache to avoid redundant queries
+            file_cache: Dict[int, MediaItem] = {}
+
+            def get_media_item(faiss_id: int) -> Optional[MediaItem]:
+                if faiss_id in file_cache:
+                    return file_cache[faiss_id]
+                
+                query_conn = self.db_manager._connect()
+                query_conn.row_factory = sqlite3.Row
+                query_c = query_conn.cursor()
+                try:
+                    # Resolve faiss_id to file_id
+                    query_c.execute("SELECT entity_id FROM vector_mapping WHERE faiss_id = ? AND entity_type = 'file'", (faiss_id,))
+                    row = query_c.fetchone()
+                    if not row:
+                        # Fallback for legacy (faiss_id == file_id)
+                        file_id = faiss_id
+                    else:
+                        file_id = row[0]
+                    
+                    # Fetch metadata
+                    query_c.execute("SELECT * FROM files WHERE id = ?", (file_id,))
+                    f_row = query_c.fetchone()
+                    if f_row:
+                        item = MediaItem(
+                            file_path=f_row['file_path'],
+                            file_hash=f_row['file_hash'],
+                            file_size=f_row['file_size'],
+                            media_type=f_row['media_type'],
+                            created_at=f_row['created_at'],
+                            modified_at=f_row['modified_at'],
+                            width=f_row['width'],
+                            height=f_row['height'],
+                            duration=f_row['duration'],
+                            error_msg=f_row['error_msg']
+                        )
+                        file_cache[faiss_id] = item
+                        return item
+                finally:
+                    query_conn.close()
+                return None
             
             checked = set()
             
@@ -147,8 +164,8 @@ class Deduplicator:
                     if pair_key in checked: continue
                     checked.add(pair_key)
                     
-                    item_a = file_map.get(int(query_id))
-                    item_b = file_map.get(int(target_id))
+                    item_a = get_media_item(int(query_id))
+                    item_b = get_media_item(int(target_id))
                     
                     if not item_a or not item_b: continue
                     

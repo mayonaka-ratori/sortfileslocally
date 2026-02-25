@@ -466,15 +466,19 @@ class DBManager:
                 old_faiss_ids.append(file_id)
 
             if old_faiss_ids:
+                # 1. Delete mapping entries in SQLite first
+                try:
+                    placeholders = ','.join(['?'] * len(old_faiss_ids))
+                    c.execute(f'DELETE FROM vector_mapping WHERE faiss_id IN ({placeholders})', old_faiss_ids)
+                except Exception as e:
+                    logger.error(f"SQLite mapping deletion failed: {e}")
+                
+                # 2. Cleanup CLIP vectors from FAISS
                 try:
                     with self._faiss_lock:
                         self.clip_index.remove_ids(np.array(old_faiss_ids, dtype='int64'))
                 except Exception as e:
-                    logger.error(f"FAISS operation failed during clip index removal: {e}")
-                
-                # Delete mapping entries
-                placeholders = ','.join(['?'] * len(old_faiss_ids))
-                c.execute(f'DELETE FROM vector_mapping WHERE faiss_id IN ({placeholders})', old_faiss_ids)
+                    logger.error(f"FAISS index inconsistency: SQLite updated but FAISS operation failed for clip_index removal: {e}")
 
             # 2. Cleanup Scenes & Faces
             c.execute('DELETE FROM video_scenes WHERE file_id = ?', (file_id,))
@@ -482,12 +486,18 @@ class DBManager:
             c.execute('SELECT id FROM faces WHERE file_id = ?', (file_id,))
             old_face_ids = [row[0] for row in c.fetchall()]
             if old_face_ids:
+                # 1. Delete from faces in SQLite first
+                try:
+                    c.execute('DELETE FROM faces WHERE file_id = ?', (file_id,))
+                except Exception as e:
+                    logger.error(f"SQLite face deletion failed: {e}")
+
+                # 2. Cleanup from FAISS
                 try:
                     with self._faiss_lock:
                         self.face_index.remove_ids(np.array(old_face_ids, dtype='int64'))
                 except Exception as e:
-                    logger.error(f"FAISS operation failed during face index removal: {e}")
-                c.execute('DELETE FROM faces WHERE file_id = ?', (file_id,))
+                    logger.error(f"FAISS index inconsistency: SQLite updated but FAISS operation failed for face_index removal: {e}")
 
             # --- Add New Data ---
 
@@ -500,8 +510,11 @@ class DBManager:
                     c.execute('INSERT INTO vector_mapping (entity_type, entity_id) VALUES (?, ?)', ('file', file_id))
                     faiss_id = c.lastrowid
                     
-                    with self._faiss_lock:
-                        self.clip_index.add_with_ids(clip_vec, np.array([faiss_id], dtype='int64'))
+                    try:
+                        with self._faiss_lock:
+                            self.clip_index.add_with_ids(clip_vec, np.array([faiss_id], dtype='int64'))
+                    except Exception as e:
+                        logger.error(f"FAISS index inconsistency: SQLite updated but FAISS operation failed for clip_index add: {e}")
                 
                 # 2. Add Video Scenes
                 if result.scenes:
@@ -529,8 +542,11 @@ class DBManager:
                             # Store the faiss_id in video_scenes for easy lookup
                             c.execute('UPDATE video_scenes SET clip_vector_id = ? WHERE id = ?', (scene_faiss_id, scene_id))
                             
-                            with self._faiss_lock:
-                                self.clip_index.add_with_ids(scene_vec, np.array([scene_faiss_id], dtype='int64'))
+                            try:
+                                with self._faiss_lock:
+                                    self.clip_index.add_with_ids(scene_vec, np.array([scene_faiss_id], dtype='int64'))
+                            except Exception as e:
+                                logger.error(f"FAISS index inconsistency: SQLite updated but FAISS operation failed for scene clip_index add: {e}")
 
                 # 3. Add Faces
                 if vec_data and vec_data.face_vectors:
@@ -544,8 +560,11 @@ class DBManager:
                         c.execute('INSERT INTO faces (file_id, face_index, timestamp, bbox) VALUES (?, ?, ?, ?)', (file_id, i, timestamp, bbox_json))
                         face_db_id = c.lastrowid
                         
-                        with self._faiss_lock:
-                            self.face_index.add_with_ids(np.array([face_vec]), np.array([face_db_id], dtype='int64'))
+                        try:
+                            with self._faiss_lock:
+                                self.face_index.add_with_ids(np.array([face_vec]), np.array([face_db_id], dtype='int64'))
+                        except Exception as e:
+                            logger.error(f"FAISS index inconsistency: SQLite updated but FAISS operation failed for face_index add: {e}")
 
             conn.commit()
             
@@ -690,14 +709,19 @@ class DBManager:
                 old_faiss_ids.extend([row[0] for row in c.fetchall()])
 
                 if old_faiss_ids:
+                    # 1. SQLite Mapping Delete First
+                    try:
+                        mapping_placeholders = ','.join(['?'] * len(old_faiss_ids))
+                        c.execute(f'DELETE FROM vector_mapping WHERE faiss_id IN ({mapping_placeholders})', old_faiss_ids)
+                    except Exception as e:
+                        logger.error(f"SQLite mapping batch deletion failed: {e}")
+
+                    # 2. FAISS Index Cleanup
                     try:
                         with self._faiss_lock:
                             self.clip_index.remove_ids(np.array(old_faiss_ids, dtype='int64'))
                     except Exception as e:
-                        logger.error(f"FAISS operation failed during clip index batch removal: {e}")
-                    
-                    mapping_placeholders = ','.join(['?'] * len(old_faiss_ids))
-                    c.execute(f'DELETE FROM vector_mapping WHERE faiss_id IN ({mapping_placeholders})', old_faiss_ids)
+                        logger.error(f"FAISS index inconsistency: SQLite updated but FAISS operation failed for clip_index batch removal: {e}")
 
                 # Cleanup scenes & faces
                 c.execute(f'DELETE FROM video_scenes WHERE file_id IN ({fid_placeholders})', file_ids)
@@ -705,12 +729,18 @@ class DBManager:
                 c.execute(f'SELECT id FROM faces WHERE file_id IN ({fid_placeholders})', file_ids)
                 old_face_ids = [row[0] for row in c.fetchall()]
                 if old_face_ids:
+                    # 1. SQLite Face Delete First
+                    try:
+                        c.execute(f'DELETE FROM faces WHERE id IN ({",".join(["?"] * len(old_face_ids))})', old_face_ids)
+                    except Exception as e:
+                        logger.error(f"SQLite faces batch deletion failed: {e}")
+
+                    # 2. FAISS Index Cleanup
                     try:
                         with self._faiss_lock:
                             self.face_index.remove_ids(np.array(old_face_ids, dtype='int64'))
                     except Exception as e:
-                        logger.error(f"FAISS operation failed during face index batch removal: {e}")
-                    c.execute(f'DELETE FROM faces WHERE id IN ({",".join(["?"] * len(old_face_ids))})', old_face_ids)
+                        logger.error(f"FAISS index inconsistency: SQLite updated but FAISS operation failed for face_index batch removal: {e}")
 
             # --- Add New Data ---
             clip_vectors_to_add = []
@@ -777,15 +807,21 @@ class DBManager:
                 ids = np.array(clip_ids_list if 'clip_ids_list' in locals() else clip_ids_to_add, dtype='int64') # Wait, clip_ids_list was old name
                 ids = np.array(clip_ids_to_add, dtype='int64')
                 faiss.normalize_L2(vecs)
-                with self._faiss_lock:
-                    self.clip_index.add_with_ids(vecs, ids)
+                try:
+                    with self._faiss_lock:
+                        self.clip_index.add_with_ids(vecs, ids)
+                except Exception as e:
+                    logger.error(f"FAISS index inconsistency: SQLite updated but FAISS operation failed for clip_index batch add: {e}")
             
             if face_vectors_to_add:
                 f_vecs = np.array(face_vectors_to_add, dtype='float32')
                 f_ids = np.array(face_ids_to_add, dtype='int64')
                 faiss.normalize_L2(f_vecs)
-                with self._faiss_lock:
-                    self.face_index.add_with_ids(f_vecs, f_ids)
+                try:
+                    with self._faiss_lock:
+                        self.face_index.add_with_ids(f_vecs, f_ids)
+                except Exception as e:
+                    logger.error(f"FAISS index inconsistency: SQLite updated but FAISS operation failed for face_index batch add: {e}")
 
             conn.commit()
             self.save_indices()

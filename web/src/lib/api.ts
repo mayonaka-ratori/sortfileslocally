@@ -14,7 +14,16 @@ const safeFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
         });
     }
 
-    return fetch(input, init);
+    try {
+        const response = await fetch(input, init);
+        return response;
+    } catch (error) {
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+            console.warn('Request failed while offline:', url);
+            throw new Error('You are offline. This request will retry when connection is restored.');
+        }
+        throw error;
+    }
 };
 
 export interface MediaItem {

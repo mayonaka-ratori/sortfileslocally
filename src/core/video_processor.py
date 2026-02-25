@@ -244,6 +244,14 @@ class VideoProcessor:
                          'character_tags': [],
                          'series_tags': []
                      })
+                     
+                     # Explicitly delete frame data to free memory
+                     del scene_frame_np
+                     del pil_scene
+                 
+                 # Final memory cleanup after all scenes
+                 import gc
+                 gc.collect()
         except Exception as se:
             print(f"Scene analysis failed for {video_path}: {se}")
 

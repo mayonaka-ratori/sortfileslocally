@@ -78,24 +78,30 @@ async def delete_scenes(file_id: int, db: DBManager = Depends(get_db_manager)):
         # Get thumbnails to delete
         c.execute("SELECT thumbnail_path FROM video_scenes WHERE file_id = ?", (file_id,))
         thumbnails = [r[0] for r in c.fetchall() if r[0]]
-        
-        # 1. FAISS Cleanup
+
+        # Get FAISS IDs to delete
         c.execute("SELECT clip_vector_id FROM video_scenes WHERE file_id = ? AND clip_vector_id IS NOT NULL", (file_id,))
         faiss_ids = [r[0] for r in c.fetchall()]
-        
+
+        # 1. DB Cleanup First
+        c.execute("DELETE FROM video_scenes WHERE file_id = ?", (file_id,))
+        # Also delete mapping entries BEFORE committing DB
         if faiss_ids:
-            import numpy as np
-            with db._faiss_lock:
-                db.clip_index.remove_ids(np.array(faiss_ids, dtype='int64'))
-            
-            # Delete mappings
             placeholders = ','.join(['?'] * len(faiss_ids))
             c.execute(f"DELETE FROM vector_mapping WHERE faiss_id IN ({placeholders})", faiss_ids)
-
-        # 2. DB Cleanup
-        c.execute("DELETE FROM video_scenes WHERE file_id = ?", (file_id,))
+        
         conn.commit()
         
+        # 2. FAISS Cleanup (Locked)
+        if faiss_ids:
+            try:
+                import numpy as np
+                with db._faiss_lock:
+                    db.clip_index.remove_ids(np.array(faiss_ids, dtype='int64'))
+            except Exception as fe:
+                from src.data.db_manager import logger
+                logger.error(f"FAISS index inconsistency: SQLite updated but FAISS operation failed for scene removal on file {file_id}: {fe}")
+
         # 3. Disk Cleanup (Thumbnails)
         for tp in thumbnails:
             if os.path.exists(tp):
