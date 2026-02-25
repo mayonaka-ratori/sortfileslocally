@@ -19,7 +19,12 @@ import {
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useTranslations } from 'next-intl';
-import { browseFolder, updateAppSetting, completeSetup } from '@/lib/api';
+import {
+    browseFolder,
+    updateAppSetting,
+    completeSetup,
+    startDemo
+} from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { LanguageSelector } from '@/components/LanguageSelector';
 import { ScanUI } from '@/components/ScanUI';
@@ -50,6 +55,25 @@ export default function SetupWizard() {
         }
     };
 
+    const handleStartDemo = async () => {
+        setIsSaving(true);
+        try {
+            await updateAppSetting('execution_profile', profile);
+            await updateAppSetting('theme', theme || 'system');
+            await completeSetup();
+            sessionStorage.setItem('welcome_banner_dismissed', 'true');
+            await startDemo();
+            setMediaPath('Demo library');
+            setScanStarted(true);
+            setStep(5);
+        } catch (err) {
+            console.error(err);
+            setScanError(t('errors.completeFailed'));
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
     // Save settings + mark setup complete, then begin inline scan in step 5
     const handleComplete = async () => {
         setIsSaving(true);
@@ -58,6 +82,8 @@ export default function SetupWizard() {
             await updateAppSetting('execution_profile', profile);
             await updateAppSetting('theme', theme || 'system');
             await completeSetup();
+            // Don't show welcome banner immediately after setup
+            sessionStorage.setItem('welcome_banner_dismissed', 'true');
             setScanStarted(true);
         } catch (err) {
             console.error(err);
@@ -190,6 +216,34 @@ export default function SetupWizard() {
                                     <p className="text-[11px] text-zinc-500 bg-indigo-500/5 border border-indigo-500/10 p-3 rounded-lg leading-relaxed">
                                         {t('media.privacyNote')}
                                     </p>
+
+
+                                    <div className="relative py-4">
+                                        <div className="absolute inset-0 flex items-center">
+                                            <span className="w-full border-t border-zinc-800"></span>
+                                        </div>
+                                        <div className="relative flex justify-center text-xs uppercase">
+                                            <span className="bg-zinc-950 px-2 text-zinc-500">{t('common.or') || 'or'}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="p-1 bg-zinc-900/50 border border-zinc-800/50 rounded-2xl">
+                                        <button
+                                            onClick={handleStartDemo}
+                                            className="w-full group px-4 py-4 rounded-xl flex items-center justify-between hover:bg-indigo-600/10 transition-all text-left"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-xl bg-indigo-600/10 flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform">
+                                                    <Sparkles className="w-5 h-5" />
+                                                </div>
+                                                <div>
+                                                    <div className="text-sm font-bold text-zinc-200">{t('demoButton')}</div>
+                                                    <div className="text-[10px] text-zinc-500">{t('demoDesc')}</div>
+                                                </div>
+                                            </div>
+                                            <ChevronRight className="w-4 h-4 text-zinc-700 group-hover:text-indigo-500 transition-colors" />
+                                        </button>
+                                    </div>
                                 </div>
                             </motion.div>
                         )}

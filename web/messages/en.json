@@ -412,7 +412,23 @@
         "scanDesc": "This may take a while depending on your library size. You can leave this open or come back later.",
         "skipScan": "Skip for now",
         "scanError": "Scan encountered an error.",
-        "resumeHint": "Your progress has been saved. You can resume the scan."
+        "resumeHint": "Your progress has been saved. You can resume the scan.",
+        "demoButton": "Try with demo images",
+        "demoDesc": "Explore with sample photos — no import needed"
+    },
+    "demo": {
+        "badge": "Demo Library",
+        "exitPrompt": "Ready to use your own media?",
+        "exitButton": "Import my library"
+    },
+    "welcomeBack": {
+        "title": "Welcome back!",
+        "subtitle": "Here's what's new",
+        "dismiss": "Got it"
+    },
+    "whatsNew": {
+        "title": "What's New",
+        "version": "v{version}"
     },
     "saveAlbum": {
         "title": "Save as Smart Album",

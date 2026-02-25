@@ -412,7 +412,23 @@
         "scanDesc": "ライブラリのサイズによっては時間がかかる場合があります。このままお待ちいただくか、後ほど確認してください。",
         "skipScan": "スキップして後で",
         "scanError": "スキャン中にエラーが発生しました。",
-        "resumeHint": "進捗が保存されています。スキャンを再開できます。"
+        "resumeHint": "進捗が保存されています。スキャンを再開できます。",
+        "demoButton": "デモ画像で試す",
+        "demoDesc": "サンプル画像で機能を体験 — インポート不要"
+    },
+    "demo": {
+        "badge": "デモライブラリ",
+        "exitPrompt": "自分のメディアを使う準備はできましたか？",
+        "exitButton": "ライブラリをインポート"
+    },
+    "welcomeBack": {
+        "title": "おかえりなさい！",
+        "subtitle": "最新情報",
+        "dismiss": "了解"
+    },
+    "whatsNew": {
+        "title": "新機能",
+        "version": "v{version}"
     },
     "saveAlbum": {
         "title": "スマートアルバムとして保存",

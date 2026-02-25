@@ -1,0 +1,9 @@
+feat: First-Run Experience Phase 2 – Demo Mode & Welcome Back (5.2)
+
+- Demo system: 8 placeholder images, manifest.json, demo router (start/reset/status)
+- Setup Wizard: "Try with demo images" button on Step 2
+- WelcomeBackBanner: animated, dismissible, changelog-driven
+- Backend: demo_mode + last_opened settings, auto-timestamp tracking
+- API client: startDemo, resetDemo, getDemoStatus
+- i18n: 20 new keys (411 total, en/ja matched)
+- Suite: 75 passed, 0 failed, 7 skipped, ESLint 0/0

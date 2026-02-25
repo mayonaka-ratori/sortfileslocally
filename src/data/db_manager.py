@@ -204,17 +204,20 @@ class DBManager:
                 SELECT id, 'file', id FROM files WHERE is_processed = 1
             ''')
 
-        # Default Settings for Video Scenes
+        # Default Settings
         for key, default in [
             ("scene_threshold", "27.0"),
             ("auto_scene_detection", "false"),
             ("max_video_duration", "7200"),
             ("locale", "en"),
+            ("demo_mode", "0"),
+            ("last_opened", "0"),
         ]:
             try:
                 c.execute("SELECT 1 FROM app_settings WHERE key = ?", (key,))
                 if not c.fetchone():
-                    c.execute("INSERT INTO app_settings (key, value) VALUES (?, ?)", (key, default))
+                    import time
+                    c.execute("INSERT INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)", (key, default, time.time()))
             except Exception:
                 pass
 

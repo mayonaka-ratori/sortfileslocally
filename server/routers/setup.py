@@ -58,6 +58,8 @@ class AppSettingsResponse(BaseModel):
     execution_profile: str = "balanced"
     theme: str = "system"
     locale: str = "en"
+    demo_mode: bool = False
+    last_opened: float = 0.0
 
 class SettingUpdateResponse(BaseModel):
     status: str
@@ -118,14 +120,22 @@ def get_download_progress(key: str, mm: ModelManager = Depends(get_model_manager
 @router.get("/settings", response_model=AppSettingsResponse)
 def get_settings():
     """Retrieve all application settings."""
+    import time
     from server.dependencies import get_db_manager
     db = get_db_manager()
+    
+    # Update last_opened on each check
+    now = time.time()
+    db.set_setting("last_opened", str(now))
+
     return {
         "custom_model_dir": db.get_setting("custom_model_dir"),
         "setup_completed": db.get_setting("setup_completed") == "1",
         "execution_profile": db.get_setting("execution_profile", "balanced"),
         "theme": db.get_setting("theme", "system"),
-        "locale": db.get_setting("locale", "en")
+        "locale": db.get_setting("locale", "en"),
+        "demo_mode": db.get_setting("demo_mode") == "1",
+        "last_opened": float(db.get_setting("last_opened", "0"))
     }
 
 @router.post("/complete")

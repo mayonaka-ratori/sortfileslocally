@@ -12,6 +12,7 @@ import { Menu, Save, Film } from "lucide-react"
 import SaveAlbumModal from "@/components/SaveAlbumModal"
 import { InsightsPanel } from "@/components/InsightsPanel"
 import { useTranslations } from "next-intl"
+import { WelcomeBackBanner } from "@/components/WelcomeBackBanner"
 
 export default function Home() {
   const t = useTranslations("gallery")
@@ -261,7 +262,8 @@ export default function Home() {
             </div>
 
             <div className="flex-1 min-h-0 overflow-y-auto">
-              <div className="max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8">
+              <div className="max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8 space-y-8">
+                <WelcomeBackBanner />
                 <InsightsPanel />
 
                 {isSceneSearchActive ? (

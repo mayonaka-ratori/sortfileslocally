@@ -7,7 +7,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from server.routers import gallery, media, scan, setup, dedup, albums, insights, scenes
+from server.routers import gallery, media, scan, setup, dedup, albums, insights, scenes, demo
 from fastapi.staticfiles import StaticFiles
 
 app = FastAPI(title="LocalCurator Prime API", version="1.0.0")
@@ -34,6 +34,7 @@ app.include_router(dedup.router)
 app.include_router(albums.router)
 app.include_router(insights.router)
 app.include_router(scenes.router)
+app.include_router(demo.router)
 
 @app.get("/health")
 async def health_check():

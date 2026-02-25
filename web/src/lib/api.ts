@@ -765,3 +765,26 @@ export const searchScenes = async (query: string, topK: number = 20): Promise<Sc
     if (!res.ok) throw new Error("Scene search failed");
     return res.json();
 };
+
+// ------------------------------------------------------------------ #
+// Demo Mode APIs
+// ------------------------------------------------------------------ #
+
+export const startDemo = async (): Promise<{ message: string; job: ScanJobInfo }> => {
+    const res = await safeFetch(`${API_BASE_URL}/demo/start`, { method: "POST" });
+    if (!res.ok) throw new Error("Failed to start demo");
+    return res.json();
+};
+
+export const resetDemo = async (): Promise<{ status: string }> => {
+    const res = await safeFetch(`${API_BASE_URL}/demo/reset`, { method: "POST" });
+    if (!res.ok) throw new Error("Failed to reset demo");
+    return res.json();
+};
+
+export const getDemoStatus = async (): Promise<{ demo_mode: boolean }> => {
+    const res = await safeFetch(`${API_BASE_URL}/demo/status`);
+    if (!res.ok) throw new Error("Failed to fetch demo status");
+    return res.json();
+};
+

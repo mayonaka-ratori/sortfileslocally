@@ -1,0 +1,66 @@
+[
+  {
+    "filename": "demo_1.jpg",
+    "description": "Sample demo image 1",
+    "tags": [
+      "demo",
+      "red"
+    ]
+  },
+  {
+    "filename": "demo_2.jpg",
+    "description": "Sample demo image 2",
+    "tags": [
+      "demo",
+      "green"
+    ]
+  },
+  {
+    "filename": "demo_3.jpg",
+    "description": "Sample demo image 3",
+    "tags": [
+      "demo",
+      "blue"
+    ]
+  },
+  {
+    "filename": "demo_4.jpg",
+    "description": "Sample demo image 4",
+    "tags": [
+      "demo",
+      "yellow"
+    ]
+  },
+  {
+    "filename": "demo_5.jpg",
+    "description": "Sample demo image 5",
+    "tags": [
+      "demo",
+      "cyan"
+    ]
+  },
+  {
+    "filename": "demo_6.jpg",
+    "description": "Sample demo image 6",
+    "tags": [
+      "demo",
+      "magenta"
+    ]
+  },
+  {
+    "filename": "demo_7.jpg",
+    "description": "Sample demo image 7",
+    "tags": [
+      "demo",
+      "white"
+    ]
+  },
+  {
+    "filename": "demo_8.jpg",
+    "description": "Sample demo image 8",
+    "tags": [
+      "demo",
+      "black"
+    ]
+  }
+]
