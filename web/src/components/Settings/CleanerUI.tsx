@@ -1,9 +1,11 @@
-"use client"
 import React, { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { findDuplicates, applyDeduplication, DuplicatePair } from '@/lib/api';
 import { Search, Trash2, ShieldAlert, Loader2, CheckCircle2 } from 'lucide-react';
 
 export function CleanerUI() {
+    const t = useTranslations('settings.cleaner');
+    const common = useTranslations('common');
     const [isScanning, setIsScanning] = useState(false);
     const [candidates, setCandidates] = useState<DuplicatePair[]>([]);
     const [toDelete, setToDelete] = useState<Set<string>>(new Set());
@@ -31,7 +33,7 @@ export function CleanerUI() {
 
         } catch (e) {
             console.error("Scan failed", e);
-            alert("Failed to run deduplication scan.");
+            alert(t('scanFailed'));
         } finally {
             setIsScanning(false);
         }
@@ -48,7 +50,7 @@ export function CleanerUI() {
 
     const handleApply = async () => {
         if (toDelete.size === 0) return;
-        if (!confirm(`Are you sure you want to PERMANENTLY delete ${toDelete.size} files?`)) return;
+        if (!confirm(t('confirmDelete', { count: toDelete.size }))) return;
 
         setIsApplying(true);
 
@@ -65,14 +67,14 @@ export function CleanerUI() {
 
         try {
             const res = await applyDeduplication(Array.from(toDelete), mergeMetadata ? mergeInto : undefined);
-            const msg = `Successfully deleted ${res.deleted_count} files` + (res.merged_count ? ` and merged ${res.merged_count} metadata items.` : `.`);
+            const msg = t('deleteSuccess', { count: res.deleted_count, mergedCount: res.merged_count || 0 });
             setResultMsg(msg);
             // Remove deleted pairs from view
             setCandidates(prev => prev.filter(p => !res.deleted.includes(p.file_a.file_path) && !res.deleted.includes(p.file_b.file_path)));
             setToDelete(new Set());
         } catch (e) {
             console.error(e);
-            alert("Failed to apply deduplication.");
+            alert(t('deleteFailed'));
         } finally {
             setIsApplying(false);
         }
@@ -86,7 +88,7 @@ export function CleanerUI() {
     };
 
     const formatDims = (w: number | null, h: number | null) => {
-        if (!w || !h) return "Unknown";
+        if (!w || !h) return common('unknown');
         return `${w}x${h}`;
     };
 
@@ -99,10 +101,10 @@ export function CleanerUI() {
                     <div className="flex flex-col gap-1">
                         <h3 className="font-semibold text-zinc-100 flex items-center gap-2">
                             <ShieldAlert className="w-4 h-4 text-orange-500" />
-                            Deduplication Scanner
+                            {t('title')}
                         </h3>
                         <p className="text-xs text-zinc-400 max-w-lg mt-1">
-                            Find exact and near-exact duplicate images and videos using AI embeddings. Use with caution.
+                            {t('desc')}
                         </p>
                     </div>
                     <button
@@ -111,7 +113,7 @@ export function CleanerUI() {
                         className="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-sm font-medium px-4 py-2 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50 border border-zinc-700 shrink-0"
                     >
                         {isScanning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-                        {isScanning ? "Scanning Library..." : "Find Duplicates"}
+                        {isScanning ? t('scanning') : t('scanButton')}
                     </button>
                 </div>
 
@@ -126,7 +128,7 @@ export function CleanerUI() {
                 {candidates.length > 0 && (
                     <div className="border border-zinc-800 rounded-lg overflow-hidden bg-zinc-950">
                         <div className="p-4 bg-zinc-900 border-b border-zinc-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                            <span className="text-sm font-medium text-zinc-300">Found {candidates.length} duplicate pairs</span>
+                            <span className="text-sm font-medium text-zinc-300">{t('found', { count: candidates.length })}</span>
                             <div className="flex items-center gap-4">
                                 <label className="flex items-center gap-2 text-sm text-zinc-400 cursor-pointer">
                                     <input
@@ -135,7 +137,7 @@ export function CleanerUI() {
                                         onChange={(e) => setMergeMetadata(e.target.checked)}
                                         className="rounded border-zinc-700 bg-zinc-800 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-zinc-900 w-4 h-4 cursor-pointer"
                                     />
-                                    Merge missing metadata into kept files
+                                    {t('mergeMetadata')}
                                 </label>
                                 <button
                                     onClick={handleApply}
@@ -143,7 +145,7 @@ export function CleanerUI() {
                                     className="bg-red-600 hover:bg-red-500 text-white text-sm font-medium px-4 py-1.5 rounded-md flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     {isApplying ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                                    Delete Selected ({toDelete.size})
+                                    {t('deleteSelected', { count: toDelete.size })}
                                 </button>
                             </div>
                         </div>
@@ -152,8 +154,8 @@ export function CleanerUI() {
                             {candidates.map((pair, idx) => (
                                 <div key={idx} className="flex flex-col gap-3 bg-zinc-900/50 p-4 rounded-lg border border-zinc-800/50">
                                     <div className="flex justify-between items-center text-xs text-zinc-500">
-                                        <span>Similarity: {(pair.similarity * 100).toFixed(1)}%</span>
-                                        <span className="text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded font-mono">Reason: {pair.reason}</span>
+                                        <span>{t('similarity')}: {(pair.similarity * 100).toFixed(1)}%</span>
+                                        <span className="text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded font-mono">{t('reason')}: {pair.reason}</span>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
@@ -208,7 +210,7 @@ export function CleanerUI() {
 
                 {candidates.length === 0 && !isScanning && resultMsg === null && (
                     <div className="text-center text-sm text-zinc-500 py-4">
-                        Click &quot;Find Duplicates&quot; to scan your library.
+                        {t('empty')}
                     </div>
                 )}
             </div>

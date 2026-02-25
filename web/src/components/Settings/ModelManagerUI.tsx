@@ -1,9 +1,11 @@
-"use client"
 import React, { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { getModelStatuses, downloadModel, getDownloadProgress, ModelStatus, DownloadProgress, getAppSettings, updateAppSetting, browseFolder } from '@/lib/api';
 import { DownloadCloud, CheckCircle2, HardDrive, AlertCircle, Loader2, Database, FolderOpen, Save } from 'lucide-react';
 
 export function ModelManagerUI() {
+    const t = useTranslations('settings.models');
+    const common = useTranslations('common');
     const [models, setModels] = useState<ModelStatus[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -13,7 +15,7 @@ export function ModelManagerUI() {
     const [customDir, setCustomDir] = useState<string>('');
     const [savingSetting, setSavingSetting] = useState(false);
 
-    const fetchModels = async () => {
+    const fetchModels = React.useCallback(async () => {
         try {
             const [modelData, settings] = await Promise.all([
                 getModelStatuses(),
@@ -22,15 +24,15 @@ export function ModelManagerUI() {
             setModels(modelData);
             setCustomDir(settings.custom_model_dir || '');
         } catch {
-            setError('Failed to fetch AI models. Ensure the backend is running.');
+            setError(t('fetchError'));
         } finally {
             setLoading(false);
         }
-    };
+    }, [t]);
 
     useEffect(() => {
         fetchModels();
-    }, []);
+    }, [fetchModels]);
 
     // Polling active downloads
     useEffect(() => {
@@ -65,7 +67,7 @@ export function ModelManagerUI() {
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [activeDownloads, progress]);
+    }, [activeDownloads, progress, fetchModels]);
 
     const handleDownload = async (key: string) => {
         try {
@@ -73,7 +75,7 @@ export function ModelManagerUI() {
             setActiveDownloads(prev => new Set(prev).add(key));
         } catch (err: unknown) {
             console.error("Failed to download model", err);
-            alert(`Download failed: ${err instanceof Error ? err.message : String(err)}`);
+            alert(`${t('downloadFailed')}${err instanceof Error ? err.message : String(err)}`);
         }
     };
 
@@ -102,12 +104,12 @@ export function ModelManagerUI() {
             const res = await updateAppSetting('custom_model_dir', customDir);
             await fetchModels(); // Refresh to show new paths
             if (res.requires_restart) {
-                alert("Model storage path updated. Please restart the application for changes to take effect.");
+                alert(t('pathUpdated'));
             } else {
-                alert("Settings saved successfully.");
+                alert(t('saveSuccess'));
             }
         } catch (err: unknown) {
-            alert(err instanceof Error ? err.message : "Failed to save settings");
+            alert(err instanceof Error ? err.message : t('saveFailed'));
         } finally {
             setSavingSetting(false);
         }
@@ -117,7 +119,7 @@ export function ModelManagerUI() {
         return (
             <div className="flex flex-col flex-1 items-center justify-center p-10 text-zinc-500 bg-zinc-900 border border-zinc-800 rounded-xl min-h-[300px]">
                 <Loader2 className="w-8 h-8 animate-spin mb-4 text-indigo-500" />
-                <span>Loading Model Status...</span>
+                <span>{t('loading')}</span>
             </div>
         );
     }
@@ -138,9 +140,9 @@ export function ModelManagerUI() {
                 <div className="flex flex-col gap-1">
                     <h3 className="text-sm font-bold flex items-center gap-2">
                         <HardDrive className="w-4 h-4 text-indigo-500" />
-                        Storage Configuration
+                        {t('storage')}
                     </h3>
-                    <p className="text-xs text-zinc-500">Redirect model downloads to a high-capacity drive (e.g., D:\Models).</p>
+                    <p className="text-xs text-zinc-500">{t('storageDesc')}</p>
                 </div>
 
                 <div className="flex flex-col gap-3">
@@ -150,7 +152,7 @@ export function ModelManagerUI() {
                                 type="text"
                                 value={customDir}
                                 onChange={(e) => setCustomDir(e.target.value)}
-                                placeholder="Default System Cache"
+                                placeholder={t('defaultCachePlaceholder')}
                                 className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-sm text-zinc-300 focus:outline-none focus:border-indigo-500 transition-colors pl-10"
                             />
                             <FolderOpen className="w-4 h-4 absolute left-3 top-2.5 text-zinc-600" />
@@ -158,10 +160,10 @@ export function ModelManagerUI() {
                         <button
                             onClick={handleBrowse}
                             className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2"
-                            title="Browse Folder"
+                            title={common('browse')}
                         >
                             <FolderOpen className="w-4 h-4" />
-                            Browse
+                            {common('browse')}
                         </button>
                         <button
                             onClick={handleSaveSetting}
@@ -169,13 +171,13 @@ export function ModelManagerUI() {
                             className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
                         >
                             {savingSetting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                            Save
+                            {common('save')}
                         </button>
                     </div>
                     <div className="flex items-start gap-2 p-3 bg-amber-950/10 border border-amber-900/20 rounded-lg">
                         <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
                         <p className="text-[11px] text-amber-500/80 leading-relaxed">
-                            <strong>Note:</strong> Changing this path will not move existing files. You must manually move your models to the new folder or they will need to be re-downloaded.
+                            {t('pathChangeNote')}
                         </p>
                     </div>
                 </div>
@@ -200,7 +202,7 @@ export function ModelManagerUI() {
                                         </h3>
                                         {model.is_downloaded && (
                                             <span className="bg-green-500/10 text-green-400 text-[10px] uppercase font-bold px-2 py-0.5 rounded flex items-center gap-1 border border-green-500/20">
-                                                <CheckCircle2 className="w-3 h-3" /> Installed
+                                                <CheckCircle2 className="w-3 h-3" /> {t('installed')}
                                             </span>
                                         )}
                                     </div>
@@ -224,20 +226,20 @@ export function ModelManagerUI() {
                                             className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors shadow-lg shadow-indigo-900/20"
                                         >
                                             <DownloadCloud className="w-4 h-4" />
-                                            Download Now
+                                            {t('downloadNow')}
                                         </button>
                                     )}
 
                                     {model.is_downloaded && !isDownloading && (
                                         <div className="text-sm font-medium text-zinc-500 border border-zinc-800 bg-zinc-950 px-4 py-2 rounded-lg text-center cursor-default">
-                                            Ready
+                                            {t('ready')}
                                         </div>
                                     )}
 
                                     {isDownloading && (
                                         <div className="text-sm font-medium text-indigo-400 border border-indigo-900/50 bg-indigo-950/20 px-4 py-2 rounded-lg flex items-center justify-center gap-2 min-w-[140px]">
                                             <Loader2 className="w-4 h-4 animate-spin" />
-                                            Downloading...
+                                            {t('downloading')}
                                         </div>
                                     )}
                                 </div>

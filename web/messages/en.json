@@ -23,7 +23,10 @@
         "yes": "Yes",
         "no": "No",
         "or": "or",
-        "and": "and"
+        "and": "and",
+        "browse": "Browse",
+        "status": "Status",
+        "unknown": "Unknown"
     },
     "sidebar": {
         "library": "Library",
@@ -86,5 +89,149 @@
         "emptyLibrary": "Your library is empty",
         "addMedia": "Add media to get started",
         "dragDrop": "Drag & drop images here to search"
+    },
+    "settings": {
+        "title": "Settings",
+        "subtitle": "Configure application preferences and manage AI models.",
+        "language": {
+            "title": "Language / 言語",
+            "section": "Appearance & Language"
+        },
+        "models": {
+            "title": "AI Models",
+            "subtitle": "Download and manage the machine learning models required for analysis.",
+            "storage": "Storage Configuration",
+            "storageDesc": "Redirect model downloads to a high-capacity drive (e.g., D:\\Models).",
+            "storageNote": "Changing this path will not move existing files. You must manually move your models to the new folder.",
+            "installed": "Installed",
+            "ready": "Ready",
+            "downloadNow": "Download Now",
+            "downloading": "Downloading...",
+            "loading": "Loading Model Status...",
+            "fetchError": "Failed to fetch AI models. Ensure the backend is running.",
+            "downloadFailed": "Download failed: ",
+            "pathUpdated": "Model storage path updated. Please restart the application for changes to take effect.",
+            "saveSuccess": "Settings saved successfully.",
+            "saveFailed": "Failed to save settings",
+            "defaultCachePlaceholder": "Default System Cache",
+            "pathChangeNote": "Note: Changing this path will not move existing files. You must manually move your models to the new folder or they will need to be re-downloaded."
+        },
+        "data": {
+            "title": "Data Management",
+            "subtitle": "Manage and export data associated with your library.",
+            "exportMetadata": "Export Metadata",
+            "exportDesc": "Write all AI-generated tags and captions directly to your media library files or sidecars.",
+            "exportAll": "Export All Library",
+            "exported": "{count} exported",
+            "failed": "{count} failed",
+            "exifWarning": "Note: Video files and unsupported image formats will automatically fall back to XMP sidecar export.",
+            "exportFailed": "Failed to export metadata."
+        },
+        "video": {
+            "title": "AI Video Analysis",
+            "subtitle": "Configure how the system analyzes and segments video files.",
+            "sectionTitle": "Video Scene Segmentation",
+            "autoDetect": "Auto-detect scenes during scan",
+            "autoDetectDesc": "Automatically segment new videos into scenes during file scan.",
+            "sensitivity": "Detection Sensitivity",
+            "fine": "Fine (More Scenes)",
+            "coarse": "Coarse (Fewer)",
+            "maxDuration": "Max Video Duration (seconds)",
+            "maxDurationDesc": "Skip videos longer than this to save processing time (default 7200s = 2h).",
+            "saveSuccess": "Scene settings saved",
+            "saveError": "Failed to save settings",
+            "saveButton": "Save Scene Settings"
+        },
+        "privacy": {
+            "title": "Network & Privacy",
+            "subtitle": "LocalCuratorPrime runs entirely on your device. No data is sent to external servers.",
+            "connectionStatus": "Connection Status",
+            "online": "Online",
+            "offline": "Offline",
+            "localFirst": "Local-First Architecture",
+            "localFirstDesc": "All media analysis, face detection, and semantic search happen locally on your hardware. Your data never leaves this machine.",
+            "checkingModels": "Checking model availability...",
+            "allCached": "All AI models are cached locally. Full functionality available offline.",
+            "partialCached": "{count} / {total} models downloaded. Some features may require internet."
+        },
+        "cleaner": {
+            "title": "Deduplication Scanner",
+            "desc": "Find exact and near-exact duplicate images and videos using AI embeddings. Use with caution.",
+            "scanButton": "Find Duplicates",
+            "scanning": "Scanning Library...",
+            "found": "Found {count} duplicate pairs",
+            "mergeMetadata": "Merge missing metadata into kept files",
+            "deleteSelected": "Delete Selected ({count})",
+            "similarity": "Similarity",
+            "reason": "Reason",
+            "empty": "Click \"Find Duplicates\" to scan your library.",
+            "confirmDelete": "Are you sure you want to PERMANENTLY delete {count} files?",
+            "scanFailed": "Failed to run deduplication scan.",
+            "deleteSuccess": "Successfully deleted {count} files and merged {mergedCount} metadata items.",
+            "deleteFailed": "Failed to apply deduplication."
+        },
+        "scenes": {
+            "saveSuccess": "Scene settings saved",
+            "saveFailed": "Failed to save settings"
+        }
+    },
+    "setup": {
+        "welcome": {
+            "title": "Welcome to LocalCurator Prime",
+            "desc": "Transform your local media into an intelligent, searchable gallery. Let AI handle the organization while you focus on the memories.",
+            "feature1": "Semantic Search",
+            "feature1Desc": "Find photos by describing them in natural language.",
+            "feature2": "Intelligent Tagging",
+            "feature2Desc": "Auto-detect characters, series, and detailed captions."
+        },
+        "media": {
+            "title": "Select Media Root",
+            "desc": "Choose the folder where your primary media collection is stored.",
+            "placeholder": "C:\\Users\\You\\Pictures",
+            "privacyNote": "No files ever leave your machine. All AI processing happens locally. You can add more folders later in Settings."
+        },
+        "performance": {
+            "title": "Performance Profile",
+            "desc": "Optimize model loading behavior based on your hardware.",
+            "profiles": {
+                "performance": "Performance",
+                "performanceDesc": "Maximum speed. All models loaded in FP16 with large batch sizes.",
+                "balanced": "Balanced",
+                "balancedDesc": "Reliable speed and accuracy. Optimized for modern mid-range GPUs.",
+                "lightweight": "Lightweight",
+                "lightweightDesc": "CPU-friendly. Essential models only (CLIP + JoyTag). Best for older hardware."
+            }
+        },
+        "appearance": {
+            "title": "Appearance",
+            "desc": "Choose your preferred visual aesthetic.",
+            "themes": {
+                "light": "Light",
+                "dark": "Dark",
+                "system": "System"
+            }
+        },
+        "ready": {
+            "title": "Ready to launch!",
+            "desc": "Everything is configured. We'll begin scanning your media after you complete the setup.",
+            "mediaPath": "Media Path",
+            "notSelected": "Not selected",
+            "profile": "Profile",
+            "theme": "Theme"
+        },
+        "footer": {
+            "back": "Back",
+            "next": "Next Step",
+            "finalizing": "Finalizing...",
+            "start": "Start Scanning"
+        },
+        "errors": {
+            "completeFailed": "Failed to complete setup. Please try again."
+        },
+        "hardware": {
+            "vram8gb": "8GB+ VRAM",
+            "vram4gb": "4GB+ VRAM",
+            "vramMinimal": "Minimal/CPU"
+        }
     }
 }

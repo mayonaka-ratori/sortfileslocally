@@ -57,6 +57,7 @@ class AppSettingsResponse(BaseModel):
     setup_completed: bool = False
     execution_profile: str = "balanced"
     theme: str = "system"
+    locale: str = "en"
 
 class SettingUpdateResponse(BaseModel):
     status: str
@@ -123,7 +124,8 @@ def get_settings():
         "custom_model_dir": db.get_setting("custom_model_dir"),
         "setup_completed": db.get_setting("setup_completed") == "1",
         "execution_profile": db.get_setting("execution_profile", "balanced"),
-        "theme": db.get_setting("theme", "system")
+        "theme": db.get_setting("theme", "system"),
+        "locale": db.get_setting("locale", "en")
     }
 
 @router.post("/complete")

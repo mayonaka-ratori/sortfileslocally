@@ -1,11 +1,12 @@
-"use client";
-
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { getAppSettings, updateAppSetting } from "@/lib/api";
 import { toast } from "sonner";
 import { Clapperboard, Sliders, Clock, Save, Loader2 } from "lucide-react";
 
 export function SceneSettings() {
+    const t = useTranslations('settings.video');
+    const scenes = useTranslations('settings.scenes');
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [settings, setSettings] = useState({
@@ -43,9 +44,9 @@ export function SceneSettings() {
                 updateAppSetting("scene_threshold", settings.scene_threshold.toString()),
                 updateAppSetting("max_video_duration", settings.max_video_duration.toString()),
             ]);
-            toast.success("Scene settings saved");
+            toast.success(scenes('saveSuccess'));
         } catch {
-            toast.error("Failed to save settings");
+            toast.error(scenes('saveFailed'));
         } finally {
             setSaving(false);
         }
@@ -63,14 +64,14 @@ export function SceneSettings() {
         <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 space-y-6">
             <div className="flex items-center gap-3 border-b border-zinc-800 pb-4">
                 <Clapperboard className="w-5 h-5 text-indigo-400" />
-                <h3 className="text-sm font-bold uppercase tracking-wider">Video Scene Segmentation</h3>
+                <h3 className="text-sm font-bold uppercase tracking-wider">{t('sectionTitle')}</h3>
             </div>
 
             <div className="space-y-6">
                 <div className="flex items-center justify-between group">
                     <div className="space-y-1">
-                        <label className="text-sm font-bold text-zinc-200">Auto-detect scenes during scan</label>
-                        <p className="text-[11px] text-zinc-500">Automatically segment new videos into scenes during file scan.</p>
+                        <label className="text-sm font-bold text-zinc-200">{t('autoDetect')}</label>
+                        <p className="text-[11px] text-zinc-500">{t('autoDetectDesc')}</p>
                     </div>
                     <button
                         onClick={() => setSettings(s => ({ ...s, auto_scene_detection: !s.auto_scene_detection }))}
@@ -86,7 +87,7 @@ export function SceneSettings() {
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <Sliders className="w-4 h-4 text-zinc-500" />
-                            <label className="text-sm font-bold text-zinc-200">Detection Sensitivity</label>
+                            <label className="text-sm font-bold text-zinc-200">{t('sensitivity')}</label>
                         </div>
                         <span className="text-xs font-mono text-indigo-400 font-bold bg-indigo-500/10 px-2 py-0.5 rounded">
                             {settings.scene_threshold}
@@ -101,8 +102,8 @@ export function SceneSettings() {
                         className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
                     />
                     <div className="flex justify-between text-[10px] text-zinc-500 font-bold uppercase tracking-widest">
-                        <span>Fine (More Scenes)</span>
-                        <span>Coarse (Fewer)</span>
+                        <span>{t('fine')}</span>
+                        <span>{t('coarse')}</span>
                     </div>
                 </div>
 
@@ -110,7 +111,7 @@ export function SceneSettings() {
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <Clock className="w-4 h-4 text-zinc-500" />
-                            <label className="text-sm font-bold text-zinc-200">Max Video Duration (seconds)</label>
+                            <label className="text-sm font-bold text-zinc-200">{t('maxDuration')}</label>
                         </div>
                         <input
                             type="number"
@@ -119,7 +120,7 @@ export function SceneSettings() {
                             className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs font-mono text-white w-24 focus:outline-none focus:border-indigo-500 transition-colors"
                         />
                     </div>
-                    <p className="text-[11px] text-zinc-500">Skip videos longer than this to save processing time (default 7200s = 2h).</p>
+                    <p className="text-[11px] text-zinc-500">{t('maxDurationDesc')}</p>
                 </div>
             </div>
 
@@ -130,7 +131,7 @@ export function SceneSettings() {
                     className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-all shadow-lg shadow-indigo-900/40 active:scale-95"
                 >
                     {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                    Save Scene Settings
+                    {t('saveButton')}
                 </button>
             </div>
         </div>

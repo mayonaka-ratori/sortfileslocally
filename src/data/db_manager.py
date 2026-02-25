@@ -209,6 +209,7 @@ class DBManager:
             ("scene_threshold", "27.0"),
             ("auto_scene_detection", "false"),
             ("max_video_duration", "7200"),
+            ("locale", "en"),
         ]:
             try:
                 c.execute("SELECT 1 FROM app_settings WHERE key = ?", (key,))

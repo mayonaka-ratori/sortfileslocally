@@ -1,5 +1,4 @@
 "use client"
-
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -18,10 +17,14 @@ import {
     Sparkles,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
+import { useTranslations } from 'next-intl';
 import { browseFolder, updateAppSetting, completeSetup, startScan } from '@/lib/api';
 import { useRouter } from 'next/navigation';
+import { LanguageSelector } from '@/components/LanguageSelector';
 
 export default function SetupWizard() {
+    const t = useTranslations('setup');
+    const common = useTranslations('common');
     const [step, setStep] = useState(1);
     const [mediaPath, setMediaPath] = useState('');
     const [profile, setProfile] = useState('balanced');
@@ -58,32 +61,32 @@ export default function SetupWizard() {
             router.refresh();
         } catch (err) {
             console.error(err);
-            alert("Failed to complete setup. Please try again.");
+            alert(t('errors.completeFailed'));
         } finally {
             setIsSaving(false);
         }
     };
 
-    const profiles = [
+    const profilesList = [
         {
             id: 'performance',
-            name: 'Performance',
-            vram: '8GB+ VRAM',
-            desc: 'Maximum speed. All models loaded in FP16 with large batch sizes.',
+            name: t('performance.profiles.performance'),
+            vram: t('hardware.vram8gb'),
+            desc: t('performance.profiles.performanceDesc'),
             icon: <Zap className="w-5 h-5 text-yellow-500" />
         },
         {
             id: 'balanced',
-            name: 'Balanced',
-            vram: '4GB+ VRAM',
-            desc: 'Reliable speed and accuracy. Optimized for modern mid-range GPUs.',
+            name: t('performance.profiles.balanced'),
+            vram: t('hardware.vram4gb'),
+            desc: t('performance.profiles.balancedDesc'),
             icon: <Settings2 className="w-5 h-5 text-indigo-500" />
         },
         {
             id: 'lightweight',
-            name: 'Lightweight',
-            vram: 'Minimal/CPU',
-            desc: 'CPU-friendly. Essential models only (CLIP + JoyTag). Best for older hardware.',
+            name: t('performance.profiles.lightweight'),
+            vram: t('hardware.vramMinimal'),
+            desc: t('performance.profiles.lightweightDesc'),
             icon: <ShieldCheck className="w-5 h-5 text-emerald-500" />
         }
     ];
@@ -124,25 +127,28 @@ export default function SetupWizard() {
                                     <div className="w-12 h-12 bg-indigo-500/20 rounded-2xl flex items-center justify-center mb-4">
                                         <Sparkles className="w-6 h-6 text-indigo-500" />
                                     </div>
-                                    <h1 className="text-3xl font-bold tracking-tight">Welcome to LocalCurator Prime</h1>
+                                    <h1 className="text-3xl font-bold tracking-tight">{t('welcome.title')}</h1>
                                     <p className="text-zinc-400 leading-relaxed">
-                                        Transform your local media into an intelligent, searchable gallery.
-                                        Let AI handle the organization while you focus on the memories.
+                                        {t('welcome.desc')}
                                     </p>
                                 </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
                                     <div className="p-4 bg-zinc-950/40 rounded-2xl border border-zinc-800/50">
                                         <h3 className="text-sm font-semibold mb-1 flex items-center gap-2">
-                                            <Zap className="w-4 h-4 text-indigo-400" /> Semantic Search
+                                            <Zap className="w-4 h-4 text-indigo-400" /> {t('welcome.feature1')}
                                         </h3>
-                                        <p className="text-xs text-zinc-500">Find photos by describing them in natural language.</p>
+                                        <p className="text-xs text-zinc-500">{t('welcome.feature1Desc')}</p>
                                     </div>
                                     <div className="p-4 bg-zinc-950/40 rounded-2xl border border-zinc-800/50">
                                         <h3 className="text-sm font-semibold mb-1 flex items-center gap-2">
-                                            <Cpu className="w-4 h-4 text-purple-400" /> Intelligent Tagging
+                                            <Cpu className="w-4 h-4 text-purple-400" /> {t('welcome.feature2')}
                                         </h3>
-                                        <p className="text-xs text-zinc-500">Auto-detect characters, series, and detailed captions.</p>
+                                        <p className="text-xs text-zinc-500">{t('welcome.feature2Desc')}</p>
                                     </div>
+                                </div>
+
+                                <div className="pt-8 border-t border-zinc-800/50">
+                                    <LanguageSelector />
                                 </div>
                             </motion.div>
                         )}
@@ -156,8 +162,8 @@ export default function SetupWizard() {
                                 className="space-y-6"
                             >
                                 <div className="space-y-2">
-                                    <h2 className="text-2xl font-bold tracking-tight">Select Media Root</h2>
-                                    <p className="text-zinc-400">Choose the folder where your primary media collection is stored.</p>
+                                    <h2 className="text-2xl font-bold tracking-tight">{t('media.title')}</h2>
+                                    <p className="text-zinc-400">{t('media.desc')}</p>
                                 </div>
                                 <div className="space-y-4 pt-4">
                                     <div className="flex gap-2">
@@ -166,7 +172,7 @@ export default function SetupWizard() {
                                                 type="text"
                                                 readOnly
                                                 value={mediaPath}
-                                                placeholder="C:\Users\You\Pictures"
+                                                placeholder={t('media.placeholder')}
                                                 className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500/50 transition-colors pl-12"
                                             />
                                             <FolderPlus className="w-5 h-5 absolute left-4 top-3 text-zinc-600" />
@@ -175,11 +181,11 @@ export default function SetupWizard() {
                                             onClick={handleBrowseFolders}
                                             className="bg-indigo-600 hover:bg-indigo-500 text-sm font-medium px-6 py-3 rounded-xl transition-all shadow-lg shadow-indigo-500/20 active:scale-95"
                                         >
-                                            Browse
+                                            {common('browse')}
                                         </button>
                                     </div>
                                     <p className="text-[11px] text-zinc-500 bg-indigo-500/5 border border-indigo-500/10 p-3 rounded-lg leading-relaxed">
-                                        <strong>Privacy First:</strong> No files ever leave your machine. All AI processing happens locally. You can add more folders later in Settings.
+                                        {t('media.privacyNote')}
                                     </p>
                                 </div>
                             </motion.div>
@@ -194,11 +200,11 @@ export default function SetupWizard() {
                                 className="space-y-6"
                             >
                                 <div className="space-y-2">
-                                    <h2 className="text-2xl font-bold tracking-tight">Performance Profile</h2>
-                                    <p className="text-zinc-400">Optimize model loading behavior based on your hardware.</p>
+                                    <h2 className="text-2xl font-bold tracking-tight">{t('performance.title')}</h2>
+                                    <p className="text-zinc-400">{t('performance.desc')}</p>
                                 </div>
                                 <div className="grid grid-cols-1 gap-3 pt-4">
-                                    {profiles.map((p) => (
+                                    {profilesList.map((p) => (
                                         <button
                                             key={p.id}
                                             onClick={() => setProfile(p.id)}
@@ -236,14 +242,14 @@ export default function SetupWizard() {
                                 className="space-y-6"
                             >
                                 <div className="space-y-2">
-                                    <h2 className="text-2xl font-bold tracking-tight">Appearance</h2>
-                                    <p className="text-zinc-400">Choose your preferred visual aesthetic.</p>
+                                    <h2 className="text-2xl font-bold tracking-tight">{t('appearance.title')}</h2>
+                                    <p className="text-zinc-400">{t('appearance.desc')}</p>
                                 </div>
                                 <div className="grid grid-cols-3 gap-4 pt-4">
                                     {[
-                                        { id: 'light', name: 'Light', icon: <Sun className="w-6 h-6" /> },
-                                        { id: 'dark', name: 'Dark', icon: <Moon className="w-6 h-6" /> },
-                                        { id: 'system', name: 'System', icon: <Monitor className="w-6 h-6" /> }
+                                        { id: 'light', name: t('appearance.themes.light'), icon: <Sun className="w-6 h-6" /> },
+                                        { id: 'dark', name: t('appearance.themes.dark'), icon: <Moon className="w-6 h-6" /> },
+                                        { id: 'system', name: t('appearance.themes.system'), icon: <Monitor className="w-6 h-6" /> }
                                     ].map((t) => (
                                         <button
                                             key={t.id}
@@ -282,20 +288,20 @@ export default function SetupWizard() {
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <h2 className="text-2xl font-bold tracking-tight">Ready to launch!</h2>
-                                    <p className="text-zinc-400">Everything is configured. We&apos;ll begin scanning your media after you complete the setup.</p>
+                                    <h2 className="text-2xl font-bold tracking-tight">{t('ready.title')}</h2>
+                                    <p className="text-zinc-400">{t('ready.desc')}</p>
                                 </div>
                                 <div className="bg-zinc-950/40 border border-zinc-800 rounded-2xl p-6 text-left space-y-3">
                                     <div className="flex justify-between text-xs">
-                                        <span className="text-zinc-500 uppercase tracking-widest font-bold">Media Path</span>
-                                        <span className="text-zinc-300 truncate pl-4 max-w-[240px]">{mediaPath || "Not selected"}</span>
+                                        <span className="text-zinc-500 uppercase tracking-widest font-bold">{t('ready.mediaPath')}</span>
+                                        <span className="text-zinc-300 truncate pl-4 max-w-[240px]">{mediaPath || t('ready.notSelected')}</span>
                                     </div>
                                     <div className="flex justify-between text-xs">
-                                        <span className="text-zinc-500 uppercase tracking-widest font-bold">Profile</span>
+                                        <span className="text-zinc-500 uppercase tracking-widest font-bold">{t('ready.profile')}</span>
                                         <span className="text-zinc-300 capitalize">{profile}</span>
                                     </div>
                                     <div className="flex justify-between text-xs">
-                                        <span className="text-zinc-500 uppercase tracking-widest font-bold">Theme</span>
+                                        <span className="text-zinc-500 uppercase tracking-widest font-bold">{t('ready.theme')}</span>
                                         <span className="text-zinc-300 capitalize">{theme}</span>
                                     </div>
                                 </div>
@@ -311,7 +317,7 @@ export default function SetupWizard() {
                             className="flex items-center gap-2 text-sm font-medium text-zinc-400 hover:text-zinc-100 disabled:opacity-0 transition-opacity px-2"
                         >
                             <ChevronLeft className="w-4 h-4" />
-                            Back
+                            {t('footer.back')}
                         </button>
 
                         {step < 5 ? (
@@ -319,7 +325,7 @@ export default function SetupWizard() {
                                 onClick={nextStep}
                                 className="bg-zinc-100 hover:bg-white text-zinc-950 text-sm font-bold px-8 py-3 rounded-xl flex items-center gap-2 transition-all active:scale-95 shadow-xl shadow-white/5"
                             >
-                                Next Step
+                                {t('footer.next')}
                                 <ChevronRight className="w-4 h-4" />
                             </button>
                         ) : (
@@ -331,11 +337,11 @@ export default function SetupWizard() {
                                 {isSaving ? (
                                     <>
                                         <Loader2 className="w-4 h-4 animate-spin" />
-                                        Finalizing...
+                                        {t('footer.finalizing')}
                                     </>
                                 ) : (
                                     <>
-                                        Start Scanning
+                                        {t('footer.start')}
                                         <CheckCircle2 className="w-4 h-4 text-white/80" />
                                     </>
                                 )}

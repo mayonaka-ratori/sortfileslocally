@@ -339,6 +339,7 @@ export interface AppSettings {
     setup_completed: boolean;
     execution_profile: string;
     theme: string;
+    locale: string;
 }
 
 export const getAppSettings = async (): Promise<AppSettings> => {

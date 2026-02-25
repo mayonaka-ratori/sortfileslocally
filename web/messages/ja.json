@@ -23,7 +23,10 @@
         "yes": "はい",
         "no": "いいえ",
         "or": "または",
-        "and": "および"
+        "and": "および",
+        "browse": "参照",
+        "status": "ステータス",
+        "unknown": "不明"
     },
     "sidebar": {
         "library": "ライブラリ",
@@ -86,5 +89,149 @@
         "emptyLibrary": "ライブラリが空です",
         "addMedia": "メディアを追加して開始してください",
         "dragDrop": "ここに画像をドラッグ＆ドロップして検索"
+    },
+    "settings": {
+        "title": "設定",
+        "subtitle": "アプリケーションの設定とAIモデルの管理を行います。",
+        "language": {
+            "title": "Language / 言語",
+            "section": "外観と言語"
+        },
+        "models": {
+            "title": "AIモデル",
+            "subtitle": "解析に必要な機械学習モデルのダウンロードと管理を行います。",
+            "storage": "ストレージ設定",
+            "storageDesc": "モデルのダウンロード先を大容量ドライブ（例：D:\\Models）に変更します。",
+            "storageNote": "注意：このパスを変更しても既存のファイルは移動されません。手動で新しいフォルダにモデルを移動する必要があります。",
+            "installed": "インストール済み",
+            "ready": "準備完了",
+            "downloadNow": "今すぐダウンロード",
+            "downloading": "ダウンロード中...",
+            "loading": "モデルの状態を読み込み中...",
+            "fetchError": "AIモデルの取得に失敗しました。バックエンドが実行中であることを確認してください。",
+            "downloadFailed": "ダウンロードに失敗しました: ",
+            "pathUpdated": "モデルの保存パスが更新されました。変更を有効にするにはアプリケーションを再起動してください。",
+            "saveSuccess": "設定を保存しました。",
+            "saveFailed": "設定の保存に失敗しました",
+            "defaultCachePlaceholder": "デフォルトのシステムキャッシュ",
+            "pathChangeNote": "注意: このパスを変更しても既存のファイルは移動されません。手動で新しいフォルダにモデルを移動するか、再ダウンロードする必要があります。"
+        },
+        "data": {
+            "title": "データ管理",
+            "subtitle": "ライブラリに関連するデータの管理とエクスポートを行います。",
+            "exportMetadata": "メタデータのエクスポート",
+            "exportDesc": "AIによって生成されたすべてのタグとキャプションを、メディアファイルまたはサイドカーに直接書き込みます。",
+            "exportAll": "ライブラリ全体をエクスポート",
+            "exported": "{count} 件エクスポート済み",
+            "failed": "{count} 件失敗",
+            "exifWarning": "注意：動画ファイルやサポートされていない画像形式は、ライブラリ全体の処理中に自動的にXMPサイドカーエクスポートに切り替わります。",
+            "exportFailed": "メタデータのエクスポートに失敗しました。"
+        },
+        "video": {
+            "title": "AI動画解析",
+            "subtitle": "システムの動画解析およびセグメント化の方法を設定します。",
+            "sectionTitle": "動画のシーン分割",
+            "autoDetect": "スキャン時にシーンを自動検出",
+            "autoDetectDesc": "ファイルスキャン中に新しい動画をシーンに自動的に分割します。",
+            "sensitivity": "検出感度",
+            "fine": "細かい（シーン多）",
+            "coarse": "粗い（シーン少）",
+            "maxDuration": "最大動画時間（秒）",
+            "maxDurationDesc": "処理時間を節約するために、これより長い動画をスキップします（デフォルト 7200秒 = 2時間）。",
+            "saveSuccess": "シーン設定を保存しました",
+            "saveError": "設定の保存に失敗しました",
+            "saveButton": "シーン設定を保存"
+        },
+        "privacy": {
+            "title": "ネットワークとプライバシー",
+            "subtitle": "LocalCuratorPrimeは完全にデバイス上で動作します。外部サーバーにデータが送信されることはありません。",
+            "connectionStatus": "接続ステータス",
+            "online": "オンライン",
+            "offline": "オフライン",
+            "localFirst": "ローカルファースト・アーキテクチャ",
+            "localFirstDesc": "メディア解析、顔検出、セマンティック検索はすべてローカルハードウェア上で行われます。オンラインであっても、データがこのマシンから離れることはありません。",
+            "checkingModels": "モデルの可用性を確認中...",
+            "allCached": "すべてのAIモデルがローカルにキャッシュされています。オフラインで全機能を利用可能です。",
+            "partialCached": "{total} 個中 {count} 個のモデルがダウンロード済みです。一部の機能は重みのダウンロードにインターネットが必要な場合があります。"
+        },
+        "cleaner": {
+            "title": "重複スキャナー",
+            "desc": "AIエンベディングを使用して、正確およびほぼ正確な重複画像と動画を検索します。注意して使用してください。",
+            "scanButton": "重複を検索",
+            "scanning": "ライブラリをスキャン中...",
+            "found": "{count} 件の重複ペアが見つかりました",
+            "mergeMetadata": "不足しているメタデータを保持するファイルにマージする",
+            "deleteSelected": "選択項目を削除 ({count})",
+            "similarity": "類似度",
+            "reason": "理由",
+            "empty": "「重複を検索」をクリックしてライブラリのスキャンを開始してください。",
+            "confirmDelete": "{count} 個のファイルを永久に削除してもよろしいですか？",
+            "scanFailed": "重複スキャンの実行に失敗しました。",
+            "deleteSuccess": "{count} 個のファイルを削除し、 {mergedCount} 個のメタデータをマージしました。",
+            "deleteFailed": "重複排除の適用に失敗しました。"
+        },
+        "scenes": {
+            "saveSuccess": "シーン設定を保存しました",
+            "saveFailed": "設定の保存に失敗しました"
+        }
+    },
+    "setup": {
+        "welcome": {
+            "title": "LocalCurator Primeへようこそ",
+            "desc": "ローカルメディアを, インテリジェントで検索可能なギャラリーに変身させます。AIに整理を任せて, あなたは思い出に集中しましょう。",
+            "feature1": "セマンティック検索",
+            "feature1Desc": "自然言語で説明することで写真を見つけられます。",
+            "feature2": "インテリジェント・タギング",
+            "feature2Desc": "キャラクター、シリーズ、詳細なキャプションを自動検出します。"
+        },
+        "media": {
+            "title": "メディアのルートを選択",
+            "desc": "主要なメディアコレクションが保存されているフォルダを選択してください。",
+            "placeholder": "C:\\Users\\You\\Pictures",
+            "privacyNote": "ファイルがマシンから離れることはありません。すべてのAI処理はローカルで行われます。フォルダは後で設定から追加できます。"
+        },
+        "performance": {
+            "title": "パフォーマンス・プロフィール",
+            "desc": "ハードウェアに合わせてモデルの読み込み動作を最適化します。",
+            "profiles": {
+                "performance": "パフォーマンス",
+                "performanceDesc": "最大スピード。すべてのモデルをFP16で読み込み、大きなバッチサイズを使用します。",
+                "balanced": "バランス",
+                "balancedDesc": "信頼性と精度のバランス。現代の中価格帯GPUに最適化されています。",
+                "lightweight": "ライトウェイト",
+                "lightweightDesc": "CPUフレンドリー。主要なモデルのみ（CLIP + JoyTag）。古いハードウェアに最適です。"
+            }
+        },
+        "appearance": {
+            "title": "外観",
+            "desc": "お好みの視覚的な雰囲気を選択してください。",
+            "themes": {
+                "light": "ライト",
+                "dark": "ダーク",
+                "system": "システム"
+            }
+        },
+        "ready": {
+            "title": "準備完了！",
+            "desc": "設定が完了しました。セットアップを完了すると, メディアのスキャンを開始します。",
+            "mediaPath": "メディアパス",
+            "notSelected": "未選択",
+            "profile": "プロフィール",
+            "theme": "テーマ"
+        },
+        "footer": {
+            "back": "戻る",
+            "next": "次のステップ",
+            "finalizing": "最終処理中...",
+            "start": "スキャンの開始"
+        },
+        "errors": {
+            "completeFailed": "セットアップの完了に失敗しました。もう一度お試しください。"
+        },
+        "hardware": {
+            "vram8gb": "8GB+ VRAM",
+            "vram4gb": "4GB+ VRAM",
+            "vramMinimal": "最小/CPU"
+        }
     }
 }
