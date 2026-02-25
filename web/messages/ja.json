@@ -310,7 +310,7 @@
             "localFirstDesc": "メディア解析、顔検出、セマンティック検索はすべてローカルハードウェア上で行われます。データがこのマシンから外部に送信されることは一切ありません。",
             "checkingModels": "モデルの可用性を確認中...",
             "allCached": "すべてのAIモデルがローカルにキャッシュされています。オフラインで全機能を利用可能です。",
-            "partialCached": "{total} 個中 {count} 個のモデルがダウンロード済みです。一部の機能を使用するにはインターネット接続が必要な場合があります。"
+            "partialCached": "{count} / {total} 個のモデルがダウンロード済みです。一部の機能を使用するにはインターネット接続が必要な場合があります。"
         },
         "cleaner": {
             "title": "重複スキャナー",
@@ -508,5 +508,22 @@
         "stepOf": "ステップ {current}/{total}",
         "progress": "{percent}% 完了",
         "restartHint": "このツアーは設定から再開できます。"
+    },
+    "privacy": {
+        "localOnly": "ローカル専用",
+        "badgeTooltip": "すべての処理はこのデバイス上で行われます",
+        "externalDetected": "外部通信を検出",
+        "networkLog": "ネットワークアクティビティログ",
+        "clearLog": "ログをクリア",
+        "noActivity": "このセッションではネットワーク活動は記録されていません",
+        "method": "メソッド",
+        "url": "URL",
+        "status": "ステータス",
+        "timestamp": "タイムスタンプ",
+        "local": "ローカル",
+        "blocked": "ブロック",
+        "external": "外部",
+        "duration": "所要時間",
+        "entries": "{count} 件"
     }
 }

@@ -23,6 +23,8 @@ export const metadata: Metadata = {
   description: "AI-powered local media management and intelligent gallery",
 };
 
+import { NetworkLogProvider } from "@/stores/networkLogStore";
+
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -43,11 +45,13 @@ export default async function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            <SetupGuard>
-              <NetworkStatus />
-              {children}
-              <GlobalShortcuts />
-            </SetupGuard>
+            <NetworkLogProvider>
+              <SetupGuard>
+                <NetworkStatus />
+                {children}
+                <GlobalShortcuts />
+              </SetupGuard>
+            </NetworkLogProvider>
           </ThemeProvider>
         </NextIntlClientProvider>
       </body>

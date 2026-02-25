@@ -3,9 +3,37 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const safeFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
     const isLocal = url.includes('localhost') || url.includes('127.0.0.1') || url.startsWith('/');
+    const method = init?.method || 'GET';
+    const startTime = performance.now();
+
+    const getSanitizedUrl = (rawUrl: string) => {
+        try {
+            const urlObj = new URL(rawUrl, typeof window !== 'undefined' ? window.location.origin : 'http://localhost');
+            return urlObj.pathname;
+        } catch {
+            return rawUrl.split('?')[0];
+        }
+    };
+
+    const logRequest = (status: number | 'blocked') => {
+        if (typeof window !== 'undefined') {
+            const addLog = (window as Window & { __ADD_NETWORK_LOG?: (entry: { timestamp: string; method: string; url: string; status: number | 'blocked'; duration: number; isLocal: boolean; }) => void }).__ADD_NETWORK_LOG;
+            if (addLog) {
+                addLog({
+                    timestamp: new Date().toLocaleTimeString(),
+                    method,
+                    url: getSanitizedUrl(url),
+                    status,
+                    duration: Math.round(performance.now() - startTime),
+                    isLocal
+                });
+            }
+        }
+    };
 
     if (typeof navigator !== 'undefined' && !navigator.onLine && !isLocal) {
         console.warn(`Offline: Skipping external API call to ${url}`);
+        logRequest('blocked');
         // Return a mock failed response or a special offline error
         return new Response(JSON.stringify({ error: "Offline: External request skipped" }), {
             status: 503,
@@ -16,8 +44,10 @@ const safeFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
 
     try {
         const response = await fetch(input, init);
+        logRequest(response.status);
         return response;
     } catch (error) {
+        logRequest(500);
         if (typeof navigator !== 'undefined' && !navigator.onLine) {
             console.warn('Request failed while offline:', url);
             throw new Error('You are offline. This request will retry when connection is restored.');

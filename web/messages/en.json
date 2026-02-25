@@ -508,5 +508,22 @@
         "stepOf": "Step {current} of {total}",
         "progress": "{percent}% complete",
         "restartHint": "You can restart this tour from Settings."
+    },
+    "privacy": {
+        "localOnly": "Local Only",
+        "badgeTooltip": "All processing happens on this device",
+        "externalDetected": "External detected",
+        "networkLog": "Network Activity Log",
+        "clearLog": "Clear Log",
+        "noActivity": "No network activity recorded this session",
+        "method": "Method",
+        "url": "URL",
+        "status": "Status",
+        "timestamp": "Timestamp",
+        "local": "Local",
+        "blocked": "Blocked",
+        "external": "External",
+        "duration": "Duration",
+        "entries": "{count, plural, =0 {No entries} =1 {1 entry} other {# entries}}"
     }
 }
