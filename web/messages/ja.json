@@ -13,7 +13,7 @@
         "noResults": "結果が見つかりません",
         "selectAll": "すべて選択",
         "deselectAll": "選択解除",
-        "items": "{count, plural, =0 {アイテムなし} other {# 個のアイテム}}",
+        "items": "{count, plural, =0 {アイテムなし} =1 {1 個のアイテム} other {# 個のアイテム}}",
         "selected": "{count} 個選択中",
         "processing": "処理中...",
         "retry": "再試行",
@@ -34,7 +34,7 @@
         "createdAt": "作成日 {date}",
         "loadMore": "さらに読み込む",
         "preview": "プレビュー",
-        "checkingStatus": "システムステータスを確認中...",
+        "checkingStatus": "システム状態を確認中...",
         "album": "アルバム"
     },
     "sidebar": {
@@ -156,7 +156,7 @@
         "addMissing": "不足しているタグを追加",
         "addMissingDesc": "既存を保持し、新しく検出されたものを追加",
         "overwrite": "タグを上書き",
-        "overwriteDesc": "現在のAIタグを削除して新しくやり直す",
+        "overwriteDesc": "現在のAIタグをすべて削除してやり直します",
         "rescanSuccess": "AI再スキャンが正常に完了しました！",
         "rescanFailed": "再スキャンに失敗しました",
         "exportSuccess": "メタデータが {mode} として正常にエクスポートされました！",
@@ -168,8 +168,8 @@
         "closePanel": "パネルを閉じる"
     },
     "insights": {
-        "empty": "ライブラリはよく整理されています。素晴らしい！",
-        "title": "アクション可能なインサイト",
+        "empty": "ライブラリはよく整理されています。素晴らしいです！",
+        "title": "改善提案",
         "createAlbum": "スマートアルバムを作成",
         "priority": "優先",
         "createAlbumFailed": "アルバムの作成に失敗しました"
@@ -183,7 +183,7 @@
         "startButton": "スキャン開始",
         "scanning": "スキャン中: {file}",
         "preparing": "準備中...",
-        "eta": "残り時間: {time}",
+        "eta": "残り時間：{time}",
         "bgError": "バックグラウンドスキャンエラー: {error}",
         "pickerError": "フォルダ選択の起動に失敗しました: {error}",
         "startError": "スキャンの開始に失敗しました",
@@ -202,7 +202,7 @@
         "loadingDetail": "アルバムを読み込み中...",
         "notFound": "アルバムが見つかりません",
         "back": "アルバム一覧に戻る",
-        "created": "作成日: {date}",
+        "created": "作成日 {date}",
         "dynamicQuery": "動的クエリ",
         "staticCollection": "静的なコレクション",
         "addItems": "アイテムを追加"
@@ -280,7 +280,7 @@
             "autoDetectDesc": "ファイルスキャン中に新しい動画をシーンに自動的に分割します。",
             "sensitivity": "検出感度",
             "fine": "細かい（シーン多）",
-            "coarse": "粗い（シーン少）",
+            "coarse": "粗い（シーン少なめ）",
             "maxDuration": "最大動画時間（秒）",
             "maxDurationDesc": "処理時間を節約するために、これより長い動画をスキップします（デフォルト 7200秒 = 2時間）。",
             "saveSuccess": "シーン設定を保存しました",
@@ -294,14 +294,14 @@
             "online": "オンライン",
             "offline": "オフライン",
             "localFirst": "ローカルファースト・アーキテクチャ",
-            "localFirstDesc": "メディア解析、顔検出、セマンティック検索はすべてローカルハードウェア上で行われます。オンラインであっても、データがこのマシンから離れることはありません。",
+            "localFirstDesc": "メディア解析、顔検出、セマンティック検索はすべてローカルハードウェア上で行われます。データがこのマシンから外部に送信されることは一切ありません。",
             "checkingModels": "モデルの可用性を確認中...",
             "allCached": "すべてのAIモデルがローカルにキャッシュされています。オフラインで全機能を利用可能です。",
-            "partialCached": "{total} 個中 {count} 個のモデルがダウンロード済みです。一部の機能は重みのダウンロードにインターネットが必要な場合があります。"
+            "partialCached": "{total} 個中 {count} 個のモデルがダウンロード済みです。一部の機能を使用するにはインターネット接続が必要な場合があります。"
         },
         "cleaner": {
             "title": "重複スキャナー",
-            "desc": "AIエンベディングを使用して、正確およびほぼ正確な重複画像と動画を検索します。注意して使用してください。",
+            "desc": "AI類似度分析を使用して、完全一致・類似した重複画像や動画を検索します。ご注意の上お使いください。",
             "scanButton": "重複を検索",
             "scanning": "ライブラリをスキャン中...",
             "found": "{count} 件の重複ペアが見つかりました",
@@ -312,7 +312,7 @@
             "empty": "「重複を検索」をクリックしてライブラリのスキャンを開始してください。",
             "confirmDelete": "{count} 個のファイルを永久に削除してもよろしいですか？",
             "scanFailed": "重複スキャンの実行に失敗しました。",
-            "deleteSuccess": "{count} 個のファイルを削除し、 {mergedCount} 個のメタデータをマージしました。",
+            "deleteSuccess": "{count} 個のファイルを削除し、{mergedCount} 個のメタデータをマージしました。",
             "deleteFailed": "重複排除の適用に失敗しました。"
         },
         "scenes": {
@@ -331,7 +331,7 @@
             "redetectButton": "再検出",
             "deleteAllButton": "すべてのシーンを削除",
             "sceneIndex": "シーン {index}",
-            "noCaption": "説明なし",
+            "noCaption": "キャプションなし",
             "count": "{count} 個のシーン",
             "saveSuccess": "シーン設定を保存しました",
             "saveFailed": "設定の保存に失敗しました"
@@ -340,7 +340,7 @@
     "setup": {
         "welcome": {
             "title": "LocalCurator Primeへようこそ",
-            "desc": "ローカルメディアを, インテリジェントで検索可能なギャラリーに変身させます。AIに整理を任せて, あなたは思い出に集中しましょう。",
+            "desc": "ローカルメディアを、インテリジェントで検索可能なギャラリーに変身させます。AIに整理を任せて、あなたは思い出に集中しましょう。",
             "feature1": "セマンティック検索",
             "feature1Desc": "自然言語で説明することで写真を見つけられます。",
             "feature2": "インテリジェント・タギング",
@@ -353,11 +353,11 @@
             "privacyNote": "ファイルがマシンから離れることはありません。すべてのAI処理はローカルで行われます。フォルダは後で設定から追加できます。"
         },
         "performance": {
-            "title": "パフォーマンス・プロフィール",
+            "title": "パフォーマンスプロファイル",
             "desc": "ハードウェアに合わせてモデルの読み込み動作を最適化します。",
             "profiles": {
                 "performance": "パフォーマンス",
-                "performanceDesc": "最大スピード。すべてのモデルをFP16で読み込み、大きなバッチサイズを使用します。",
+                "performanceDesc": "最大スピード。すべてのモデルをFP16で読み込み、大きいバッチサイズで処理します。",
                 "balanced": "バランス",
                 "balancedDesc": "信頼性と精度のバランス。現代の中価格帯GPUに最適化されています。",
                 "lightweight": "ライトウェイト",
@@ -375,10 +375,10 @@
         },
         "ready": {
             "title": "準備完了！",
-            "desc": "設定が完了しました。セットアップを完了すると, メディアのスキャンを開始します。",
+            "desc": "設定が完了しました。セットアップを完了すると、メディアのスキャンを開始します。",
             "mediaPath": "メディアパス",
             "notSelected": "未選択",
-            "profile": "プロフィール",
+            "profile": "プロファイル",
             "theme": "テーマ"
         },
         "footer": {
@@ -441,11 +441,11 @@
         "previewRemove": "{count} 件のファイルから {tagStr} を削除",
         "previewReplace": "{count} 件のファイルの {category} タグを {tagStr} に置換",
         "applyButton": "{count} 件のファイルに適用",
-        "rescanMode": "再スキャンのモード",
+        "rescanMode": "再スキャンモード",
         "addMissing": "不足分を追加",
         "addMissingDesc": "既存のタグを保持します",
         "overwrite": "上書き",
-        "overwriteDesc": "すべてを再生成します",
+        "overwriteDesc": "すべてを置き換えます",
         "rescanInfo": "最新のAIモデルを使用して、選択したファイルのタグ、キャプション、CLIPベクトルを再生成します。",
         "overwriteWarning": "警告：上書きすると、これらのファイルの既存のAI生成タグとキャプションがすべて削除されます。",
         "startRescan": "再スキャンを開始",
