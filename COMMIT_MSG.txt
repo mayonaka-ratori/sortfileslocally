@@ -1,8 +1,0 @@
-feat: First-Run Experience Phase 1 – Guided Scan & Resume (5.2)
-
-- ScanUI: human-readable ETA, 8-entry activity log, Resume button
-- ScanSummary: completion card with stats and navigation
-- Setup Wizard: inline scan in final step, "Skip for now" link
-- Backend: POST /scan/resume/{job_id} with 404/422 handling
-- i18n: 18 new keys in en.json/ja.json (401 total, matched)
-- Suite: 75 passed, 0 failed, 7 skipped, ESLint 0/0
