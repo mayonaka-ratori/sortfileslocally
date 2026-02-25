@@ -259,8 +259,9 @@ export interface ScanErrorInfo {
     occurred_at: number;
 }
 
-export const resumeScan = async (): Promise<{ message: string; job: ScanJobInfo }> => {
-    const res = await safeFetch(`${API_BASE_URL}/scan/resume`, { method: "POST" });
+export const resumeScan = async (jobId?: number): Promise<{ message: string; job: ScanJobInfo }> => {
+    const url = jobId ? `${API_BASE_URL}/scan/resume/${jobId}` : `${API_BASE_URL}/scan/resume`;
+    const res = await safeFetch(url, { method: "POST" });
     if (!res.ok) {
         const data = await res.json().catch(() => ({ detail: "Resume failed" }));
         throw new Error(data.detail || "Resume failed");

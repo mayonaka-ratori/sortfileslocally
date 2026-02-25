@@ -158,7 +158,7 @@ async def resume_scan(
     processor: Processor = Depends(get_processor),
     job_manager: ScanJobManager = Depends(_get_job_manager),
 ):
-    """Resume an incomplete scan job."""
+    """Resume an incomplete scan job (auto-finds latest)."""
     if any(s.is_active for s in active_scans.values()):
         raise HTTPException(status_code=400, detail="Scan already in progress")
 
@@ -173,6 +173,39 @@ async def resume_scan(
 
     if not job:
         raise HTTPException(status_code=404, detail="No resumable scan job found")
+
+    if not os.path.exists(job.target_path):
+        raise HTTPException(status_code=400, detail=f"Original path no longer exists: {job.target_path}")
+
+    resume_after = job.last_processed_path or None
+
+    background_tasks.add_task(
+        run_scan_task, job.target_path, job.force_reprocess,
+        processor, job_manager, job.id, resume_after
+    )
+    
+    return {"message": "Scan resumed", "job": _job_to_response(job)}
+
+
+@router.post("/resume/{job_id}")
+async def resume_scan_by_id(
+    job_id: int,
+    background_tasks: BackgroundTasks,
+    processor: Processor = Depends(get_processor),
+    job_manager: ScanJobManager = Depends(_get_job_manager),
+):
+    """Resume a specific scan job by ID."""
+    if any(s.is_active for s in active_scans.values()):
+        raise HTTPException(status_code=400, detail="Scan already in progress")
+
+    job = job_manager.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    # Roadmap: return 422 if job status is not 'failed'/'interrupted'
+    # Persistent status maps: running/paused/failed are 'interrupted' if not currently active
+    if job.status not in ('failed', 'paused', 'running'):
+        raise HTTPException(status_code=422, detail=f"Job {job_id} is in status '{job.status}' and cannot be resumed")
 
     if not os.path.exists(job.target_path):
         raise HTTPException(status_code=400, detail=f"Original path no longer exists: {job.target_path}")

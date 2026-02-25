@@ -188,7 +188,20 @@
         "pickerError": "フォルダ選択の起動に失敗しました: {error}",
         "startError": "スキャンの開始に失敗しました",
         "fileCount": "{count} / {total} ファイル",
-        "files": "ファイル"
+        "files": "ファイル",
+        "resumeButton": "スキャンを再開",
+        "resumeError": "スキャンの再開に失敗しました",
+        "resumeHint": "進捗が保存されています。中断した箇所からスキャンを再開できます。",
+        "summaryTitle": "スキャン完了",
+        "summaryNewFiles": "新たにインデックス",
+        "summarySkipped": "スキップ済み",
+        "summaryErrors": "エラー",
+        "summaryElapsed": "所要時間",
+        "recentFiles": "最近のファイル",
+        "humanEta": "残り約 {mins} 分",
+        "humanEtaSeconds": "まもなく完了",
+        "goToGallery": "ギャラリーへ",
+        "scanMore": "別のフォルダをスキャン"
     },
     "albums": {
         "title": "あなたのアルバム",
@@ -394,7 +407,12 @@
             "vram8gb": "8GB+ VRAM",
             "vram4gb": "4GB+ VRAM",
             "vramMinimal": "最小/CPU"
-        }
+        },
+        "scanningNow": "ライブラリをスキャン中...",
+        "scanDesc": "ライブラリのサイズによっては時間がかかる場合があります。このままお待ちいただくか、後ほど確認してください。",
+        "skipScan": "スキップして後で",
+        "scanError": "スキャン中にエラーが発生しました。",
+        "resumeHint": "進捗が保存されています。スキャンを再開できます。"
     },
     "saveAlbum": {
         "title": "スマートアルバムとして保存",

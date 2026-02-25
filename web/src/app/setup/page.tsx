@@ -15,12 +15,14 @@ import {
     Monitor,
     Loader2,
     Sparkles,
+    SkipForward,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useTranslations } from 'next-intl';
-import { browseFolder, updateAppSetting, completeSetup, startScan } from '@/lib/api';
+import { browseFolder, updateAppSetting, completeSetup } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { LanguageSelector } from '@/components/LanguageSelector';
+import { ScanUI } from '@/components/ScanUI';
 
 export default function SetupWizard() {
     const t = useTranslations('setup');
@@ -29,6 +31,8 @@ export default function SetupWizard() {
     const [mediaPath, setMediaPath] = useState('');
     const [profile, setProfile] = useState('balanced');
     const [isSaving, setIsSaving] = useState(false);
+    const [scanStarted, setScanStarted] = useState(false);
+    const [scanError, setScanError] = useState('');
     const { theme, setTheme } = useTheme();
     const router = useRouter();
 
@@ -46,26 +50,25 @@ export default function SetupWizard() {
         }
     };
 
+    // Save settings + mark setup complete, then begin inline scan in step 5
     const handleComplete = async () => {
         setIsSaving(true);
+        setScanError('');
         try {
             await updateAppSetting('execution_profile', profile);
             await updateAppSetting('theme', theme || 'system');
-
-            if (mediaPath) {
-                await startScan(mediaPath);
-            }
-
             await completeSetup();
-            router.push('/');
-            router.refresh();
+            setScanStarted(true);
         } catch (err) {
             console.error(err);
-            alert(t('errors.completeFailed'));
+            setScanError(t('errors.completeFailed'));
         } finally {
             setIsSaving(false);
         }
     };
+
+
+
 
     const profilesList = [
         {
@@ -275,79 +278,113 @@ export default function SetupWizard() {
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 exit={{ opacity: 0, x: -20 }}
-                                className="space-y-6 text-center"
+                                className="space-y-6"
                             >
-                                <div className="py-4 flex justify-center">
-                                    <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center relative">
-                                        <CheckCircle2 className="w-10 h-10 text-emerald-500" />
-                                        <motion.div
-                                            animate={{ scale: [1, 1.2, 1], opacity: [0, 0.5, 0] }}
-                                            transition={{ repeat: Infinity, duration: 2 }}
-                                            className="absolute inset-0 bg-emerald-500 rounded-full"
+                                {!scanStarted ? (
+                                    // ── Pre-scan confirmation ────────────────────
+                                    <>
+                                        <div className="py-4 flex justify-center">
+                                            <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center relative">
+                                                <CheckCircle2 className="w-10 h-10 text-emerald-500" />
+                                                <motion.div
+                                                    animate={{ scale: [1, 1.2, 1], opacity: [0, 0.5, 0] }}
+                                                    transition={{ repeat: Infinity, duration: 2 }}
+                                                    className="absolute inset-0 bg-emerald-500 rounded-full"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2 text-center">
+                                            <h2 className="text-2xl font-bold tracking-tight">{t('ready.title')}</h2>
+                                            <p className="text-zinc-400">{t('ready.desc')}</p>
+                                        </div>
+                                        <div className="bg-zinc-950/40 border border-zinc-800 rounded-2xl p-6 text-left space-y-3">
+                                            <div className="flex justify-between text-xs">
+                                                <span className="text-zinc-500 uppercase tracking-widest font-bold">{t('ready.mediaPath')}</span>
+                                                <span className="text-zinc-300 truncate pl-4 max-w-[240px]">{mediaPath || t('ready.notSelected')}</span>
+                                            </div>
+                                            <div className="flex justify-between text-xs">
+                                                <span className="text-zinc-500 uppercase tracking-widest font-bold">{t('ready.profile')}</span>
+                                                <span className="text-zinc-300 capitalize">{profile}</span>
+                                            </div>
+                                            <div className="flex justify-between text-xs">
+                                                <span className="text-zinc-500 uppercase tracking-widest font-bold">{t('ready.theme')}</span>
+                                                <span className="text-zinc-300 capitalize">{theme}</span>
+                                            </div>
+                                        </div>
+                                        {scanError && (
+                                            <p className="text-xs text-red-400 text-center">{scanError}</p>
+                                        )}
+                                        {/* Skip link */}
+                                        <div className="text-center pt-1">
+                                            <button
+                                                id="setup-skip-scan"
+                                                onClick={() => { router.push('/'); router.refresh(); }}
+                                                className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors inline-flex items-center gap-1"
+                                            >
+                                                <SkipForward className="w-3 h-3" />
+                                                {t('skipScan')}
+                                            </button>
+                                        </div>
+                                    </>
+                                ) : (
+                                    // ── Inline scan UI ────────────────────────────
+                                    <>
+                                        <div className="space-y-1 text-center">
+                                            <h2 className="text-xl font-bold tracking-tight">{t('scanningNow')}</h2>
+                                            <p className="text-xs text-zinc-500">{t('scanDesc')}</p>
+                                        </div>
+                                        <ScanUI
+                                            initialPath={mediaPath}
+                                            onComplete={() => { }}
                                         />
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <h2 className="text-2xl font-bold tracking-tight">{t('ready.title')}</h2>
-                                    <p className="text-zinc-400">{t('ready.desc')}</p>
-                                </div>
-                                <div className="bg-zinc-950/40 border border-zinc-800 rounded-2xl p-6 text-left space-y-3">
-                                    <div className="flex justify-between text-xs">
-                                        <span className="text-zinc-500 uppercase tracking-widest font-bold">{t('ready.mediaPath')}</span>
-                                        <span className="text-zinc-300 truncate pl-4 max-w-[240px]">{mediaPath || t('ready.notSelected')}</span>
-                                    </div>
-                                    <div className="flex justify-between text-xs">
-                                        <span className="text-zinc-500 uppercase tracking-widest font-bold">{t('ready.profile')}</span>
-                                        <span className="text-zinc-300 capitalize">{profile}</span>
-                                    </div>
-                                    <div className="flex justify-between text-xs">
-                                        <span className="text-zinc-500 uppercase tracking-widest font-bold">{t('ready.theme')}</span>
-                                        <span className="text-zinc-300 capitalize">{theme}</span>
-                                    </div>
-                                </div>
+                                    </>
+                                )}
                             </motion.div>
                         )}
                     </AnimatePresence>
 
-                    {/* Navigation */}
-                    <div className="flex justify-between items-center mt-12 pt-8 border-t border-zinc-800/50">
-                        <button
-                            disabled={step === 1 || isSaving}
-                            onClick={prevStep}
-                            className="flex items-center gap-2 text-sm font-medium text-zinc-400 hover:text-zinc-100 disabled:opacity-0 transition-opacity px-2"
-                        >
-                            <ChevronLeft className="w-4 h-4" />
-                            {t('footer.back')}
-                        </button>
+                    {/* Navigation — hidden once inline scan has started */}
+                    {!scanStarted && (
+                        <div className="flex justify-between items-center mt-12 pt-8 border-t border-zinc-800/50">
+                            <button
+                                disabled={step === 1 || isSaving}
+                                onClick={prevStep}
+                                className="flex items-center gap-2 text-sm font-medium text-zinc-400 hover:text-zinc-100 disabled:opacity-0 transition-opacity px-2"
+                            >
+                                <ChevronLeft className="w-4 h-4" />
+                                {t('footer.back')}
+                            </button>
 
-                        {step < 5 ? (
-                            <button
-                                onClick={nextStep}
-                                className="bg-zinc-100 hover:bg-white text-zinc-950 text-sm font-bold px-8 py-3 rounded-xl flex items-center gap-2 transition-all active:scale-95 shadow-xl shadow-white/5"
-                            >
-                                {t('footer.next')}
-                                <ChevronRight className="w-4 h-4" />
-                            </button>
-                        ) : (
-                            <button
-                                onClick={handleComplete}
-                                disabled={isSaving}
-                                className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold px-10 py-3 rounded-xl flex items-center gap-2 transition-all active:scale-95 shadow-xl shadow-indigo-500/20 disabled:opacity-50"
-                            >
-                                {isSaving ? (
-                                    <>
-                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                        {t('footer.finalizing')}
-                                    </>
-                                ) : (
-                                    <>
-                                        {t('footer.start')}
-                                        <CheckCircle2 className="w-4 h-4 text-white/80" />
-                                    </>
-                                )}
-                            </button>
-                        )}
-                    </div>
+                            {step < 5 ? (
+                                <button
+                                    onClick={nextStep}
+                                    className="bg-zinc-100 hover:bg-white text-zinc-950 text-sm font-bold px-8 py-3 rounded-xl flex items-center gap-2 transition-all active:scale-95 shadow-xl shadow-white/5"
+                                >
+                                    {t('footer.next')}
+                                    <ChevronRight className="w-4 h-4" />
+                                </button>
+                            ) : (
+                                <button
+                                    id="setup-start-scan"
+                                    onClick={handleComplete}
+                                    disabled={isSaving}
+                                    className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold px-10 py-3 rounded-xl flex items-center gap-2 transition-all active:scale-95 shadow-xl shadow-indigo-500/20 disabled:opacity-50"
+                                >
+                                    {isSaving ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            {t('footer.finalizing')}
+                                        </>
+                                    ) : (
+                                        <>
+                                            {t('footer.start')}
+                                            <CheckCircle2 className="w-4 h-4 text-white/80" />
+                                        </>
+                                    )}
+                                </button>
+                            )}
+                        </div>
+                    )}
                 </div>
             </motion.div>
         </div>

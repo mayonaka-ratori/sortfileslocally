@@ -188,7 +188,20 @@
         "pickerError": "Failed to open folder picker: {error}",
         "startError": "Failed to start scan",
         "fileCount": "{count} / {total} Files",
-        "files": "Files"
+        "files": "Files",
+        "resumeButton": "Resume Scan",
+        "resumeError": "Failed to resume scan",
+        "resumeHint": "Your progress has been saved. You can resume the scan from where it left off.",
+        "summaryTitle": "Scan Complete",
+        "summaryNewFiles": "New files indexed",
+        "summarySkipped": "Already indexed",
+        "summaryErrors": "Errors",
+        "summaryElapsed": "Total time",
+        "recentFiles": "Recent files",
+        "humanEta": "~{mins} min left",
+        "humanEtaSeconds": "Less than a minute left",
+        "goToGallery": "Go to your gallery",
+        "scanMore": "Scan more folders"
     },
     "albums": {
         "title": "Your Albums",
@@ -394,7 +407,12 @@
             "vram8gb": "8GB+ VRAM",
             "vram4gb": "4GB+ VRAM",
             "vramMinimal": "Minimal/CPU"
-        }
+        },
+        "scanningNow": "Scanning your library...",
+        "scanDesc": "This may take a while depending on your library size. You can leave this open or come back later.",
+        "skipScan": "Skip for now",
+        "scanError": "Scan encountered an error.",
+        "resumeHint": "Your progress has been saved. You can resume the scan."
     },
     "saveAlbum": {
         "title": "Save as Smart Album",
