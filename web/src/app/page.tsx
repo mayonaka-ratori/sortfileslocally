@@ -11,8 +11,10 @@ import { SceneSearchResultComponent } from "@/components/SceneSearchResult"
 import { Menu, Save, Film } from "lucide-react"
 import SaveAlbumModal from "@/components/SaveAlbumModal"
 import { InsightsPanel } from "@/components/InsightsPanel"
+import { useTranslations } from "next-intl"
 
 export default function Home() {
+  const t = useTranslations("gallery")
   const [media, setMedia] = useState<MediaItem[]>([])
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null)
   const [focusedIndex, setFocusedIndex] = useState(-1)
@@ -53,7 +55,7 @@ export default function Home() {
       setHasMore(data.length === limit)
       setSearchStats(null)
     } catch {
-      setError("Failed to load gallery.")
+      setError(t("loadError"))
     } finally {
       if (currentOffset === 0) {
         setLoading(false)
@@ -61,7 +63,7 @@ export default function Home() {
         setIsLoadingMore(false)
       }
     }
-  }, [])
+  }, [t])
 
   const handleLoadMore = useCallback(() => {
     if (!currentSearch && hasMore && !loading && !isLoadingMore) {
@@ -100,14 +102,14 @@ export default function Home() {
       setSelectedItem(null)
       setHasMore(false)
     } catch {
-      setError("Search failed.")
+      setError(t("searchError"))
     } finally {
       setLoading(false)
     }
-  }, [loadMedia])
+  }, [loadMedia, t])
 
   const handleFaceSearch = useCallback(async (faceId: number) => {
-    setCurrentSearch(`Face Search: ID ${faceId}`)
+    setCurrentSearch(t("faceSearchTitle", { id: faceId }))
     try {
       setLoading(true)
       setError("")
@@ -119,14 +121,14 @@ export default function Home() {
       setHasMore(false)
       setSearchStats(null)
     } catch {
-      setError("Face Search failed.")
+      setError(t("faceSearchError"))
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [t])
 
   const handleImageDrop = useCallback(async (file: File) => {
-    setCurrentSearch(`Reverse Search: ${file.name}`)
+    setCurrentSearch(t("reverseSearchTitle", { name: file.name }))
     try {
       setLoading(true)
       setError("")
@@ -146,18 +148,18 @@ export default function Home() {
         favorite: false,
         created_at: new Date().toISOString(),
         processed_at: new Date().toISOString(),
-        snippet: `Similarity: ${(r.similarity * 100).toFixed(1)}%`
+        snippet: t("similarity", { percent: (r.similarity * 100).toFixed(1) })
       }))
 
       setMedia(mappedResults)
       setSelectedItem(null)
       setHasMore(false)
     } catch {
-      setError("Reverse image search failed.")
+      setError(t("reverseSearchError"))
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     if (!currentSearch && Object.keys(currentFilters).length === 0) {
@@ -218,7 +220,7 @@ export default function Home() {
           <div className="flex items-center justify-center h-full text-zinc-500">
             <div className="animate-pulse flex flex-col items-center">
               <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4" />
-              Loading Gallery...
+              {t("loadingGallery")}
             </div>
           </div>
         ) : error ? (
@@ -239,11 +241,11 @@ export default function Home() {
               {searchStats && (
                 <div className="mt-2 flex items-center justify-between">
                   <div className="text-[10px] text-zinc-500 font-medium uppercase tracking-widest flex items-center gap-2">
-                    <span>Found {media.length} of {searchStats.total_candidates} candidates</span>
+                    <span>{t("foundNofM", { count: media.length, total: searchStats.total_candidates })}</span>
                     {Object.keys(currentFilters).length > 0 && (
                       <>
                         <span className="w-1 h-1 rounded-full bg-zinc-800" />
-                        <span>Filtered by: {Object.entries(currentFilters).map(([k, v]) => `${k}=${v}`).join(", ")}</span>
+                        <span>{t("filteredBy")}: {Object.entries(currentFilters).map(([k, v]) => `${k}=${v}`).join(", ")}</span>
                       </>
                     )}
                   </div>
@@ -252,7 +254,7 @@ export default function Home() {
                     className="flex items-center gap-2 px-3 py-1.5 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 text-xs font-semibold rounded-lg border border-blue-500/20 transition-all active:scale-95"
                   >
                     <Save className="w-3.5 h-3.5" />
-                    Save as Smart Album
+                    {t("saveSmartAlbum")}
                   </button>
                 </div>
               )}
@@ -269,8 +271,8 @@ export default function Home() {
                         <Film className="w-5 h-5 text-indigo-400" />
                       </div>
                       <div>
-                        <h2 className="text-lg font-bold text-white">Scene Search Results</h2>
-                        <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Found {sceneResults.length} matching scenes</p>
+                        <h2 className="text-lg font-bold text-white">{t("sceneResultsTitle")}</h2>
+                        <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">{t("foundScenes", { count: sceneResults.length })}</p>
                       </div>
                     </div>
                     <div className="grid grid-cols-1 gap-4">
@@ -299,7 +301,7 @@ export default function Home() {
                     {sceneResults.length === 0 && (
                       <div className="flex flex-col items-center justify-center py-20 text-zinc-500">
                         <Film className="w-12 h-12 mb-4 opacity-20" />
-                        <p className="text-sm font-medium">No scenes match your search query.</p>
+                        <p className="text-sm font-medium">{t("noScenes")}</p>
                       </div>
                     )}
                   </div>

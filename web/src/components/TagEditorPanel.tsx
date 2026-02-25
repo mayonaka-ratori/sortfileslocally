@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useRef } from "react"
+import { useTranslations } from "next-intl"
 import { TagCategory } from "@/lib/api"
 import { TagEditor } from "./TagEditor"
 
@@ -13,6 +14,7 @@ interface TagEditorPanelProps {
 }
 
 export function TagEditorPanel({ fileId, generalTags, characterTags, seriesTags, onUpdate }: TagEditorPanelProps) {
+    const t = useTranslations("tags");
     const [activeCategory, setActiveCategory] = useState<TagCategory>("general")
     const inputRef = useRef<HTMLInputElement>(null)
 
@@ -46,9 +48,9 @@ export function TagEditorPanel({ fileId, generalTags, characterTags, seriesTags,
     }, [activeCategory])
 
     const categories: { label: string; key: TagCategory; tags: string[] }[] = [
-        { label: "General", key: "general", tags: generalTags },
-        { label: "Characters", key: "character", tags: characterTags },
-        { label: "Series", key: "series", tags: seriesTags },
+        { label: t("general"), key: "general", tags: generalTags },
+        { label: t("character"), key: "character", tags: characterTags },
+        { label: t("series"), key: "series", tags: seriesTags },
     ]
 
     return (
@@ -59,8 +61,8 @@ export function TagEditorPanel({ fileId, generalTags, characterTags, seriesTags,
                         key={cat.key}
                         onClick={() => setActiveCategory(cat.key)}
                         className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-xs font-medium transition-all ${activeCategory === cat.key
-                                ? "bg-zinc-800 text-white shadow-sm"
-                                : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900"
+                            ? "bg-zinc-800 text-white shadow-sm"
+                            : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900"
                             }`}
                     >
                         {cat.label}
@@ -87,7 +89,7 @@ export function TagEditorPanel({ fileId, generalTags, characterTags, seriesTags,
 
             <div className="p-2 border-t border-zinc-800/50 bg-zinc-900/30">
                 <p className="text-[10px] text-zinc-600 italic">
-                    Tip: Press <kbd className="font-sans px-1 bg-zinc-800 rounded border border-zinc-700 not-italic">T</kbd> to focus tag input.
+                    {t("shortcutTip")}
                 </p>
             </div>
         </div>

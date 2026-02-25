@@ -14,8 +14,10 @@ import {
     CheckCircle2
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 
 export const InsightsPanel: React.FC = () => {
+    const t = useTranslations("insights");
     const [insights, setInsights] = useState<InsightItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [dismissed, setDismissed] = useState<string[]>([]);
@@ -83,7 +85,7 @@ export const InsightsPanel: React.FC = () => {
             router.push(`/albums/${albumId}`);
         } catch (error) {
             console.error("Failed to create album", error);
-            alert("Failed to create album");
+            alert(t("createAlbumFailed"));
         } finally {
             setCreatingAlbum(null);
         }
@@ -115,7 +117,7 @@ export const InsightsPanel: React.FC = () => {
         return (
             <div className="mb-10 p-6 bg-zinc-900/20 border border-zinc-800/50 rounded-2xl border-dashed flex items-center justify-center gap-3 text-zinc-500">
                 <CheckCircle2 className="w-5 h-5 text-emerald-500/50" />
-                <span className="text-sm font-medium">Your library is well organized. Nice work!</span>
+                <span className="text-sm font-medium">{t("empty")}</span>
             </div>
         );
     }
@@ -124,7 +126,7 @@ export const InsightsPanel: React.FC = () => {
         <div className="mb-10 w-full">
             <div className="flex items-center gap-2 mb-4">
                 <Sparkles className="w-4 h-4 text-indigo-400" />
-                <h2 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Actionable Insights</h2>
+                <h2 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">{t("title")}</h2>
             </div>
 
             <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent">
@@ -166,7 +168,7 @@ export const InsightsPanel: React.FC = () => {
                                     ) : (
                                         <Folder className="w-3.5 h-3.5" />
                                     )}
-                                    Create Smart Album
+                                    {t("createAlbum")}
                                 </button>
                             ) : (
                                 <button
@@ -182,7 +184,7 @@ export const InsightsPanel: React.FC = () => {
                         {/* Priority Badge */}
                         {insight.priority === 'high' && (
                             <div className="absolute -top-2 -right-2 px-2 py-0.5 bg-rose-500 text-[10px] font-black text-white rounded-md uppercase tracking-tighter shadow-lg">
-                                Priority
+                                {t("priority")}
                             </div>
                         )}
                     </div>

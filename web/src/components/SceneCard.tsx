@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { Scene } from "@/lib/api";
+import { useTranslations } from "next-intl";
 import { formatTime, cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
@@ -12,6 +13,7 @@ interface SceneCardProps {
 }
 
 export function SceneCard({ scene, isActive, onClick }: SceneCardProps) {
+    const t = useTranslations("scenes");
     return (
         <motion.div
             whileHover={{ scale: 1.03 }}
@@ -25,7 +27,7 @@ export function SceneCard({ scene, isActive, onClick }: SceneCardProps) {
             <div className="relative aspect-video w-full overflow-hidden">
                 <Image
                     src={scene.thumbnail_url}
-                    alt={scene.caption || `Scene ${scene.scene_index}`}
+                    alt={scene.caption || t("sceneIndex", { index: scene.scene_index })}
                     fill
                     className="object-cover"
                     sizes="200px"
@@ -37,7 +39,7 @@ export function SceneCard({ scene, isActive, onClick }: SceneCardProps) {
 
             <div className="p-3">
                 <p className="text-xs text-zinc-200 line-clamp-2 min-h-[2.5rem] leading-relaxed mb-2">
-                    {scene.caption || "No caption available"}
+                    {scene.caption || t("noCaption")}
                 </p>
 
                 <div className="flex flex-wrap gap-1">

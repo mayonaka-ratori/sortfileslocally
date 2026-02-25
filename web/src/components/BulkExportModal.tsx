@@ -1,5 +1,5 @@
-"use client"
 import React, { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { exportMetadata, MediaItem } from '@/lib/api';
 import { X, Download, Loader2, Database } from 'lucide-react';
 import { MetadataExportOptions, ExportMode } from './MetadataExportOptions';
@@ -11,12 +11,14 @@ interface BulkExportModalProps {
 }
 
 export function BulkExportModal({ selectedItems, onClose, onSuccess }: BulkExportModalProps) {
+    const t = useTranslations("export");
+    const commonT = useTranslations("common");
     const [isExporting, setIsExporting] = useState(false);
     const [exportMode, setExportMode] = useState<ExportMode>("xmp");
 
     const handleClose = () => {
         if (isExporting) {
-            if (!window.confirm("Export is in progress. Close anyway?")) return;
+            if (!window.confirm(t("closeConfirm"))) return;
         }
         onClose();
     };
@@ -31,7 +33,7 @@ export function BulkExportModal({ selectedItems, onClose, onSuccess }: BulkExpor
             onClose();
         } catch (e) {
             console.error("Bulk export failed", e);
-            alert("Failed to export metadata for selected items.");
+            alert(t("bulkFailed"));
         } finally {
             setIsExporting(false);
         }
@@ -45,7 +47,7 @@ export function BulkExportModal({ selectedItems, onClose, onSuccess }: BulkExpor
                 <div className="flex items-center justify-between p-4 border-b border-zinc-800">
                     <h2 className="text-lg font-bold text-white flex items-center gap-2">
                         <Database className="w-5 h-5 text-indigo-500" />
-                        Bulk Metadata Export
+                        {t("bulkTitle")}
                     </h2>
                     <button
                         onClick={handleClose}
@@ -59,12 +61,12 @@ export function BulkExportModal({ selectedItems, onClose, onSuccess }: BulkExpor
                 <div className="p-6 flex flex-col gap-6">
                     <div className="flex flex-col gap-1">
                         <p className={`text-sm font-medium ${isOverLimit ? 'text-red-400' : 'text-zinc-100'}`}>
-                            {isOverLimit ? 'Selection too large' : `Ready to export ${selectedItems.length} items`}
+                            {isOverLimit ? t("selectionTooLarge") : t("readyToExport", { count: selectedItems.length })}
                         </p>
                         <p className="text-xs text-zinc-500">
                             {isOverLimit
-                                ? 'Please select 500 or fewer files for bulk export. For larger exports, use "Export All" in Data Management settings.'
-                                : 'Choose how you want the AI-generated tags and captions to be written back to your files.'}
+                                ? t("bulkLimitDesc")
+                                : t("bulkDesc")}
                         </p>
                     </div>
 
@@ -83,7 +85,7 @@ export function BulkExportModal({ selectedItems, onClose, onSuccess }: BulkExpor
                         disabled={isExporting}
                         className="flex-1 px-4 py-2.5 rounded-xl border border-zinc-800 text-zinc-300 hover:bg-zinc-800 transition-colors text-sm font-medium disabled:opacity-50"
                     >
-                        Cancel
+                        {commonT("cancel")}
                     </button>
                     <button
                         onClick={handleExport}
@@ -91,7 +93,7 @@ export function BulkExportModal({ selectedItems, onClose, onSuccess }: BulkExpor
                         className="flex-[2] bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-800 disabled:text-zinc-500 disabled:opacity-100 text-white rounded-xl py-2.5 px-4 text-sm font-bold flex items-center justify-center gap-2 transition-colors shadow-lg shadow-indigo-900/20"
                     >
                         {isExporting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
-                        {isOverLimit ? 'Selection Limit Exceeded' : `Export ${selectedItems.length} Items`}
+                        {isOverLimit ? t("limitExceeded") : t("exportCount", { count: selectedItems.length })}
                     </button>
                 </div>
             </div>

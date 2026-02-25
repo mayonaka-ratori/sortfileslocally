@@ -12,7 +12,7 @@ export function GlobalShortcuts() {
     }, [])
 
     const focusSearch = useCallback(() => {
-        const searchInput = document.querySelector('input[placeholder*="Search"]') as HTMLInputElement
+        const searchInput = document.querySelector('[data-search-input]') as HTMLInputElement
         if (searchInput) {
             searchInput.focus()
             searchInput.select()

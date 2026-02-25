@@ -4,6 +4,7 @@
 import React, { useState } from 'react';
 import { createAlbum, SearchFilters } from '@/lib/api';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 
 interface SaveAlbumModalProps {
     isOpen: boolean;
@@ -13,6 +14,8 @@ interface SaveAlbumModalProps {
 }
 
 export default function SaveAlbumModal({ isOpen, onClose, currentQuery, currentFilters }: SaveAlbumModalProps) {
+    const t = useTranslations('saveAlbum');
+    const commonT = useTranslations('common');
     const [albumName, setAlbumName] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -22,7 +25,7 @@ export default function SaveAlbumModal({ isOpen, onClose, currentQuery, currentF
 
     const handleSave = async () => {
         if (!albumName.trim()) {
-            setError('Please enter an album name');
+            setError(t('nameError'));
             return;
         }
 
@@ -41,7 +44,7 @@ export default function SaveAlbumModal({ isOpen, onClose, currentQuery, currentF
             router.push(`/albums/${albumId}`);
         } catch (err) {
             console.error('Failed to save album:', err);
-            setError('Failed to save album. Please try again.');
+            setError(t('saveError'));
         } finally {
             setIsSubmitting(false);
         }
@@ -51,22 +54,22 @@ export default function SaveAlbumModal({ isOpen, onClose, currentQuery, currentF
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
                 <div className="p-6">
-                    <h2 className="text-xl font-semibold text-white mb-2">Save as Smart Album</h2>
+                    <h2 className="text-xl font-semibold text-white mb-2">{t('title')}</h2>
                     <p className="text-zinc-400 text-sm mb-6">
-                        Smart albums automatically update whenever new files match your search criteria.
+                        {t('description')}
                     </p>
 
                     <div className="space-y-4">
                         <div>
                             <label htmlFor="albumName" className="block text-sm font-medium text-zinc-300 mb-1.5">
-                                Album Name
+                                {t('label')}
                             </label>
                             <input
                                 id="albumName"
                                 type="text"
                                 value={albumName}
                                 onChange={(e) => setAlbumName(e.target.value)}
-                                placeholder="e.g., My Favorite Landscapes"
+                                placeholder={t('placeholder')}
                                 className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-white placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
                                 autoFocus
                             />
@@ -79,7 +82,7 @@ export default function SaveAlbumModal({ isOpen, onClose, currentQuery, currentF
                         )}
 
                         <div className="bg-zinc-800/30 rounded-xl p-4 border border-zinc-800/50">
-                            <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Query Preview</h3>
+                            <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">{t('queryPreview')}</h3>
                             <div className="text-sm text-zinc-300 italic truncate">&quot;{currentQuery}&quot;</div>
                             {(currentFilters.tags?.length || currentFilters.character_tags?.length || currentFilters.series_tags?.length) && (
                                 <div className="mt-2 flex flex-wrap gap-1.5">
@@ -100,7 +103,7 @@ export default function SaveAlbumModal({ isOpen, onClose, currentQuery, currentF
                         className="px-4 py-2 text-zinc-400 hover:text-white transition-colors"
                         disabled={isSubmitting}
                     >
-                        Cancel
+                        {commonT('cancel')}
                     </button>
                     <button
                         onClick={handleSave}
@@ -113,7 +116,7 @@ export default function SaveAlbumModal({ isOpen, onClose, currentQuery, currentF
                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
                         )}
-                        Save Album
+                        {t('saveButton')}
                     </button>
                 </div>
             </div>

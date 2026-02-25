@@ -10,6 +10,7 @@ import { BulkTagModal } from "./BulkTagModal"
 import { Album, fetchAlbums, addItemsToAlbum } from "@/lib/api"
 import { Tag, FolderPlus, Folder, RefreshCw } from "lucide-react"
 import { BulkRescanModal } from "./BulkRescanModal"
+import { useTranslations } from "next-intl"
 
 const MediaCard = ({
     item,
@@ -26,6 +27,7 @@ const MediaCard = ({
     isSelectionMode: boolean,
     onToggleSelect: (id: number) => void
 }) => {
+    const t = useTranslations("gallery");
     const cardRef = useRef<HTMLDivElement>(null);
     const [isHovered, setIsHovered] = useState(false);
     const hoverTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -102,7 +104,7 @@ const MediaCard = ({
 
                 {item.media_type === "video" && !isHovered && (
                     <div className="absolute top-3 right-3 bg-black/60 backdrop-blur text-xs px-2 py-1 rounded-md flex items-center gap-1 text-zinc-300 pointer-events-none">
-                        <PlayCircle className="w-3 h-3" /> VIDEO
+                        <PlayCircle className="w-3 h-3" /> {t("videoBadge")}
                     </div>
                 )}
             </div>
@@ -156,6 +158,8 @@ export function GalleryGrid({
     selectedIds: externalSelectedIds,
     onSelectionChange
 }: GalleryGridProps) {
+    const t = useTranslations("gallery");
+    const commonT = useTranslations("common");
     const [query, setQuery] = useState("")
     const [isDragging, setIsDragging] = useState(false)
     const [internalSelectedIds, setInternalSelectedIds] = useState<Set<number>>(new Set())
@@ -210,12 +214,12 @@ export function GalleryGrid({
     const handleAlbumSelect = async (albumId: number) => {
         try {
             await addItemsToAlbum(albumId, Array.from(selectedIds))
-            const albumName = albums.find(a => a.id === albumId)?.name || 'album'
-            alert(`Added ${selectedIds.size} files to ${albumName}`)
+            const albumName = albums.find(a => a.id === albumId)?.name || commonT('album')
+            alert(t("addedToAlbum", { count: selectedIds.size, name: albumName }))
             clearSelection()
         } catch (err) {
             console.error("Failed to add items to album", err)
-            alert("Failed to add items to album")
+            alert(t("addAlbumError"))
         }
     }
 
@@ -260,7 +264,7 @@ export function GalleryGrid({
                         type="text"
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
-                        placeholder="Search with AI or Drop an Image"
+                        placeholder={t("searchPlaceholder")}
                         className={`w-full bg-zinc-900 border ${isDragging ? 'border-indigo-500' : 'border-zinc-800'} rounded-full py-3 px-12 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all`}
                     />
                     <Search className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${isDragging ? 'text-indigo-400' : 'text-zinc-500'}`} />
@@ -268,7 +272,7 @@ export function GalleryGrid({
                         type="submit"
                         className="absolute right-2 top-1/2 -translate-y-1/2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full px-4 py-1.5 text-sm font-medium transition-colors"
                     >
-                        Search
+                        {t("searchButton")}
                     </button>
                 </form>
             </div>
@@ -278,7 +282,7 @@ export function GalleryGrid({
                 <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-4 px-6 py-3 bg-indigo-600 rounded-2xl shadow-2xl shadow-indigo-900/40 animate-in slide-in-from-bottom-4 duration-300">
                     <div className="flex items-center gap-2 border-r border-indigo-500 pr-4 mr-1">
                         <span className="text-white font-bold text-sm leading-none">{selectedIds.size}</span>
-                        <span className="text-indigo-100 text-xs font-medium uppercase tracking-tight">Selected</span>
+                        <span className="text-indigo-100 text-xs font-medium uppercase tracking-tight">{t("selected", { count: selectedIds.size })}</span>
                     </div>
 
                     <button
@@ -286,7 +290,7 @@ export function GalleryGrid({
                         className="flex items-center gap-2 text-white hover:text-indigo-100 transition-colors py-1"
                     >
                         <Tag className="w-4 h-4" />
-                        <span className="text-xs font-bold uppercase tracking-wider">Edit Tags</span>
+                        <span className="text-xs font-bold uppercase tracking-wider">{t("editTags")}</span>
                     </button>
 
                     <div className="relative">
@@ -295,18 +299,18 @@ export function GalleryGrid({
                             className="flex items-center gap-2 text-white hover:text-indigo-100 transition-colors py-1"
                         >
                             <FolderPlus className="w-4 h-4" />
-                            <span className="text-xs font-bold uppercase tracking-wider">Add to Album</span>
+                            <span className="text-xs font-bold uppercase tracking-wider">{t("addToAlbum")}</span>
                         </button>
 
                         {showAlbumDropdown && (
                             <div className="absolute bottom-full mb-2 left-0 w-48 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200">
                                 <div className="p-2 border-b border-zinc-800">
-                                    <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 px-2">Select Album</span>
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 px-2">{t("selectAlbum")}</span>
                                 </div>
                                 <div className="max-h-60 overflow-y-auto p-1">
                                     {albums.length === 0 ? (
                                         <div className="p-4 text-center">
-                                            <p className="text-xs text-zinc-500">No static albums found</p>
+                                            <p className="text-xs text-zinc-500">{t("noAlbums")}</p>
                                         </div>
                                     ) : (
                                         albums.map(album => (
@@ -330,19 +334,19 @@ export function GalleryGrid({
                         className="flex items-center gap-2 text-white hover:text-indigo-100 transition-colors py-1"
                     >
                         <Download className="w-4 h-4" />
-                        <span className="text-xs font-bold uppercase tracking-wider">Export Meta</span>
+                        <span className="text-xs font-bold uppercase tracking-wider">{t("exportMeta")}</span>
                     </button>
                     <button
                         onClick={() => setShowBulkRescanModal(true)}
                         className="flex items-center gap-2 text-white hover:text-indigo-100 transition-colors py-1"
                     >
                         <RefreshCw className="w-4 h-4" />
-                        <span className="text-xs font-bold uppercase tracking-wider">Rescan</span>
+                        <span className="text-xs font-bold uppercase tracking-wider">{t("rescan")}</span>
                     </button>
                     <button
                         onClick={clearSelection}
                         className="p-1 hover:bg-indigo-700 rounded-md transition-colors text-indigo-100"
-                        title="Clear Selection"
+                        title={t("clearSelection")}
                     >
                         <X className="w-5 h-5" />
                     </button>
@@ -354,7 +358,7 @@ export function GalleryGrid({
                 {media.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-64 text-zinc-500">
                         <Search className="w-12 h-12 mb-4 opacity-20" />
-                        <p className="text-lg">No media found. Try another search.</p>
+                        <p className="text-lg">{t("emptySearch")}</p>
                     </div>
                 ) : (
                     <div className="columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4 space-y-4">
@@ -383,7 +387,7 @@ export function GalleryGrid({
                     selectedItems={selectedItems}
                     onClose={() => setShowBulkTagModal(false)}
                     onSuccess={(res) => {
-                        alert(`Successfully updated tags for ${res.affected_count} files.`);
+                        alert(t("updateTagsSuccess", { count: res.affected_count }));
                         clearSelection();
                     }}
                 />
@@ -393,7 +397,7 @@ export function GalleryGrid({
                     selectedItems={selectedItems}
                     onClose={() => setShowBulkModal(false)}
                     onSuccess={(success, failed) => {
-                        alert(`Successfully exported metadata for ${success} files.${failed > 0 ? ` (${failed} failed)` : ''}`);
+                        alert(t("exportSuccess", { success, failed }));
                         clearSelection();
                     }}
                 />
@@ -403,7 +407,7 @@ export function GalleryGrid({
                     selectedItems={selectedItems}
                     onClose={() => setShowBulkRescanModal(false)}
                     onSuccess={() => {
-                        alert("Bulk rescan completed!");
+                        alert(t("rescanSuccess"));
                         clearSelection();
                     }}
                 />

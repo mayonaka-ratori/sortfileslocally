@@ -1,14 +1,14 @@
-
-"use client";
-
 import React, { useEffect, useState } from 'react';
 import { fetchAlbums, Album, getThumbnailUrl } from '@/lib/api';
 import { Sidebar } from '@/components/Sidebar';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Sparkles, Folder, Plus, ChevronRight, Image as ImageIcon } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 export default function AlbumsPage() {
+    const t = useTranslations("albums");
+    const commonT = useTranslations("common");
     const [albums, setAlbums] = useState<Album[]>([]);
     const [loading, setLoading] = useState(true);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -31,12 +31,12 @@ export default function AlbumsPage() {
                 <div className="max-w-7xl mx-auto p-8">
                     <div className="flex items-center justify-between mb-10">
                         <div>
-                            <h1 className="text-3xl font-bold text-white mb-2">Your Albums</h1>
-                            <p className="text-zinc-500">Organize and browse your media collections.</p>
+                            <h1 className="text-3xl font-bold text-white mb-2">{t("title")}</h1>
+                            <p className="text-zinc-500">{t("subtitle")}</p>
                         </div>
                         <button className="flex items-center gap-2 px-5 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-white font-semibold rounded-xl transition-all active:scale-95 border border-zinc-700/50 shadow-xl shadow-black/20">
                             <Plus className="w-5 h-5" />
-                            Create Album
+                            {t("createAlbum")}
                         </button>
                     </div>
 
@@ -51,9 +51,9 @@ export default function AlbumsPage() {
                             <div className="w-20 h-20 bg-zinc-900 rounded-3xl flex items-center justify-center mb-6 border border-zinc-800">
                                 <Folder className="w-10 h-10 text-zinc-700" />
                             </div>
-                            <h2 className="text-xl font-semibold text-white mb-2">No albums yet</h2>
+                            <h2 className="text-xl font-semibold text-white mb-2">{t("empty")}</h2>
                             <p className="text-zinc-500 max-w-sm mb-8">
-                                Use the search bar to find media and save it as a Smart Album, or create a static collection.
+                                {t("emptyDesc")}
                             </p>
                         </div>
                     ) : (
@@ -75,7 +75,7 @@ export default function AlbumsPage() {
                                         ) : (
                                             <div className="flex flex-col items-center gap-3 text-zinc-800 group-hover:text-zinc-500 transition-colors">
                                                 <ImageIcon className="w-12 h-12" />
-                                                <span className="text-xs font-bold uppercase tracking-widest">Empty Album</span>
+                                                <span className="text-xs font-bold uppercase tracking-widest">{t("emptyAlbum")}</span>
                                             </div>
                                         )}
 
@@ -84,12 +84,12 @@ export default function AlbumsPage() {
                                             {album.is_dynamic ? (
                                                 <div className="px-2.5 py-1 bg-blue-600/90 backdrop-blur-md text-white text-[10px] font-bold rounded-full flex items-center gap-1.5 shadow-lg shadow-blue-600/20 uppercase tracking-wider">
                                                     <Sparkles className="w-3 h-3" />
-                                                    Smart
+                                                    {t("smart")}
                                                 </div>
                                             ) : (
                                                 <div className="px-2.5 py-1 bg-zinc-800/90 backdrop-blur-md text-zinc-300 text-[10px] font-bold rounded-full flex items-center gap-1.5 shadow-lg uppercase tracking-wider">
                                                     <Folder className="w-3 h-3" />
-                                                    Static
+                                                    {t("static")}
                                                 </div>
                                             )}
                                         </div>
@@ -98,7 +98,7 @@ export default function AlbumsPage() {
                                     <div className="p-5 flex items-end justify-between">
                                         <div>
                                             <h3 className="text-lg font-bold text-white group-hover:text-blue-400 transition-colors line-clamp-1">{album.name}</h3>
-                                            <p className="text-zinc-500 text-sm font-medium">{album.item_count} {album.item_count === 1 ? 'item' : 'items'}</p>
+                                            <p className="text-zinc-500 text-sm font-medium">{commonT("items", { count: album.item_count })}</p>
                                         </div>
                                         <div className="w-10 h-10 rounded-2xl bg-zinc-950 flex items-center justify-center text-zinc-700 group-hover:text-white transition-all border border-zinc-800 group-hover:border-zinc-700 group-hover:bg-zinc-800">
                                             <ChevronRight className="w-5 h-5" />

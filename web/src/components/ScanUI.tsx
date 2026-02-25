@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { startScan, getScanStatus, getLatestScanJob, browseFolder, ScanStatus } from "@/lib/api";
 import { FolderSearch, AlertTriangle, AlertCircle, Play, Loader2, RefreshCw } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 export function ScanUI() {
+    const t = useTranslations("scan");
+    const commonT = useTranslations("common");
     const [path, setPath] = useState("");
     const [forceReprocess, setForceReprocess] = useState(false);
 
@@ -49,7 +52,7 @@ export function ScanUI() {
                 setJobId(res.job.id);
             }
         } catch (err) {
-            setError((err as Error).message || "Failed to start scan");
+            setError((err as Error).message || t("startError"));
         } finally {
             setStarting(false);
         }
@@ -66,17 +69,17 @@ export function ScanUI() {
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex flex-col gap-4 text-sm text-zinc-300 shadow-md">
             <div className="flex items-center gap-2 font-bold text-zinc-100 uppercase tracking-wider text-xs border-b border-zinc-800 pb-2">
                 <FolderSearch className="w-4 h-4 text-indigo-400" />
-                Folder Scanner
+                {t("title")}
             </div>
 
             <div className="flex flex-col gap-2">
-                <label className="text-xs text-zinc-500 font-medium">Source Directory</label>
+                <label className="text-xs text-zinc-500 font-medium">{t("sourceDir")}</label>
                 <div className="flex gap-2">
                     <input
                         type="text"
                         value={path}
                         onChange={(e) => setPath(e.target.value)}
-                        placeholder="Enter directory path..."
+                        placeholder={t("placeholder")}
                         className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-3 py-2 focus:outline-none focus:border-indigo-500 transition-colors placeholder-zinc-700 font-mono text-xs text-zinc-300"
                         disabled={status?.is_active}
                     />
@@ -88,13 +91,13 @@ export function ScanUI() {
                                     setPath(selectedPath);
                                 }
                             } catch (err) {
-                                setError("Failed to open folder picker: " + (err as Error).message);
+                                setError(t("pickerError", { error: (err as Error).message }));
                             }
                         }}
                         disabled={status?.is_active}
                         className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-3 py-2 rounded text-xs font-medium transition-colors border border-zinc-700 disabled:opacity-50"
                     >
-                        Browse
+                        {commonT("browse")}
                     </button>
                 </div>
             </div>
@@ -109,7 +112,7 @@ export function ScanUI() {
                     className="rounded border-zinc-700 bg-zinc-900 text-indigo-500 focus:ring-indigo-500/30"
                 />
                 <label htmlFor="forceReprocess" className="text-xs text-zinc-400 cursor-pointer select-none">
-                    Force Reprocess (Overwrites existing AI data)
+                    {t("forceReprocess")}
                 </label>
             </div>
 
@@ -123,7 +126,7 @@ export function ScanUI() {
             {status?.error && (
                 <div className="bg-red-500/10 text-red-400 p-2 rounded flex items-start gap-2 text-xs">
                     <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                    <span>Background Scan Error: {status.error}</span>
+                    <span>{t("bgError", { error: status.error })}</span>
                 </div>
             )}
 
@@ -134,14 +137,14 @@ export function ScanUI() {
                     className="mt-2 w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-xs shadow-lg shadow-indigo-900/20"
                 >
                     {starting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-                    Start Scan
+                    {t("startButton")}
                 </button>
             ) : (
                 <div className="mt-2 flex flex-col gap-3 bg-zinc-950 rounded-lg p-3 border border-indigo-900/50 relative overflow-hidden">
                     <div className="flex items-center justify-between text-xs text-indigo-300 font-medium">
                         <div className="flex items-center gap-1.5 flex-1 min-w-0">
                             <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                            <span className="truncate">Scanning: {status?.current_file ? status.current_file.split(/[/\\]/).pop() : "Preparing..."}</span>
+                            <span className="truncate">{t("scanning", { file: status?.current_file ? (status.current_file.split(/[/\\]/).pop() || "") : t("preparing") })}</span>
                         </div>
                         <span className="shrink-0 pl-2">{status?.progress_percent?.toFixed(1) || 0}%</span>
                     </div>
@@ -155,8 +158,8 @@ export function ScanUI() {
                     </div>
 
                     <div className="flex justify-between items-center text-[10px] text-zinc-500 font-mono">
-                        <span>{status?.processed_count || 0} / {status?.total_files || 0} Files</span>
-                        <span>ETA: {formatETA(status?.eta_seconds)}</span>
+                        <span>{t("fileCount", { count: status?.processed_count || 0, total: status?.total_files || 0 })}</span>
+                        <span>{t("eta", { time: formatETA(status?.eta_seconds) })}</span>
                     </div>
                 </div>
             )}

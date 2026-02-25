@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react"
 import { TagCategory, TagSuggestion, suggestTags, addTags, removeTags } from "@/lib/api"
+import { useTranslations } from 'next-intl';
 import { Plus, X, Loader2, Tag as TagIcon } from "lucide-react"
 
 interface TagInputProps {
@@ -25,6 +26,7 @@ export function TagInput({
     className = "",
     showExistingTags = true
 }: TagInputProps) {
+    const t = useTranslations("tags");
     const [isAdding, setIsAdding] = useState(autoFocus)
     const [inputValue, setInputValue] = useState("")
     const [suggestions, setSuggestions] = useState<TagSuggestion[]>([])
@@ -162,7 +164,7 @@ export function TagInput({
                     className="flex items-center gap-1 px-2.5 py-1 bg-zinc-900/50 border border-dashed border-zinc-700 rounded-full text-xs text-zinc-500 hover:border-zinc-500 hover:text-zinc-300 transition-colors"
                 >
                     <Plus className="w-3 h-3" />
-                    <span>Add Tag</span>
+                    <span>{t("addTag")}</span>
                 </button>
             )}
         </div>

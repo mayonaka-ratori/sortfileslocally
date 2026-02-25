@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState } from "react"
+import { useTranslations } from "next-intl"
 import { X, Loader2, AlertCircle } from "lucide-react"
 import { MediaItem, TagCategory, bulkUpdateTags, BulkTagResponse } from "@/lib/api"
 import { TagInput } from "./TagEditor"
@@ -12,6 +13,8 @@ interface BulkTagModalProps {
 }
 
 export function BulkTagModal({ selectedItems, onClose, onSuccess }: BulkTagModalProps) {
+    const t = useTranslations("bulk");
+    const commonT = useTranslations("common");
     const [action, setAction] = useState<"add" | "remove" | "replace">("add")
     const [category, setCategory] = useState<TagCategory>("general")
     const [tags, setTags] = useState<string[]>([])
@@ -41,9 +44,9 @@ export function BulkTagModal({ selectedItems, onClose, onSuccess }: BulkTagModal
     const previewText = () => {
         const tagCount = tags.length
         const tagStr = `${tagCount} tag${tagCount !== 1 ? 's' : ''}`
-        if (action === "add") return `Add ${tagStr} to ${count} files`
-        if (action === "remove") return `Remove ${tagStr} from ${count} files`
-        if (action === "replace") return `Replace ${category} tags on ${count} files with ${tagStr}`
+        if (action === "add") return t("previewAdd", { count, tagStr })
+        if (action === "remove") return t("previewRemove", { count, tagStr })
+        if (action === "replace") return t("previewReplace", { category: t(category as "general" | "character" | "series"), count, tagStr })
         return ""
     }
 
@@ -53,7 +56,7 @@ export function BulkTagModal({ selectedItems, onClose, onSuccess }: BulkTagModal
                 {/* Header */}
                 <div className="p-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-900/50">
                     <h2 className="text-sm font-bold uppercase tracking-widest text-zinc-400">
-                        Bulk Tag Edit ({count} files)
+                        {t("title", { count })}
                     </h2>
                     <button
                         onClick={onClose}
@@ -77,7 +80,7 @@ export function BulkTagModal({ selectedItems, onClose, onSuccess }: BulkTagModal
                                     : "text-zinc-500 hover:text-zinc-300"
                                     }`}
                             >
-                                {a}
+                                {t(a as "add" | "remove" | "replace")}
                             </button>
                         ))}
                     </div>
@@ -86,28 +89,28 @@ export function BulkTagModal({ selectedItems, onClose, onSuccess }: BulkTagModal
                     {action === "replace" && (
                         <div className="flex items-start gap-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-200 text-xs">
                             <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                            <p>This will replace ALL {category} tags on the selected files.</p>
+                            <p>{t("replaceWarning", { category: t(category as "general" | "character" | "series") })}</p>
                         </div>
                     )}
 
                     {/* Category Selector */}
                     <div className="space-y-2">
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 ml-1">Category</label>
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 ml-1">{t("category")}</label>
                         <select
                             value={category}
                             onChange={(e) => setCategory(e.target.value as TagCategory)}
                             disabled={isProcessing}
                             className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer"
                         >
-                            <option value="general">General</option>
-                            <option value="character">Characters</option>
-                            <option value="series">Series</option>
+                            <option value="general">{t("general")}</option>
+                            <option value="character">{t("character")}</option>
+                            <option value="series">{t("series")}</option>
                         </select>
                     </div>
 
                     {/* Tag Input */}
                     <div className="space-y-2">
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 ml-1">Tags to {action}</label>
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 ml-1">{t("tagsLabel", { action: t(action as "add" | "remove" | "replace").toLowerCase() })}</label>
                         <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-2 min-h-[100px] focus-within:ring-2 focus-within:ring-indigo-500 transition-all">
                             <TagInput
                                 tags={tags}
@@ -118,7 +121,7 @@ export function BulkTagModal({ selectedItems, onClose, onSuccess }: BulkTagModal
                                 onRemoveTag={(tag) => setTags(tags.filter(t => t !== tag))}
                                 showExistingTags={true}
                                 autoFocus={true}
-                                placeholder={`Enter tags to ${action}...`}
+                                placeholder={t("placeholder", { action: t(action as "add" | "remove" | "replace").toLowerCase() })}
                             />
                         </div>
                     </div>
@@ -126,7 +129,7 @@ export function BulkTagModal({ selectedItems, onClose, onSuccess }: BulkTagModal
                     {/* Preview Area */}
                     <div className="pt-2">
                         <p className="text-center text-xs text-zinc-500 font-medium italic">
-                            {tags.length > 0 ? previewText() : "Add some tags to see preview"}
+                            {tags.length > 0 ? previewText() : t("previewEmpty")}
                         </p>
                     </div>
 
@@ -144,7 +147,7 @@ export function BulkTagModal({ selectedItems, onClose, onSuccess }: BulkTagModal
                         disabled={isProcessing}
                         className="flex-1 py-2.5 rounded-xl text-sm font-bold text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all disabled:opacity-50"
                     >
-                        Cancel
+                        {commonT("cancel")}
                     </button>
                     <button
                         onClick={handleApply}
@@ -154,7 +157,7 @@ export function BulkTagModal({ selectedItems, onClose, onSuccess }: BulkTagModal
                         {isProcessing ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
-                            `Apply to ${count} files`
+                            t("applyButton", { count })
                         )}
                     </button>
                 </div>

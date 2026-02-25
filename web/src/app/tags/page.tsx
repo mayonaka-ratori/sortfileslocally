@@ -1,5 +1,3 @@
-"use client"
-
 import React, { useState, useEffect, useMemo } from "react"
 import {
     getTagStats,
@@ -28,8 +26,11 @@ import {
 import Image from "next/image"
 import { Sidebar } from "@/components/Sidebar"
 import { TagEditorPanel } from "@/components/TagEditorPanel"
+import { useTranslations } from "next-intl"
 
 export default function TagDashboardPage() {
+    const t = useTranslations("tags")
+    const commonT = useTranslations("common")
     const [stats, setStats] = useState<TagStats | null>(null)
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState("")
@@ -83,24 +84,24 @@ export default function TagDashboardPage() {
         setIsSubmitting(true)
         try {
             const res = await renameTag(editingTag.tag, editValue.trim(), editingTag.category)
-            alert(`Renamed in ${res.renamed_count} files (merged with existing in ${res.merged_count} files)`)
+            alert(t("renameSuccess", { renamed: res.renamed_count, merged: res.merged_count }))
             setEditingTag(null)
             fetchStats()
         } catch {
-            alert("Failed to rename tag")
+            alert(t("renameError"))
         } finally {
             setIsSubmitting(false)
         }
     }
 
     const handleDelete = async (tag: string, category: TagCategory, count: number) => {
-        if (!confirm(`Remove tag '${tag}' from ${count} files?`)) return
+        if (!confirm(t("confirmDelete", { tag, count }))) return
 
         try {
             await renameTag(tag, "", category)
             fetchStats()
         } catch {
-            alert("Failed to delete tag")
+            alert(t("deleteError"))
         }
     }
 
@@ -154,8 +155,8 @@ export default function TagDashboardPage() {
             <main className="flex-1 overflow-y-auto p-8">
                 <div className="max-w-6xl mx-auto">
                     <header className="mb-8">
-                        <h1 className="text-3xl font-bold mb-2">Tag Dashboard</h1>
-                        <p className="text-zinc-500">Manage your library&apos;s tags, characters, and series metadata.</p>
+                        <h1 className="text-3xl font-bold mb-2">{t("title")}</h1>
+                        <p className="text-zinc-500">{t("subtitle")}</p>
                     </header>
 
                     {/* Summary Cards */}
@@ -165,10 +166,10 @@ export default function TagDashboardPage() {
                                 <div className="p-2 bg-indigo-500/10 rounded-lg">
                                     <TagIcon className="w-5 h-5 text-indigo-400" />
                                 </div>
-                                <h2 className="font-semibold text-zinc-300">Total Tags</h2>
+                                <h2 className="font-semibold text-zinc-300">{t("totalTags")}</h2>
                             </div>
                             <div className="text-4xl font-black text-white">{stats?.total_tags || 0}</div>
-                            <div className="text-xs text-zinc-500 mt-2">Across all categories</div>
+                            <div className="text-xs text-zinc-500 mt-2">{t("acrossCategories")}</div>
                         </div>
 
                         <div className="bg-zinc-900/50 border border-zinc-800 p-6 rounded-2xl relative overflow-hidden group">
@@ -177,7 +178,7 @@ export default function TagDashboardPage() {
                                     <div className="p-2 bg-amber-500/10 rounded-lg">
                                         <FileQuestion className="w-5 h-5 text-amber-400" />
                                     </div>
-                                    <h2 className="font-semibold text-zinc-300">Untagged Files</h2>
+                                    <h2 className="font-semibold text-zinc-300">{t("untaggedFiles")}</h2>
                                 </div>
                                 <button
                                     onClick={() => {
@@ -186,11 +187,11 @@ export default function TagDashboardPage() {
                                     }}
                                     className="text-xs font-bold text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-1"
                                 >
-                                    View <ChevronRight className="w-3 h-3" />
+                                    {commonT("view")} <ChevronRight className="w-3 h-3" />
                                 </button>
                             </div>
                             <div className="text-4xl font-black text-white">{stats?.untagged_count || 0}</div>
-                            <div className="text-xs text-zinc-500 mt-2">Files waiting for metadata</div>
+                            <div className="text-xs text-zinc-500 mt-2">{t("untaggedDesc")}</div>
                         </div>
 
                         <div className="bg-zinc-900/50 border border-zinc-800 p-6 rounded-2xl">
@@ -198,16 +199,16 @@ export default function TagDashboardPage() {
                                 <div className="p-2 bg-emerald-500/10 rounded-lg">
                                     <TrendingUp className="w-5 h-5 text-emerald-400" />
                                 </div>
-                                <h2 className="font-semibold text-zinc-300">Top Tags</h2>
+                                <h2 className="font-semibold text-zinc-300">{t("topTags")}</h2>
                             </div>
                             <div className="flex flex-wrap gap-2">
-                                {topTags.map(t => (
-                                    <div key={t.tag} className="flex items-center gap-2 bg-zinc-800 px-3 py-1.5 rounded-full text-xs text-zinc-300">
-                                        <span className="font-medium">{t.tag}</span>
-                                        <span className="text-zinc-500 font-mono text-[10px]">{t.count}</span>
+                                {topTags.map(tStat => (
+                                    <div key={tStat.tag} className="flex items-center gap-2 bg-zinc-800 px-3 py-1.5 rounded-full text-xs text-zinc-300">
+                                        <span className="font-medium">{tStat.tag}</span>
+                                        <span className="text-zinc-500 font-mono text-[10px]">{tStat.count}</span>
                                     </div>
                                 ))}
-                                {topTags.length === 0 && <span className="text-zinc-600 italic text-sm">No tags found</span>}
+                                {topTags.length === 0 && <span className="text-zinc-600 italic text-sm">{t("noTagsFound")}</span>}
                             </div>
                         </div>
                     </div>
@@ -225,7 +226,7 @@ export default function TagDashboardPage() {
                                             : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900"
                                             }`}
                                     >
-                                        {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                                        {t(tab)}
                                     </button>
                                 ))}
                             </div>
@@ -234,7 +235,7 @@ export default function TagDashboardPage() {
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
                                 <input
                                     type="text"
-                                    placeholder="Search tags..."
+                                    placeholder={t("searchPlaceholder")}
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
                                     className="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all placeholder:text-zinc-600"
@@ -254,11 +255,11 @@ export default function TagDashboardPage() {
                                             }}
                                         >
                                             <div className="flex items-center gap-2">
-                                                Tag Name
+                                                {t("tagName")}
                                                 <ArrowUpDown className={`w-3 h-3 ${sortBy === "name" ? "text-indigo-400" : "text-zinc-700"}`} />
                                             </div>
                                         </th>
-                                        <th className="px-6 py-4">Category</th>
+                                        <th className="px-6 py-4">{t("category")}</th>
                                         <th
                                             className="px-6 py-4 cursor-pointer hover:text-zinc-300 transition-colors"
                                             onClick={() => {
@@ -267,18 +268,18 @@ export default function TagDashboardPage() {
                                             }}
                                         >
                                             <div className="flex items-center gap-2">
-                                                Usage Count
+                                                {t("usageCount")}
                                                 <ArrowUpDown className={`w-3 h-3 ${sortBy === "count" ? "text-indigo-400" : "text-zinc-700"}`} />
                                             </div>
                                         </th>
-                                        <th className="px-6 py-4 text-right">Actions</th>
+                                        <th className="px-6 py-4 text-right">{commonT("actions")}</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-zinc-800/50">
-                                    {allTags.map((t) => (
-                                        <tr key={`${t.category}-${t.tag}`} className="group hover:bg-zinc-800/20 transition-colors">
+                                    {allTags.map((tItem) => (
+                                        <tr key={`${tItem.category}-${tItem.tag}`} className="group hover:bg-zinc-800/20 transition-colors">
                                             <td className="px-6 py-4">
-                                                {editingTag?.tag === t.tag && editingTag?.category === t.category ? (
+                                                {editingTag?.tag === tItem.tag && editingTag?.category === tItem.category ? (
                                                     <div className="flex items-center gap-2">
                                                         <input
                                                             autoFocus
@@ -305,34 +306,34 @@ export default function TagDashboardPage() {
                                                         </button>
                                                     </div>
                                                 ) : (
-                                                    <span className="text-sm font-medium text-zinc-300">{t.tag}</span>
+                                                    <span className="text-sm font-medium text-zinc-300">{tItem.tag}</span>
                                                 )}
                                             </td>
                                             <td className="px-6 py-4">
-                                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${t.category === "character" ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" :
-                                                    t.category === "series" ? "bg-purple-500/10 text-purple-400 border border-purple-500/20" :
+                                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${tItem.category === "character" ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" :
+                                                    tItem.category === "series" ? "bg-purple-500/10 text-purple-400 border border-purple-500/20" :
                                                         "bg-zinc-800 text-zinc-400 border border-zinc-700"
                                                     }`}>
-                                                    {t.category}
+                                                    {t(tItem.category)}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 text-sm font-mono text-zinc-500">{t.count}</td>
+                                            <td className="px-6 py-4 text-sm font-mono text-zinc-500">{tItem.count}</td>
                                             <td className="px-6 py-4 text-right">
                                                 <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <button
                                                         onClick={() => {
-                                                            setEditingTag({ tag: t.tag, category: t.category })
-                                                            setEditValue(t.tag)
+                                                            setEditingTag({ tag: tItem.tag, category: tItem.category })
+                                                            setEditValue(tItem.tag)
                                                         }}
                                                         className="p-2 hover:bg-zinc-800 rounded-lg text-zinc-500 hover:text-indigo-400 transition-colors"
-                                                        title="Rename"
+                                                        title={commonT("rename")}
                                                     >
                                                         <Edit2 className="w-4 h-4" />
                                                     </button>
                                                     <button
-                                                        onClick={() => handleDelete(t.tag, t.category, t.count)}
+                                                        onClick={() => handleDelete(tItem.tag, tItem.category, tItem.count)}
                                                         className="p-2 hover:bg-zinc-800 rounded-lg text-zinc-500 hover:text-rose-400 transition-colors"
-                                                        title="Delete"
+                                                        title={commonT("delete")}
                                                     >
                                                         <Trash2 className="w-4 h-4" />
                                                     </button>
@@ -344,7 +345,7 @@ export default function TagDashboardPage() {
                                         <tr>
                                             <td colSpan={4} className="px-6 py-20 text-center text-zinc-600">
                                                 <TagIcon className="w-12 h-12 mx-auto mb-4 opacity-10" />
-                                                <p>No tags match your search or filters.</p>
+                                                <p>{t("noResults")}</p>
                                             </td>
                                         </tr>
                                     )}
@@ -362,8 +363,8 @@ export default function TagDashboardPage() {
                     <div className="relative w-full max-w-6xl h-[90vh] bg-zinc-950 border border-zinc-800 rounded-3xl overflow-hidden flex flex-col shadow-2xl">
                         <div className="p-6 border-b border-zinc-800 flex items-center justify-between">
                             <div>
-                                <h2 className="text-xl font-bold">Untagged Files</h2>
-                                <p className="text-sm text-zinc-500">{untaggedTotal} files without general tags</p>
+                                <h2 className="text-xl font-bold">{t("untaggedFiles")}</h2>
+                                <p className="text-sm text-zinc-500">{t("untaggedCount", { count: untaggedTotal })}</p>
                             </div>
                             <button onClick={() => setShowUntagged(false)} className="p-2 hover:bg-zinc-900 rounded-full text-zinc-500 hover:text-white transition-colors">
                                 <X className="w-6 h-6" />
@@ -402,7 +403,7 @@ export default function TagDashboardPage() {
                                             onClick={() => fetchUntagged(untaggedPage + 1)}
                                             className="px-6 py-2 bg-zinc-900 hover:bg-zinc-800 text-sm font-bold rounded-full transition-colors"
                                         >
-                                            Load More
+                                            {commonT("loadMore")}
                                         </button>
                                     </div>
                                 )}
@@ -415,7 +416,7 @@ export default function TagDashboardPage() {
                                         <div className="aspect-[4/3] rounded-xl overflow-hidden bg-zinc-950 mb-4 flex items-center justify-center group relative">
                                             <Image
                                                 src={getThumbnailUrl(selectedFile.id, 600)}
-                                                alt="Preview"
+                                                alt={commonT("preview")}
                                                 fill
                                                 className="object-contain"
                                             />
@@ -427,7 +428,7 @@ export default function TagDashboardPage() {
                                         </div>
 
                                         <div className="mb-4">
-                                            <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-1">Filename</h3>
+                                            <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-1">{commonT("filename")}</h3>
                                             <p className="text-sm text-zinc-300 truncate font-medium">{selectedFile.file_path.split(/[\\/]/).pop()}</p>
                                         </div>
 
@@ -458,8 +459,8 @@ export default function TagDashboardPage() {
                                         <div className="p-4 bg-zinc-950 rounded-full mb-4">
                                             <LayoutGrid className="w-8 h-8 opacity-20" />
                                         </div>
-                                        <p className="text-sm font-medium">Select a file to start tagging</p>
-                                        <p className="text-xs mt-2 opacity-50 italic">Quickly clear your untagged backlog</p>
+                                        <p className="text-sm font-medium">{t("selectFileToTag")}</p>
+                                        <p className="text-xs mt-2 opacity-50 italic">{t("untaggedBacklog")}</p>
                                     </div>
                                 )}
                             </div>

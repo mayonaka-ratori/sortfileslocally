@@ -1,6 +1,3 @@
-
-"use client";
-
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { fetchAlbum, fetchAlbumMedia, Album, MediaItem, SearchFilters } from '@/lib/api';
@@ -8,8 +5,11 @@ import { Sidebar } from '@/components/Sidebar';
 import { GalleryGrid } from '@/components/GalleryGrid';
 import { ChatPanel } from '@/components/ChatPanel';
 import { Sparkles, Folder, ArrowLeft, Trash2, Edit2, Share2, Tag } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 export default function AlbumDetailPage() {
+    const t = useTranslations("albums");
+    const commonT = useTranslations("common");
     const params = useParams();
     const router = useRouter();
     const albumId = parseInt(params.id as string);
@@ -50,7 +50,7 @@ export default function AlbumDetailPage() {
             <div className="flex items-center justify-center h-screen bg-zinc-950 text-zinc-500">
                 <div className="animate-pulse flex flex-col items-center">
                     <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4" />
-                    Loading Album...
+                    {t("loadingDetail")}
                 </div>
             </div>
         );
@@ -60,9 +60,9 @@ export default function AlbumDetailPage() {
         return (
             <div className="flex items-center justify-center h-screen bg-zinc-950 text-zinc-500">
                 <div className="text-center">
-                    <h1 className="text-2xl font-bold text-white mb-4">Album not found</h1>
+                    <h1 className="text-2xl font-bold text-white mb-4">{t("notFound")}</h1>
                     <button onClick={() => router.push('/albums')} className="text-blue-500 hover:underline">
-                        Back to Albums
+                        {t("back")}
                     </button>
                 </div>
             </div>
@@ -83,7 +83,7 @@ export default function AlbumDetailPage() {
                         className="flex items-center gap-2 text-zinc-500 hover:text-white transition-colors mb-6 group text-sm font-medium"
                     >
                         <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
-                        Back to Albums
+                        {t("back")}
                     </button>
 
                     <div className="flex items-end justify-between">
@@ -97,9 +97,9 @@ export default function AlbumDetailPage() {
                                 <h1 className="text-4xl font-black text-white tracking-tight">{album.name}</h1>
                             </div>
                             <div className="flex items-center gap-4 text-zinc-500 text-sm font-medium">
-                                <span>{media.length} {media.length === 1 ? 'item' : 'items'}</span>
+                                <span>{commonT("items", { count: media.length })}</span>
                                 <span className="w-1.5 h-1.5 rounded-full bg-zinc-800" />
-                                <span>Created {new Date(album.created_at).toLocaleDateString()}</span>
+                                <span>{t("created", { date: new Date(album.created_at).toLocaleDateString() })}</span>
                             </div>
                         </div>
 
@@ -119,7 +119,7 @@ export default function AlbumDetailPage() {
                     {album.is_dynamic && queryInfo && (
                         <div className="mt-8 p-4 bg-zinc-900/50 border border-zinc-800/50 rounded-2xl flex flex-col gap-3">
                             <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Dynamic Query</span>
+                                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">{t("dynamicQuery")}</span>
                                 <div className="h-px flex-1 bg-zinc-800" />
                             </div>
                             <div className="flex items-center gap-4">
@@ -144,10 +144,10 @@ export default function AlbumDetailPage() {
                     {!album.is_dynamic && (
                         <div className="mt-6 flex items-center justify-between p-1 bg-zinc-900 border border-zinc-800 rounded-2xl">
                             <div className="px-4 text-xs font-bold text-zinc-500 uppercase tracking-wider">
-                                Static Collection
+                                {t("staticCollection")}
                             </div>
                             <button className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold rounded-xl transition-all active:scale-95 border border-zinc-700/50">
-                                Add Items
+                                {t("addItems")}
                             </button>
                         </div>
                     )}

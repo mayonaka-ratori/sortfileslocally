@@ -173,6 +173,7 @@ export function HybridSearchBar({ onSearch, initialQuery = "" }: HybridSearchBar
                 <form onSubmit={handleSearch} className="relative group">
                     <input
                         type="text"
+                        data-search-input
                         value={query}
                         onChange={(e) => {
                             setQuery(e.target.value)

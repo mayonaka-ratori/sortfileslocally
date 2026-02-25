@@ -4,6 +4,7 @@ import Image from "next/image";
 import { SceneSearchResult } from "@/lib/api";
 import { formatTime } from "@/lib/utils";
 import { Play, Film } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface SceneSearchResultProps {
     result: SceneSearchResult;
@@ -11,6 +12,7 @@ interface SceneSearchResultProps {
 }
 
 export function SceneSearchResultComponent({ result, onPlay }: SceneSearchResultProps) {
+    const t = useTranslations("gallery");
     const scorePercent = Math.round(result.score * 100);
 
     return (
@@ -21,7 +23,7 @@ export function SceneSearchResultComponent({ result, onPlay }: SceneSearchResult
             >
                 <Image
                     src={result.thumbnail_url}
-                    alt={result.caption || "Scene preview"}
+                    alt={result.caption || t("scenePreview")}
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-500"
                     sizes="(max-width: 640px) 100vw, 192px"
@@ -29,7 +31,7 @@ export function SceneSearchResultComponent({ result, onPlay }: SceneSearchResult
                 <div className="absolute inset-0 bg-black/20 group-hover:bg-black/0 transition-colors" />
 
                 <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded bg-blue-600 text-[10px] font-bold text-white shadow-lg">
-                    {scorePercent}%
+                    {t("similarity", { percent: scorePercent })}
                 </div>
 
                 <div className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/80 text-[10px] font-medium text-white backdrop-blur-sm">
@@ -54,7 +56,7 @@ export function SceneSearchResultComponent({ result, onPlay }: SceneSearchResult
                 </div>
 
                 <p className="text-xs text-zinc-400 line-clamp-2 mb-3 leading-relaxed italic">
-                    &quot;{result.caption || "No caption available"}&quot;
+                    &quot;{result.caption || t("noCaption")}&quot;
                 </p>
 
                 <div className="flex flex-wrap gap-1.5 mb-4">
@@ -68,7 +70,7 @@ export function SceneSearchResultComponent({ result, onPlay }: SceneSearchResult
                     ))}
                     {result.tags.length > 3 && (
                         <span className="px-2 py-0.5 rounded-full bg-zinc-800 text-[10px] text-zinc-400 font-medium">
-                            +{result.tags.length - 3} more
+                            {t("more", { count: result.tags.length - 3 })}
                         </span>
                     )}
                 </div>
@@ -79,7 +81,7 @@ export function SceneSearchResultComponent({ result, onPlay }: SceneSearchResult
                         className="flex items-center px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-[10px] font-bold rounded-lg transition-colors border border-zinc-700/50"
                     >
                         <Play className="w-3 h-3 mr-2" />
-                        Play from Scene
+                        {t("playFromScene")}
                     </button>
                 </div>
             </div>

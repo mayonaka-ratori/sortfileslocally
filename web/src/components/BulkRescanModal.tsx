@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
+import { useTranslations } from "next-intl"
 import { X, Loader2, AlertCircle, RefreshCw, CheckCircle2 } from "lucide-react"
 import { MediaItem, RescanMode, bulkRescan, getScanStatus, ScanStatus } from "@/lib/api"
 
@@ -11,6 +12,8 @@ interface BulkRescanModalProps {
 }
 
 export function BulkRescanModal({ selectedItems, onClose, onSuccess }: BulkRescanModalProps) {
+    const t = useTranslations("bulk");
+    const commonT = useTranslations("common");
     const [mode, setMode] = useState<RescanMode>("append")
     const [isStarting, setIsStarting] = useState(false)
     const [jobId, setJobId] = useState<number | null>(null)
@@ -57,7 +60,7 @@ export function BulkRescanModal({ selectedItems, onClose, onSuccess }: BulkResca
                 <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
                     <div className="p-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-900/50">
                         <h2 className="text-sm font-bold uppercase tracking-widest text-zinc-400">
-                            Rescanning {count} files
+                            {t("rescanning", { count })}
                         </h2>
                         {(!status || status.progress_percent >= 100) && (
                             <button onClick={onClose} className="p-1 hover:bg-zinc-800 rounded-lg text-zinc-500 hover:text-white">
@@ -81,10 +84,10 @@ export function BulkRescanModal({ selectedItems, onClose, onSuccess }: BulkResca
 
                         <div className="space-y-1">
                             <h3 className="text-white font-bold">
-                                {status?.progress_percent === 100 ? "Rescan Complete!" : "Processing AI Tags..."}
+                                {status?.progress_percent === 100 ? t("rescanComplete") : t("processing")}
                             </h3>
                             <p className="text-zinc-500 text-xs truncate max-w-[280px]">
-                                {status?.current_file || "Preparing models..."}
+                                {status?.current_file || t("preparing")}
                             </p>
                         </div>
 
@@ -103,7 +106,7 @@ export function BulkRescanModal({ selectedItems, onClose, onSuccess }: BulkResca
                                 }}
                                 className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-900/20 transition-all"
                             >
-                                Done
+                                {t("done")}
                             </button>
                         )}
                     </div>
@@ -117,7 +120,7 @@ export function BulkRescanModal({ selectedItems, onClose, onSuccess }: BulkResca
             <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
                 <div className="p-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-900/50">
                     <h2 className="text-sm font-bold uppercase tracking-widest text-zinc-400">
-                        AI Rescan ({count} files)
+                        {t("rescanTitle", { count })}
                     </h2>
                     <button onClick={onClose} className="p-1 hover:bg-zinc-800 rounded-lg text-zinc-500 hover:text-white">
                         <X className="w-5 h-5" />
@@ -130,28 +133,26 @@ export function BulkRescanModal({ selectedItems, onClose, onSuccess }: BulkResca
                             <RefreshCw className="w-5 h-5" />
                         </div>
                         <div className="space-y-1">
-                            <p className="text-xs text-indigo-200 leading-relaxed">
-                                This will regenerate <strong>tags, captions, and CLIP vectors</strong> for the selected files using the latest AI models.
-                            </p>
+                            {t("rescanInfo")}
                         </div>
                     </div>
 
                     <div className="space-y-3">
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 ml-1">Rescan Mode</label>
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 ml-1">{t("rescanMode")}</label>
                         <div className="flex gap-2">
                             <button
                                 onClick={() => setMode("append")}
                                 className={`flex-1 p-3 rounded-xl border flex flex-col gap-1 transition-all ${mode === "append" ? "bg-indigo-600/10 border-indigo-500 ring-1 ring-indigo-500" : "bg-zinc-950 border-zinc-800 hover:border-zinc-700"}`}
                             >
-                                <span className={`text-xs font-bold ${mode === "append" ? "text-indigo-400" : "text-zinc-300"}`}>Add Missing</span>
-                                <span className="text-[10px] text-zinc-500">Keep existing tags</span>
+                                <span className={`text-xs font-bold ${mode === "append" ? "text-indigo-400" : "text-zinc-300"}`}>{t("addMissing")}</span>
+                                <span className="text-[10px] text-zinc-500">{t("addMissingDesc")}</span>
                             </button>
                             <button
                                 onClick={() => setMode("overwrite")}
                                 className={`flex-1 p-3 rounded-xl border flex flex-col gap-1 transition-all ${mode === "overwrite" ? "bg-red-500/10 border-red-500 ring-1 ring-red-500" : "bg-zinc-950 border-zinc-800 hover:border-zinc-700"}`}
                             >
-                                <span className={`text-xs font-bold ${mode === "overwrite" ? "text-red-400" : "text-zinc-300"}`}>Overwrite</span>
-                                <span className="text-[10px] text-zinc-500">Replace everything</span>
+                                <span className={`text-xs font-bold ${mode === "overwrite" ? "text-red-400" : "text-zinc-300"}`}>{t("overwrite")}</span>
+                                <span className="text-[10px] text-zinc-500">{t("overwriteDesc")}</span>
                             </button>
                         </div>
                     </div>
@@ -159,7 +160,7 @@ export function BulkRescanModal({ selectedItems, onClose, onSuccess }: BulkResca
                     {mode === "overwrite" && (
                         <div className="flex items-start gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-[10px]">
                             <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-                            <p>WARNING: Overwrite will delete all existing AI-generated tags and captions for these files.</p>
+                            <p>{t("overwriteWarning")}</p>
                         </div>
                     )}
 
@@ -175,14 +176,14 @@ export function BulkRescanModal({ selectedItems, onClose, onSuccess }: BulkResca
                         onClick={onClose}
                         className="flex-1 py-2.5 rounded-xl text-sm font-bold text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all"
                     >
-                        Cancel
+                        {commonT("cancel")}
                     </button>
                     <button
                         onClick={handleStart}
                         disabled={isStarting}
                         className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-800 disabled:text-zinc-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-900/20 transition-all flex items-center justify-center gap-2"
                     >
-                        {isStarting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Start Rescan"}
+                        {isStarting ? <Loader2 className="w-4 h-4 animate-spin" /> : t("startRescan")}
                     </button>
                 </div>
             </div>
