@@ -1,6 +1,7 @@
 "use client"
 import React from "react"
 import Link from "next/link"
+import { useTranslations } from 'next-intl';
 import { LayoutGrid, Settings, BookOpen, Sparkles, Folder, Tag } from "lucide-react"
 import { useEffect, useState } from "react"
 import { fetchAlbums, Album } from "@/lib/api"
@@ -19,6 +20,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isOpen, onClose }: Omit<SidebarProps, 'onFilterChange'>) {
+    const t = useTranslations('sidebar');
     const [albums, setAlbums] = useState<Album[]>([])
 
     useEffect(() => {
@@ -50,21 +52,21 @@ export function Sidebar({ isOpen, onClose }: Omit<SidebarProps, 'onFilterChange'
 
                     <div className="mb-6 px-2">
                         <h3 className="text-xs uppercase text-zinc-500 font-semibold mb-3 flex items-center gap-2">
-                            <LayoutGrid className="w-3 h-3 text-indigo-500" /> Library
+                            <LayoutGrid className="w-3 h-3 text-indigo-500" /> {t('library')}
                         </h3>
 
                         <div className="flex flex-col gap-1">
                             <Link href="/" onClick={onClose} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-white bg-zinc-800/50 transition-colors">
                                 <LayoutGrid className="w-4 h-4 text-indigo-500" />
-                                All Media
+                                {t('allMedia')}
                             </Link>
                             <Link href="/albums" onClick={onClose} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-800/50 transition-colors">
                                 <BookOpen className="w-4 h-4 text-indigo-500" />
-                                Albums
+                                {t('albums')}
                             </Link>
                             <Link href="/tags" onClick={onClose} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-800/50 transition-colors">
                                 <Tag className="w-4 h-4 text-indigo-500" />
-                                Tags
+                                {t('tags')}
                             </Link>
 
                             {albums.length > 0 && (
@@ -86,7 +88,7 @@ export function Sidebar({ isOpen, onClose }: Omit<SidebarProps, 'onFilterChange'
                                     ))}
                                     {albums.length > 5 && (
                                         <Link href="/albums" onClick={onClose} className="px-3 py-1 text-[10px] text-zinc-600 hover:text-zinc-400">
-                                            + {albums.length - 5} more...
+                                            {t('moreAlbums', { count: albums.length - 5 })}
                                         </Link>
                                     )}
                                 </div>
@@ -99,7 +101,7 @@ export function Sidebar({ isOpen, onClose }: Omit<SidebarProps, 'onFilterChange'
                 <div className="mt-auto p-4 border-t border-zinc-800 bg-zinc-950/80 backdrop-blur z-10">
                     <Link href="/settings" className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-800/50 transition-colors">
                         <Settings className="w-4 h-4" />
-                        Settings
+                        {t('settings')}
                     </Link>
                 </div>
             </div>

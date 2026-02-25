@@ -5,6 +5,8 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { SetupGuard } from "@/components/SetupGuard";
 import { GlobalShortcuts } from "@/components/GlobalShortcuts";
 import { NetworkStatus } from "@/components/NetworkStatus";
+import { NextIntlClientProvider } from 'next-intl';
+import { getMessages, getLocale } from 'next-intl/server';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,28 +23,33 @@ export const metadata: Metadata = {
   description: "AI-powered local media management and intelligent gallery",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocale();
+  const messages = await getMessages();
+
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <SetupGuard>
-            <NetworkStatus />
-            {children}
-            <GlobalShortcuts />
-          </SetupGuard>
-        </ThemeProvider>
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <SetupGuard>
+              <NetworkStatus />
+              {children}
+              <GlobalShortcuts />
+            </SetupGuard>
+          </ThemeProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

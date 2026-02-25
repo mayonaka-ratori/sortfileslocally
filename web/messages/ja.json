@@ -1,0 +1,90 @@
+{
+    "common": {
+        "save": "保存",
+        "cancel": "キャンセル",
+        "close": "閉じる",
+        "delete": "削除",
+        "confirm": "確認",
+        "loading": "読み込み中...",
+        "error": "エラーが発生しました",
+        "success": "成功",
+        "search": "検索",
+        "searchPlaceholder": "ライブラリを検索...",
+        "noResults": "結果が見つかりません",
+        "selectAll": "すべて選択",
+        "deselectAll": "選択解除",
+        "items": "{count, plural, =0 {アイテムなし} other {# 個のアイテム}}",
+        "selected": "{count} 個選択中",
+        "processing": "処理中...",
+        "retry": "再試行",
+        "back": "戻る",
+        "next": "次へ",
+        "done": "完了",
+        "yes": "はい",
+        "no": "いいえ",
+        "or": "または",
+        "and": "および"
+    },
+    "sidebar": {
+        "library": "ライブラリ",
+        "allMedia": "すべてのメディア",
+        "albums": "アルバム",
+        "tags": "タグ",
+        "settings": "設定",
+        "shortcuts": "キーボードショートカット",
+        "moreAlbums": "他 {count} 件..."
+    },
+    "search": {
+        "placeholder": "自然言語でライブラリを検索...",
+        "button": "検索",
+        "recentSearches": "最近の検索",
+        "results": "{count} 件の結果",
+        "moreFilters": "他 {count} 件",
+        "clearHistory": "履歴を消去",
+        "characters": "キャラクター",
+        "series": "シリーズ",
+        "mediaType": "メディアタイプ",
+        "imagesOnly": "画像のみ",
+        "videosOnly": "動画のみ",
+        "searchScenes": "シーンを検索",
+        "justNow": "たった今",
+        "minAgo": "{count} 分前",
+        "hrAgo": "{count} 時間前",
+        "yesterday": "昨日"
+    },
+    "network": {
+        "offlineMessage": "オフラインです。すべての機能はローカルで動作し、AIモデルはデバイス上で実行されます。",
+        "privacyGuaranteed": "プライバシー保証"
+    },
+    "shortcuts": {
+        "title": "キーボードショートカット",
+        "close": "閉じる",
+        "pressEsc": "Escキーで閉じる",
+        "groups": {
+            "global": "グローバル",
+            "gallery": "ギャラリー",
+            "detailView": "詳細ビュー"
+        },
+        "descriptions": {
+            "focusSearch": "検索バーにフォーカス",
+            "toggleHelp": "ショートカットヘルプを表示",
+            "closeModal": "モーダル/詳細ビューを閉じる",
+            "nextItem": "次のアイテムを選択",
+            "prevItem": "前のアイテムを選択",
+            "openDetail": "詳細ビューを開く",
+            "selectAll": "表示されているすべてのアイテムを選択",
+            "deselectAll": "すべての選択を解除",
+            "toggleFavorite": "お気に入りを切り替え",
+            "focusTagEditor": "タグエディタにフォーカス",
+            "openExport": "エクスポートモーダルを開く"
+        }
+    },
+    "gallery": {
+        "title": "ギャラリー",
+        "found": "{total} 件中 {count} 件見つかりました",
+        "scanning": "スキャン中...",
+        "emptyLibrary": "ライブラリが空です",
+        "addMedia": "メディアを追加して開始してください",
+        "dragDrop": "ここに画像をドラッグ＆ドロップして検索"
+    }
+}

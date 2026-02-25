@@ -1,5 +1,6 @@
 "use client"
 import React, { useState, useEffect, useRef } from "react"
+import { useTranslations } from 'next-intl';
 import { Search, X, ChevronDown, Check, Image as ImageIcon, Video, Filter, Clock, Clapperboard } from "lucide-react"
 import { SearchFilters, fetchFilters, getSearchHistory, deleteSearchHistory, clearSearchHistory, SearchHistoryEntry } from "@/lib/api"
 
@@ -29,6 +30,7 @@ const FilterChip = ({ label, active, activeDropdown, onClick }: FilterChipProps)
 )
 
 export function HybridSearchBar({ onSearch, initialQuery = "" }: HybridSearchBarProps) {
+    const t = useTranslations('search');
     const [query, setQuery] = useState(initialQuery)
     const [filters, setFilters] = useState<SearchFilters>({})
     const [availableFilters, setAvailableFilters] = useState<{ characters: string[], series: string[] }>({
@@ -113,10 +115,10 @@ export function HybridSearchBar({ onSearch, initialQuery = "" }: HybridSearchBar
         const now = new Date()
         const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
 
-        if (diffInSeconds < 60) return "just now"
-        if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} min ago`
-        if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hr ago`
-        if (diffInSeconds < 172800) return "yesterday"
+        if (diffInSeconds < 60) return t('justNow')
+        if (diffInSeconds < 3600) return t('minAgo', { count: Math.floor(diffInSeconds / 60) })
+        if (diffInSeconds < 86400) return t('hrAgo', { count: Math.floor(diffInSeconds / 3600) })
+        if (diffInSeconds < 172800) return t('yesterday')
         return date.toLocaleDateString()
     }
 
@@ -188,7 +190,7 @@ export function HybridSearchBar({ onSearch, initialQuery = "" }: HybridSearchBar
                                 setActiveDropdown(null)
                             }
                         }}
-                        placeholder="Search your library with natural language..."
+                        placeholder={t('placeholder')}
                         className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl py-4 pl-14 pr-32 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all shadow-xl"
                     />
                     <div className="absolute left-5 top-1/2 -translate-y-1/2 flex items-center gap-2">
@@ -212,7 +214,7 @@ export function HybridSearchBar({ onSearch, initialQuery = "" }: HybridSearchBar
                             type="submit"
                             className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-5 py-2 text-sm font-bold transition-all shadow-lg shadow-indigo-900/40 active:scale-95"
                         >
-                            Search
+                            {t('button')}
                         </button>
                     </div>
                 </form>
@@ -222,7 +224,7 @@ export function HybridSearchBar({ onSearch, initialQuery = "" }: HybridSearchBar
                     <div ref={historyRef} className="absolute top-full left-0 right-0 mt-2 bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                         <div className="px-4 py-3 border-b border-zinc-800 flex items-center gap-2 text-zinc-400">
                             <Clock className="w-4 h-4" />
-                            <span className="text-xs font-bold uppercase tracking-wider">Recent Searches</span>
+                            <span className="text-xs font-bold uppercase tracking-wider">{t('recentSearches')}</span>
                         </div>
                         <div className="max-h-80 overflow-y-auto">
                             {searchHistory.map((item) => {
@@ -237,7 +239,7 @@ export function HybridSearchBar({ onSearch, initialQuery = "" }: HybridSearchBar
                                             <div className="flex items-center gap-2">
                                                 <span className="text-zinc-100 font-bold truncate">{item.query_text}</span>
                                                 <span className="text-[10px] text-zinc-500 bg-zinc-800 px-1.5 py-0.5 rounded whitespace-nowrap">
-                                                    {item.result_count} results
+                                                    {t('results', { count: item.result_count })}
                                                 </span>
                                             </div>
                                             <div className="flex flex-wrap gap-1">
@@ -248,7 +250,7 @@ export function HybridSearchBar({ onSearch, initialQuery = "" }: HybridSearchBar
                                                 ))}
                                                 {filterLabels.length > 3 && (
                                                     <span className="text-[9px] text-zinc-600 px-1">
-                                                        +{filterLabels.length - 3} more
+                                                        {t('moreFilters', { count: filterLabels.length - 3 })}
                                                     </span>
                                                 )}
                                                 <span className="text-[9px] text-zinc-600 ml-auto">
@@ -271,7 +273,7 @@ export function HybridSearchBar({ onSearch, initialQuery = "" }: HybridSearchBar
                                 onClick={handleClearHistory}
                                 className="text-[10px] font-bold text-zinc-500 hover:text-indigo-400 transition-colors uppercase tracking-widest"
                             >
-                                Clear History
+                                {t('clearHistory')}
                             </button>
                         </div>
                     </div>
@@ -307,7 +309,7 @@ export function HybridSearchBar({ onSearch, initialQuery = "" }: HybridSearchBar
                                     className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-zinc-800 text-sm text-zinc-300"
                                 >
                                     <div className="flex items-center gap-2">
-                                        <ImageIcon className="w-4 h-4 text-zinc-500" /> Images Only
+                                        <ImageIcon className="w-4 h-4 text-zinc-500" /> {t('imagesOnly')}
                                     </div>
                                     {filters.media_type === "image" && <Check className="w-4 h-4 text-indigo-500" />}
                                 </button>
@@ -316,7 +318,7 @@ export function HybridSearchBar({ onSearch, initialQuery = "" }: HybridSearchBar
                                     className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-zinc-800 text-sm text-zinc-300"
                                 >
                                     <div className="flex items-center gap-2">
-                                        <Video className="w-4 h-4 text-zinc-500" /> Videos Only
+                                        <Video className="w-4 h-4 text-zinc-500" /> {t('videosOnly')}
                                     </div>
                                     {filters.media_type === "video" && <Check className="w-4 h-4 text-indigo-500" />}
                                 </button>
@@ -330,19 +332,19 @@ export function HybridSearchBar({ onSearch, initialQuery = "" }: HybridSearchBar
             <div className="flex flex-wrap items-center gap-2 px-1">
                 <Filter className="w-3.5 h-3.5 text-zinc-500 mr-1" />
                 <FilterChip
-                    label="Characters"
+                    label={t('characters')}
                     active={filters.character_tags !== undefined}
                     activeDropdown={activeDropdown}
                     onClick={() => setActiveDropdown(activeDropdown === "Characters" ? null : "Characters")}
                 />
                 <FilterChip
-                    label="Series"
+                    label={t('series')}
                     active={filters.series_tags !== undefined}
                     activeDropdown={activeDropdown}
                     onClick={() => setActiveDropdown(activeDropdown === "Series" ? null : "Series")}
                 />
                 <FilterChip
-                    label="Media Type"
+                    label={t('mediaType')}
                     active={filters.media_type !== undefined}
                     activeDropdown={activeDropdown}
                     onClick={() => setActiveDropdown(activeDropdown === "Media Type" ? null : "Media Type")}
@@ -358,7 +360,7 @@ export function HybridSearchBar({ onSearch, initialQuery = "" }: HybridSearchBar
                         }`}
                 >
                     <Clapperboard className="w-3.5 h-3.5" />
-                    Search Scenes
+                    {t('searchScenes')}
                 </button>
             </div>
 

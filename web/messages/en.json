@@ -1,0 +1,90 @@
+{
+    "common": {
+        "save": "Save",
+        "cancel": "Cancel",
+        "close": "Close",
+        "delete": "Delete",
+        "confirm": "Confirm",
+        "loading": "Loading...",
+        "error": "An error occurred",
+        "success": "Success",
+        "search": "Search",
+        "searchPlaceholder": "Search your library...",
+        "noResults": "No results found",
+        "selectAll": "Select all",
+        "deselectAll": "Deselect all",
+        "items": "{count, plural, =0 {No items} =1 {1 item} other {# items}}",
+        "selected": "{count} selected",
+        "processing": "Processing...",
+        "retry": "Retry",
+        "back": "Back",
+        "next": "Next",
+        "done": "Done",
+        "yes": "Yes",
+        "no": "No",
+        "or": "or",
+        "and": "and"
+    },
+    "sidebar": {
+        "library": "Library",
+        "allMedia": "All Media",
+        "albums": "Albums",
+        "tags": "Tags",
+        "settings": "Settings",
+        "shortcuts": "Keyboard Shortcuts",
+        "moreAlbums": "+ {count} more..."
+    },
+    "search": {
+        "placeholder": "Search your library with natural language...",
+        "button": "Search",
+        "recentSearches": "Recent Searches",
+        "results": "{count} results",
+        "moreFilters": "+{count} more",
+        "clearHistory": "Clear History",
+        "characters": "Characters",
+        "series": "Series",
+        "mediaType": "Media Type",
+        "imagesOnly": "Images Only",
+        "videosOnly": "Videos Only",
+        "searchScenes": "Search Scenes",
+        "justNow": "just now",
+        "minAgo": "{count} min ago",
+        "hrAgo": "{count} hr ago",
+        "yesterday": "yesterday"
+    },
+    "network": {
+        "offlineMessage": "You are offline. All features work locally — AI models run on your device.",
+        "privacyGuaranteed": "Privacy Guaranteed"
+    },
+    "shortcuts": {
+        "title": "Keyboard Shortcuts",
+        "close": "Close",
+        "pressEsc": "Press Esc to close",
+        "groups": {
+            "global": "Global",
+            "gallery": "Gallery",
+            "detailView": "Detail View"
+        },
+        "descriptions": {
+            "focusSearch": "Focus search bar",
+            "toggleHelp": "Toggle shortcut help",
+            "closeModal": "Close modal/detail view",
+            "nextItem": "Select next item",
+            "prevItem": "Select previous item",
+            "openDetail": "Open detail view",
+            "selectAll": "Select all visible items",
+            "deselectAll": "Deselect all",
+            "toggleFavorite": "Toggle favorite",
+            "focusTagEditor": "Focus tag editor",
+            "openExport": "Open export modal"
+        }
+    },
+    "gallery": {
+        "title": "Gallery",
+        "found": "Found {count} of {total} candidates",
+        "scanning": "Scanning...",
+        "emptyLibrary": "Your library is empty",
+        "addMedia": "Add media to get started",
+        "dragDrop": "Drag & drop images here to search"
+    }
+}
