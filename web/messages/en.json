@@ -524,6 +524,21 @@
         "blocked": "Blocked",
         "external": "External",
         "duration": "Duration",
-        "entries": "{count, plural, =0 {No entries} =1 {1 entry} other {# entries}}"
+        "entries": "{count, plural, =0 {No entries} =1 {1 entry} other {# entries}}",
+        "audit": "Privacy Audit",
+        "runAudit": "Run Privacy Audit",
+        "auditRunning": "Scanning codebase...",
+        "auditPass": "Fully Private",
+        "auditFail": "Review Needed",
+        "filesScanned": "{count} files scanned",
+        "violations": "{count} violations found",
+        "noViolations": "No external network calls detected",
+        "allowlisted": "{count} allowlisted patterns skipped",
+        "dataStorage": "Data Storage Locations",
+        "dbPath": "Database",
+        "cachePath": "Thumbnail Cache",
+        "modelPath": "AI Models",
+        "privacyScore": "Privacy Status",
+        "verdict": "Verdict"
     }
 }

@@ -524,6 +524,21 @@
         "blocked": "ブロック",
         "external": "外部",
         "duration": "所要時間",
-        "entries": "{count} 件"
+        "entries": "{count} 件",
+        "audit": "プライバシー監査",
+        "runAudit": "プライバシー監査を実行",
+        "auditRunning": "コードベースをスキャン中...",
+        "auditPass": "完全にプライベート",
+        "auditFail": "確認が必要",
+        "filesScanned": "{count} ファイルをスキャン",
+        "violations": "{count} 件の違反を検出",
+        "noViolations": "外部ネットワーク呼び出しは検出されませんでした",
+        "allowlisted": "{count} 件の許可パターンをスキップ",
+        "dataStorage": "データ保存場所",
+        "dbPath": "データベース",
+        "cachePath": "サムネイルキャッシュ",
+        "modelPath": "AIモデル",
+        "privacyScore": "プライバシーステータス",
+        "verdict": "判定"
     }
 }

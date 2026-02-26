@@ -821,3 +821,41 @@ export const getDemoStatus = async (): Promise<{ demo_mode: boolean }> => {
     return res.json();
 };
 
+// ------------------------------------------------------------------ #
+// Privacy APIs
+// ------------------------------------------------------------------ #
+
+export interface PrivacyAuditViolation {
+    file: string;
+    line: number;
+    pattern: string;
+    context: string;
+    detected: string;
+}
+
+export interface PrivacyAuditResult {
+    scan_date: string;
+    files_scanned: number;
+    violations: PrivacyAuditViolation[];
+    allowlisted_skips: number;
+    verdict: 'PASS' | 'FAIL';
+}
+
+export interface PrivacyStorage {
+    db: string;
+    thumbnails: string;
+    models: string;
+}
+
+export const runPrivacyAudit = async (): Promise<PrivacyAuditResult> => {
+    const res = await safeFetch(`${API_BASE_URL}/privacy/audit`);
+    if (!res.ok) throw new Error("Privacy audit failed");
+    return res.json();
+};
+
+export const getPrivacyStorage = async (): Promise<PrivacyStorage> => {
+    const res = await safeFetch(`${API_BASE_URL}/privacy/storage`);
+    if (!res.ok) throw new Error("Failed to fetch storage locations");
+    return res.json();
+};
+
