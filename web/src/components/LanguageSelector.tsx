@@ -1,7 +1,6 @@
 "use client"
 
 import React, { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
 import { Languages, Check, Loader2 } from "lucide-react"
 import { getAppSettings, updateAppSetting } from "@/lib/api"
 
@@ -9,7 +8,6 @@ export function LanguageSelector() {
     const [locale, setLocale] = useState<string>("en")
     const [loading, setLoading] = useState(true)
     const [isUpdating, setIsUpdating] = useState(false)
-    const router = useRouter()
 
     useEffect(() => {
         getAppSettings()
@@ -28,9 +26,10 @@ export function LanguageSelector() {
 
             // Set cookie for next-intl (as per standard next-intl setup with cookies)
             document.cookie = `NEXT_LOCALE=${newLocale}; path=/; max-age=31536000; SameSite=Lax`
+            localStorage.setItem('locale', newLocale)
 
             setLocale(newLocale)
-            router.refresh()
+            window.location.reload()
         } catch (err) {
             console.error("Failed to update locale:", err)
         } finally {

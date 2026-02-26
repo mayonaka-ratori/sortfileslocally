@@ -1,5 +1,7 @@
+"use client"
+
 import React, { useEffect, useState, useMemo } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { fetchAlbum, fetchAlbumMedia, Album, MediaItem, SearchFilters } from '@/lib/api';
 import { Sidebar } from '@/components/Sidebar';
 import { GalleryGrid } from '@/components/GalleryGrid';
@@ -10,9 +12,9 @@ import { useTranslations } from 'next-intl';
 export default function AlbumDetailPage() {
     const t = useTranslations("albums");
     const commonT = useTranslations("common");
-    const params = useParams();
+    const searchParams = useSearchParams();
     const router = useRouter();
-    const albumId = parseInt(params.id as string);
+    const albumId = parseInt(searchParams.get('id') || '0');
 
     const [album, setAlbum] = useState<Album | null>(null);
     const [media, setMedia] = useState<MediaItem[]>([]);

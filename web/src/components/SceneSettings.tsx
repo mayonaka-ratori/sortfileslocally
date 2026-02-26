@@ -1,3 +1,5 @@
+"use client"
+
 import React, { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { getAppSettings, updateAppSetting } from "@/lib/api";
@@ -137,3 +139,4 @@ export function SceneSettings() {
         </div>
     );
 }
+

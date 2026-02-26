@@ -1,3 +1,5 @@
+"use client"
+
 import React from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Settings as SettingsIcon } from 'lucide-react';
@@ -87,3 +89,4 @@ export default function SettingsPage() {
         </main>
     );
 }
+

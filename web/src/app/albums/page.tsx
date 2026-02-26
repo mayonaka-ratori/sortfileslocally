@@ -1,3 +1,5 @@
+"use client"
+
 import React, { useEffect, useState } from 'react';
 import { fetchAlbums, Album, getThumbnailUrl } from '@/lib/api';
 import { Sidebar } from '@/components/Sidebar';
@@ -61,7 +63,7 @@ export default function AlbumsPage() {
                             {albums.map((album) => (
                                 <Link
                                     key={album.id}
-                                    href={`/albums/${album.id}`}
+                                    href={`/albums/detail?id=${album.id}`}
                                     className="group relative bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden hover:border-zinc-600 transition-all hover:shadow-2xl hover:shadow-black/40 hover:-translate-y-1 block"
                                 >
                                     <div className="aspect-[4/3] relative bg-zinc-950 flex items-center justify-center overflow-hidden">

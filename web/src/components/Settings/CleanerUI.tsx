@@ -1,3 +1,5 @@
+"use client"
+
 import React, { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { findDuplicates, applyDeduplication, DuplicatePair } from '@/lib/api';
@@ -217,3 +219,4 @@ export function CleanerUI() {
         </div>
     );
 }
+

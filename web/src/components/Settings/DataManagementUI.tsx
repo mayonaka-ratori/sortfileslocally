@@ -1,3 +1,5 @@
+"use client"
+
 import { useTranslations } from 'next-intl';
 import { exportAllMetadata } from '@/lib/api';
 import { Download, Loader2, Database } from 'lucide-react';
@@ -49,7 +51,7 @@ export function DataManagementUI() {
                             </button>
                             {exportResult && (
                                 <div className="text-[10px] text-green-400 font-mono text-right w-full">
-                                    ✓ {t('exported', { count: exportResult.success })}
+                                    ✁E{t('exported', { count: exportResult.success })}
                                     {exportResult.failed > 0 && <span className="text-red-400 ml-1">({t('failed', { count: exportResult.failed })})</span>}
                                 </div>
                             )}
@@ -72,3 +74,4 @@ export function DataManagementUI() {
         </div>
     );
 }
+

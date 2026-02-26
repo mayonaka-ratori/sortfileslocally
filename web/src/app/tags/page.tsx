@@ -1,3 +1,5 @@
+"use client"
+
 import React, { useState, useEffect, useMemo } from "react"
 import {
     getTagStats,
@@ -471,3 +473,4 @@ export default function TagDashboardPage() {
         </div>
     )
 }
+

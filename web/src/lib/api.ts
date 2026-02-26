@@ -1,4 +1,17 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+let API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+export async function initApiBase() {
+    if (typeof window !== 'undefined' && ('__TAURI__' in window || ('rpc' in window))) {
+        try {
+            const { invoke } = await import('@tauri-apps/api/core');
+            const port = await invoke<number>('get_backend_port');
+            API_BASE_URL = `http://localhost:${port}`;
+            console.log(`[API] Discovered backend on port ${port}`);
+        } catch (err) {
+            console.warn("[API] Failed to discover backend port, falling back to 8000", err);
+        }
+    }
+}
 
 const safeFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
