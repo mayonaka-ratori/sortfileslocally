@@ -19,12 +19,12 @@ def is_dependency_missing_or_mocked(name):
         
     return False
 
-if is_dependency_missing_or_mocked("torch") or is_dependency_missing_or_mocked("transformers"):
-    pytest.skip("VLM dependencies not installed or mocked", allow_module_level=True)
+if is_dependency_missing_or_mocked("torch") or is_dependency_missing_or_mocked("transformers") or os.environ.get("SKIP_GPU_TESTS") == "1":
+    pytest.skip("VLM dependencies not installed, mocked, or CI skip requested", allow_module_level=True)
 
 import torch
-if not torch.cuda.is_available():
-    pytest.skip("VLM tests require GPU", allow_module_level=True)
+if not torch.cuda.is_available() or os.environ.get("SKIP_GPU_TESTS") == "1":
+    pytest.skip("VLM tests require GPU or CI skip requested", allow_module_level=True)
 
 from PIL import Image
 
@@ -35,10 +35,14 @@ try:
 except (ImportError, ValueError):
     pytest.skip("VLMEngine failed to import (likely missing transformers/torch)", allow_module_level=True)
 
+@pytest.mark.gpu
+@pytest.mark.ai_models
 def test_vlm_initialization():
     engine = VLMEngine()
     assert engine is not None
 
+@pytest.mark.gpu
+@pytest.mark.ai_models
 def test_vlm_inference():
     engine = VLMEngine()
     # Create a dummy image
@@ -47,6 +51,8 @@ def test_vlm_inference():
     caption = engine.generate_detailed_caption(img)
     assert isinstance(caption, str)
 
+@pytest.mark.gpu
+@pytest.mark.ai_models
 def test_vlm_vqa():
     engine = VLMEngine()
     img = Image.new('RGB', (100, 100), color='blue')

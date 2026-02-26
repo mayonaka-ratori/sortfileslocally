@@ -36,6 +36,7 @@ def create_dummy_video(filename="dummy_video.mp4", duration_sec=5, fps=30):
     
     out.release()
 
+@pytest.mark.ai_models
 def test_engine_initialization():
     try:
         engine = AIEngine()
@@ -43,6 +44,7 @@ def test_engine_initialization():
     except Exception as e:
         pytest.fail(f"AIEngine failed to initialize: {e}")
 
+@pytest.mark.ai_models
 def test_clip_extraction():
     engine = AIEngine()
     dummy_image = Image.fromarray(np.random.randint(0, 255, (224, 224, 3), dtype=np.uint8))
@@ -53,6 +55,7 @@ def test_clip_extraction():
     except Exception as e:
         pytest.fail(f"CLIP extraction failed: {e}")
 
+@pytest.mark.ai_models
 def test_insightface_execution():
     engine = AIEngine()
     dummy_face_img = np.random.randint(0, 255, (640, 640, 3), dtype=np.uint8)
@@ -63,6 +66,8 @@ def test_insightface_execution():
     except Exception as e:
         pytest.fail(f"InsightFace execution failed: {e}")
 
+@pytest.mark.ai_models
+@pytest.mark.slow
 def test_video_processor():
     dummy_vid_name = "dummy_video_test.mp4"
     create_dummy_video(dummy_vid_name)

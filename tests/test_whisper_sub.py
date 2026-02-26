@@ -1,10 +1,14 @@
 import sys, os, tempfile, subprocess, json, pytest
 
 try:
+    if os.environ.get("SKIP_GPU_TESTS") == "1":
+        pytest.skip("CI skip requested for GPU/heavy models", allow_module_level=True)
     import faster_whisper
 except ImportError:
     pytest.skip("faster_whisper not installed", allow_module_level=True)
 
+@pytest.mark.ai_models
+@pytest.mark.slow
 def test_whisper_transcription():
     tmp = tempfile.mktemp(suffix='.wav')
     has_ffmpeg = False

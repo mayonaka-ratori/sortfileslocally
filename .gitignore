@@ -38,3 +38,8 @@ data/models/
 web/test-results/
 web/playwright-report/
 web/blob-report/
+
+# Coverage
+.coverage
+coverage_html/
+coverage.json

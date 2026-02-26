@@ -11,6 +11,7 @@
   <img src="https://img.shields.io/badge/PyTorch-2.5.1-ee4c2c" alt="PyTorch">
   <img src="https://img.shields.io/badge/Tailwind_CSS-4-38bdf8" alt="Tailwind CSS">
   <img src="https://img.shields.io/badge/License-MIT-green" alt="License">
+  <img src="https://github.com/mayonaka-ratori/sortfileslocally/actions/workflows/ci.yml/badge.svg" alt="CI">
 </p>
 
 ---
@@ -135,6 +136,41 @@ Webブラウザで `http://localhost:3000` を開いてください。
 詳細な使い方は [USER_MANUAL.md](docs/USER_MANUAL_JP.md) をご覧ください。
 
 ---
+
+## 🧪 Testing
+
+### Backend Tests
+The backend uses `pytest` with `pytest-cov` for coverage reporting.
+
+```powershell
+# Run all tests (requires GPU/models for some)
+python -m pytest tests/ -v
+
+# Skip GPU tests (for CI or machines without GPU)
+$env:SKIP_GPU_TESTS="1"; python -m pytest tests/ -v
+
+# Run with coverage report
+python -m pytest tests/ -v --cov=src --cov=server --cov-report=term-missing
+
+# Run only fast tests (skip slow AI model tests)
+python -m pytest tests/ -v -m "not ai_models and not slow"
+```
+
+### Frontend Tests
+The frontend uses Playwright for E2E testing.
+
+```powershell
+# Lint checks
+cd web
+npm run lint
+
+# Run E2E tests (requires both frontend and backend servers running)
+# Ensure backend is at http://localhost:8000 and frontend at http://localhost:3000
+npm run test:e2e
+
+# Open Playwright UI for debugging
+npm run test:e2e:ui
+```
 
 ## 📄 License
 This project is licensed under the MIT License - see the LICENSE file for details.
