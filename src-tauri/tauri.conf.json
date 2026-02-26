@@ -23,6 +23,14 @@
       "csp": null
     }
   },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/mayonaka-ratori/sortfileslocally/releases/latest/download/latest.json"
+      ],
+      "pubkey": "PLACEHOLDER_PUBLIC_KEY"
+    }
+  },
   "bundle": {
     "active": true,
     "targets": "all",

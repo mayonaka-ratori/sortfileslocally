@@ -10,6 +10,7 @@ import { CleanerUI } from '@/components/Settings/CleanerUI';
 import { SceneSettings } from '@/components/SceneSettings';
 import { NetworkPrivacyUI } from '@/components/Settings/NetworkPrivacyUI';
 import { LanguageSelector } from '@/components/LanguageSelector';
+import { UpdateUI } from '@/components/Settings/UpdateUI';
 
 export default function SettingsPage() {
     const t = useTranslations('settings');
@@ -35,6 +36,14 @@ export default function SettingsPage() {
                         <p className="text-zinc-500 text-sm mt-1">{t('subtitle')}</p>
                     </div>
                 </div>
+
+                {/* Updates Section */}
+                <section className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-1">
+                        <h2 className="text-lg font-bold">Software Updates</h2>
+                    </div>
+                    <UpdateUI />
+                </section>
 
                 {/* Appearance & Language Section */}
                 <section className="flex flex-col gap-4">
@@ -89,4 +98,3 @@ export default function SettingsPage() {
         </main>
     );
 }
-

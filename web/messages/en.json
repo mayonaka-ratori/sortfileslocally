@@ -540,5 +540,20 @@
         "modelPath": "AI Models",
         "privacyScore": "Privacy Status",
         "verdict": "Verdict"
+    },
+    "update": {
+        "available": "Update available: v{version}",
+        "updateNow": "Update now",
+        "later": "Later",
+        "checking": "Checking for updates...",
+        "upToDate": "You're up to date",
+        "currentVersion": "Current version: v{version}",
+        "checkButton": "Check for updates",
+        "lastChecked": "Last checked: {date}",
+        "autoCheck": "Check automatically on launch",
+        "downloading": "Downloading update...",
+        "installing": "Installing update...",
+        "restartRequired": "Restart to complete update",
+        "releaseNotes": "Release Notes"
     }
 }

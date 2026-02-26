@@ -540,5 +540,20 @@
         "modelPath": "AIモデル",
         "privacyScore": "プライバシーステータス",
         "verdict": "判定"
+    },
+    "update": {
+        "available": "アップデート利用可能: v{version}",
+        "updateNow": "今すぐ更新",
+        "later": "後で",
+        "checking": "アップデートを確認中...",
+        "upToDate": "最新バージョンです",
+        "currentVersion": "現在のバージョン: v{version}",
+        "checkButton": "アップデートを確認",
+        "lastChecked": "最終確認: {date}",
+        "autoCheck": "起動時に自動確認",
+        "downloading": "アップデートをダウンロード中...",
+        "installing": "アップデートをインストール中...",
+        "restartRequired": "更新を完了するには再起動してください",
+        "releaseNotes": "リリースノート"
     }
 }

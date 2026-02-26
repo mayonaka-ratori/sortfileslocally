@@ -61,6 +61,7 @@ class AppSettingsResponse(BaseModel):
     demo_mode: bool = False
     last_opened: float = 0.0
     onboarding_dismissed: str = "false"
+    auto_check_updates: str = "true"
 
 class SettingUpdateResponse(BaseModel):
     status: str
@@ -137,7 +138,8 @@ def get_settings():
         "locale": db.get_setting("locale", "en"),
         "demo_mode": db.get_setting("demo_mode") == "1",
         "last_opened": float(db.get_setting("last_opened", "0")),
-        "onboarding_dismissed": db.get_setting("onboarding_dismissed", "false")
+        "onboarding_dismissed": db.get_setting("onboarding_dismissed", "false"),
+        "auto_check_updates": db.get_setting("auto_check_updates", "true")
     }
 
 @router.post("/complete")

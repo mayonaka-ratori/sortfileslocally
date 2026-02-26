@@ -21,6 +21,7 @@ fn get_backend_port(state: State<AppState>) -> Result<u16, String> {
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_log::Builder::default().build())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(AppState {
             port: Mutex::new(None),
             backend_child: Mutex::new(None),
