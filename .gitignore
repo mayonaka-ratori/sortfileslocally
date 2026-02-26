@@ -43,3 +43,8 @@ web/blob-report/
 .coverage
 coverage_html/
 coverage.json
+
+# PyInstaller
+dist/
+build/
+*.spec.bak

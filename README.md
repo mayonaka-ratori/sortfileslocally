@@ -172,5 +172,28 @@ npm run test:e2e
 npm run test:e2e:ui
 ```
 
+## 🏗️ Building Desktop App
+
+### Prerequisites
+- Python 3.11 (due to `onnxruntime` compatibility constraints)
+- Rust toolchain (rustc, cargo)
+- Node.js 20+
+- PyInstaller: `pip install pyinstaller`
+
+### Build Backend (PyInstaller)
+```powershell
+# CPU-only (smaller footprint, ~300-500 MB)
+python scripts/build_backend.py --cpu-only
+
+# GPU / All-inclusive (larger, ~2.5-4 GB)
+python scripts/build_backend.py
+```
+
+### Build Desktop App (Tauri)
+```powershell
+# Unified build: statically exports frontend and bundles with backend sidecar
+npm run tauri:build
+```
+
 ## 📄 License
 This project is licensed under the MIT License - see the LICENSE file for details.

@@ -1,0 +1,52 @@
+name: Build Desktop App
+on:
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Build type'
+        required: true
+        default: 'cpu-only'
+        type: choice
+        options:
+          - cpu-only
+          - gpu
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Setup Rust
+        uses: dtolnay/rust-action@v1
+        with:
+          toolchain: stable
+      
+      - name: Install Python dependencies
+        run: |
+          pip install pyinstaller
+          pip install -r requirements-cpu.txt
+      
+      - name: Install Node dependencies
+        run: cd web && npm ci
+      
+      - name: Build Desktop App
+        run: python scripts/build_desktop.py --cpu-only
+      
+      - name: Upload Installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: localcurator-prime-windows
+          path: src-tauri/target/release/bundle/msi/*.msi
+          retention-days: 30
