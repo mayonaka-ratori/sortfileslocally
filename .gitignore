@@ -33,3 +33,8 @@ web/.vercel
 data/models/
 *.onnx
 *.bin
+
+# Playwright
+web/test-results/
+web/playwright-report/
+web/blob-report/
