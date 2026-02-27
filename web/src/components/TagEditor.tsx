@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react"
 import { TagCategory, TagSuggestion, suggestTags, addTags, removeTags } from "@/lib/api"
 import { useTranslations } from 'next-intl';
 import { Plus, X, Loader2, Tag as TagIcon } from "lucide-react"
+import { toast } from "sonner";
 
 interface TagInputProps {
     tags: string[]
@@ -179,12 +180,14 @@ interface TagEditorProps {
 }
 
 export function TagEditor({ fileId, tags, category, onTagsChange }: TagEditorProps) {
+    const commonT = useTranslations("common");
     const handleAddTag = async (tagName: string) => {
         try {
             const res = await addTags(fileId, [tagName], category)
             onTagsChange(res.tags)
         } catch (err) {
-            console.error("Failed to add tag", err)
+            console.error("Failed to add tag", err);
+            toast.error(commonT("actionFailed"));
         }
     }
 
@@ -193,7 +196,8 @@ export function TagEditor({ fileId, tags, category, onTagsChange }: TagEditorPro
             const res = await removeTags(fileId, [tagName], category)
             onTagsChange(res.tags)
         } catch (err) {
-            console.error("Failed to remove tag", err)
+            console.error("Failed to remove tag", err);
+            toast.error(commonT("actionFailed"));
         }
     }
 

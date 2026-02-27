@@ -7,7 +7,7 @@
         "confirm": "Confirm",
         "loading": "Loading...",
         "error": "An error occurred",
-        "actionFailed": "Action failed",
+        "actionFailed": "Action failed. Please try again.",
         "success": "Success",
         "search": "Search",
         "searchPlaceholder": "Search your library...",

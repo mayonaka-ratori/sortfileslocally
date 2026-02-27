@@ -34,8 +34,8 @@ export function SceneTimeline({ fileId, onSeek, activeTime = 0 }: SceneTimelineP
                 }
                 toast.success(t("detectSuccess"));
             }
-        } catch {
-            console.error("Failed to fetch scenes:");
+        } catch (err) {
+            console.error("Failed to fetch scenes:", err);
             // Don't show error if we're just polling and it fails once
         } finally {
             setLoading(false);
@@ -70,7 +70,8 @@ export function SceneTimeline({ fileId, onSeek, activeTime = 0 }: SceneTimelineP
             setDetecting(true);
             await detectScenes(fileId, force);
             startPolling();
-        } catch {
+        } catch (err) {
+            console.error("Failed to start scene detection:", err);
             setDetecting(false);
             toast.error(t("detectError"));
         }
@@ -83,7 +84,8 @@ export function SceneTimeline({ fileId, onSeek, activeTime = 0 }: SceneTimelineP
             await deleteScenes(fileId);
             setScenes([]);
             toast.success(t("deleteSuccess"));
-        } catch {
+        } catch (err) {
+            console.error("Failed to delete scenes:", err);
             toast.error(t("deleteError"));
         }
     };

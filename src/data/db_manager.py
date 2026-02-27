@@ -69,6 +69,21 @@ class DBManager:
             print("Migrating DB: Adding caption column")
             c.execute("ALTER TABLE files ADD COLUMN caption TEXT")
 
+        # Add favorite if missing
+        if 'favorite' not in columns:
+            print("Migrating DB: Adding favorite column")
+            c.execute("ALTER TABLE files ADD COLUMN favorite BOOLEAN DEFAULT 0")
+
+        # Add folder_path if missing
+        if 'folder_path' not in columns:
+            print("Migrating DB: Adding folder_path column")
+            c.execute("ALTER TABLE files ADD COLUMN folder_path TEXT")
+            # Populate folder_path for existing files
+            c.execute("UPDATE files SET folder_path = ?", (None,)) # Temporary null
+            # Actually, let's try to populate it if possible, but safely.
+            # We can't easily do it with pure SQL for directory names in SQLite without extensions, 
+            # so we'll leave it to be populated on next scan or just leave it for now.
+
         # Create albums table if missing
         c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='albums'")
         if not c.fetchone():
@@ -229,7 +244,9 @@ class DBManager:
         # Create indexes for performance
         c.execute("CREATE INDEX IF NOT EXISTS idx_files_tags ON files(tags)")
         c.execute("CREATE INDEX IF NOT EXISTS idx_files_media_type ON files(media_type)")
-        c.execute("CREATE INDEX IF NOT EXISTS idx_files_favorite ON files(rating)")
+        c.execute("DROP INDEX IF EXISTS idx_files_rating")
+        c.execute("CREATE INDEX IF NOT EXISTS idx_files_favorite ON files(favorite)")
+        c.execute("CREATE INDEX IF NOT EXISTS idx_files_folder ON files(folder_path)")
         c.execute("CREATE INDEX IF NOT EXISTS idx_files_modified ON files(modified_at)")
         c.execute("CREATE INDEX IF NOT EXISTS idx_video_scenes_file_id ON video_scenes(file_id)")
 
@@ -260,6 +277,8 @@ class DBManager:
                 character_tags TEXT, -- JSON List
                 series_tags TEXT, -- JSON List
                 rating INTEGER DEFAULT 0,
+                favorite BOOLEAN DEFAULT 0,
+                folder_path TEXT,
                 audio_transcription TEXT, -- JSON List
                 frame_descriptions TEXT, -- JSON List
                 caption TEXT -- Text

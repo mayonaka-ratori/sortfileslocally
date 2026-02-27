@@ -38,8 +38,8 @@ export const InsightsPanel: React.FC = () => {
                 if (valid.length !== parsed.length) {
                     localStorage.setItem('dismissed_insights', JSON.stringify(valid));
                 }
-            } catch {
-                console.error("Failed to parse dismissed insights");
+            } catch (err) {
+                console.error("Failed to parse dismissed insights", err);
             }
         }
 

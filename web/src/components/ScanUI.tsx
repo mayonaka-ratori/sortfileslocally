@@ -199,6 +199,7 @@ export function ScanUI({ initialPath, onComplete }: ScanUIProps) {
                                     setPath(selectedPath);
                                 }
                             } catch (err) {
+                                console.error("Browse folder failed", err);
                                 setError(t("pickerError", { error: (err as Error).message }));
                             }
                         }}

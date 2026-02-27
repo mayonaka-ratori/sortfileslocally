@@ -89,7 +89,8 @@ export default function TagDashboardPage() {
             alert(t("renameSuccess", { renamed: res.renamed_count, merged: res.merged_count }))
             setEditingTag(null)
             fetchStats()
-        } catch {
+        } catch (err) {
+            console.error("Rename tag failed:", err);
             alert(t("renameError"))
         } finally {
             setIsSubmitting(false)
@@ -102,7 +103,8 @@ export default function TagDashboardPage() {
         try {
             await renameTag(tag, "", category)
             fetchStats()
-        } catch {
+        } catch (err) {
+            console.error("Delete tag failed:", err);
             alert(t("deleteError"))
         }
     }
@@ -473,4 +475,3 @@ export default function TagDashboardPage() {
         </div>
     )
 }
-

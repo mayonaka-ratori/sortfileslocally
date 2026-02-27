@@ -58,7 +58,8 @@ export default function Home() {
       }
       setHasMore(data.length === limit)
       setSearchStats(null)
-    } catch {
+    } catch (err) {
+      console.error("Load media failed:", err);
       setError(t("loadError"))
     } finally {
       if (currentOffset === 0) {
@@ -105,7 +106,8 @@ export default function Home() {
 
       setSelectedItem(null)
       setHasMore(false)
-    } catch {
+    } catch (err) {
+      console.error("Search failed:", err);
       setError(t("searchError"))
     } finally {
       setLoading(false)
@@ -124,7 +126,8 @@ export default function Home() {
       setSelectedItem(null)
       setHasMore(false)
       setSearchStats(null)
-    } catch {
+    } catch (err) {
+      console.error("Face search failed:", err);
       setError(t("faceSearchError"))
     } finally {
       setLoading(false)
@@ -158,7 +161,8 @@ export default function Home() {
       setMedia(mappedResults)
       setSelectedItem(null)
       setHasMore(false)
-    } catch {
+    } catch (err) {
+      console.error("Image drop/reverse search failed:", err);
       setError(t("reverseSearchError"))
     } finally {
       setLoading(false)

@@ -151,7 +151,8 @@ export function ChatPanel({ item, onClose, onFaceSearch, onItemUpdate }: ChatPan
         try {
             const response = await chatWithImage(item.file_path, userMessage)
             setMessages((prev) => [...prev, { role: "assistant", content: response }])
-        } catch {
+        } catch (err) {
+            console.error("Chat failed:", err);
             setMessages((prev) => [
                 ...prev,
                 { role: "assistant", content: t("error") }
@@ -186,7 +187,8 @@ export function ChatPanel({ item, onClose, onFaceSearch, onItemUpdate }: ChatPan
             } else {
                 alert(t("exportFailed"))
             }
-        } catch {
+        } catch (err) {
+            console.error("Export metadata failed:", err);
             alert(t("exportError"))
         } finally {
             setIsExporting(false)

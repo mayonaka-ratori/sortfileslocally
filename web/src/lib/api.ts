@@ -61,10 +61,11 @@ const safeFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
 
         if (!response.ok) {
             const errorText = await response.text();
-            let detail = "Request failed";
+            let detail: string = "Request failed";
             try {
                 const errorData = JSON.parse(errorText);
-                detail = errorData.detail || errorData.error || errorText;
+                const rawDetail = errorData.detail || errorData.error || errorText;
+                detail = typeof rawDetail === 'string' ? rawDetail : JSON.stringify(rawDetail);
             } catch {
                 detail = errorText || `Error ${response.status}`;
             }
@@ -190,7 +191,6 @@ export const searchMedia = async (
 
 export const fetchFilters = async (): Promise<{ characters: string[]; series: string[] }> => {
     const res = await safeFetch(`${API_BASE_URL}/gallery/filters`);
-    if (!res.ok) throw new Error("Failed to fetch filters");
     return res.json();
 };
 
@@ -203,7 +203,6 @@ export const chatWithImage = async (
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ file_path, prompt }),
     });
-    if (!res.ok) throw new Error("Chat failed");
     const data = await res.json();
     return data.answer;
 };
@@ -225,7 +224,6 @@ export const startScan = async (target_path: string, force_reprocess: boolean = 
 
 export const getScanStatus = async (jobId: number): Promise<ScanStatus> => {
     const res = await safeFetch(`${API_BASE_URL}/scan/status/${jobId}`);
-    if (!res.ok) throw new Error("Failed to fetch scan status");
     return res.json();
 };
 
@@ -240,7 +238,6 @@ export interface FaceData {
 
 export const getFaces = async (fileId: number): Promise<FaceData[]> => {
     const res = await safeFetch(`${API_BASE_URL}/gallery/${fileId}/faces`);
-    if (!res.ok) throw new Error("Failed to fetch faces");
     return res.json();
 };
 
@@ -249,7 +246,6 @@ export const searchByFace = async (faceId: number, top_k: number = 50): Promise<
     const res = await safeFetch(`${API_BASE_URL}/gallery/faces/${faceId}/search?${params.toString()}`, {
         method: "POST",
     });
-    if (!res.ok) throw new Error("Face search failed");
     return res.json();
 };
 
@@ -259,7 +255,6 @@ export const nameFace = async (faceId: number, personName: string): Promise<{ su
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ person_name: personName }),
     });
-    if (!res.ok) throw new Error("Failed to name face");
     return res.json();
 };
 
@@ -269,7 +264,6 @@ export const nameFace = async (faceId: number, personName: string): Promise<{ su
 
 export const getSearchHistory = async (limit: number = 20): Promise<SearchHistoryEntry[]> => {
     const res = await safeFetch(`${API_BASE_URL}/gallery/search-history?limit=${limit}`);
-    if (!res.ok) throw new Error("Failed to fetch search history");
     return res.json();
 };
 
@@ -319,28 +313,21 @@ export interface ScanErrorInfo {
 export const resumeScan = async (jobId?: number): Promise<{ message: string; job: ScanJobInfo }> => {
     const url = jobId ? `${API_BASE_URL}/scan/resume/${jobId}` : `${API_BASE_URL}/scan/resume`;
     const res = await safeFetch(url, { method: "POST" });
-    if (!res.ok) {
-        const data = await res.json().catch(() => ({ detail: "Resume failed" }));
-        throw new Error(data.detail || "Resume failed");
-    }
     return res.json();
 };
 
 export const getLatestScanJob = async (): Promise<ScanJobInfo> => {
     const res = await safeFetch(`${API_BASE_URL}/scan/job/latest`);
-    if (!res.ok) throw new Error("No scan jobs found");
     return res.json();
 };
 
 export const getScanJobErrors = async (jobId: number): Promise<ScanErrorInfo[]> => {
     const res = await safeFetch(`${API_BASE_URL}/scan/job/${jobId}/errors`);
-    if (!res.ok) throw new Error("Failed to fetch errors");
     return res.json();
 };
 
 export const listScanJobs = async (limit: number = 20): Promise<ScanJobInfo[]> => {
     const res = await safeFetch(`${API_BASE_URL}/scan/jobs?limit=${limit}`);
-    if (!res.ok) throw new Error("Failed to list jobs");
     return res.json();
 };
 
@@ -362,7 +349,6 @@ export interface ModelStatus {
 
 export const getModelStatuses = async (): Promise<ModelStatus[]> => {
     const res = await safeFetch(`${API_BASE_URL}/setup/models`);
-    if (!res.ok) throw new Error("Failed to fetch model statuses");
     return res.json();
 };
 
@@ -372,7 +358,6 @@ export const downloadModel = async (modelKey: string): Promise<{ message: string
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ model_key: modelKey }),
     });
-    if (!res.ok) throw new Error("Failed to start download");
     return res.json();
 };
 
@@ -405,13 +390,11 @@ export interface AppSettings {
 
 export const getAppSettings = async (): Promise<AppSettings> => {
     const res = await safeFetch(`${API_BASE_URL}/setup/settings`);
-    if (!res.ok) throw new Error("Failed to fetch app settings");
     return res.json();
 };
 
 export const completeSetup = async (): Promise<{ status: string }> => {
     const res = await safeFetch(`${API_BASE_URL}/setup/complete`, { method: "POST" });
-    if (!res.ok) throw new Error("Failed to complete setup");
     return res.json();
 };
 
@@ -421,10 +404,6 @@ export const updateAppSetting = async (key: string, value: string): Promise<{ st
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ key, value }),
     });
-    if (!res.ok) {
-        const errorData = await res.json().catch(() => ({ detail: "Update failed" }));
-        throw new Error(errorData.detail || "Update failed");
-    }
     return res.json();
 };
 
@@ -468,7 +447,6 @@ export const findDuplicates = async (
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ threshold_img: thresholdImg, threshold_vid: thresholdVid }),
     });
-    if (!res.ok) throw new Error("Deduplication scan failed");
     return res.json();
 };
 
@@ -481,7 +459,6 @@ export const applyDeduplication = async (
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ file_paths: filePaths, merge_into: mergeInto }),
     });
-    if (!res.ok) throw new Error("Failed to apply deduplication");
     return res.json();
 };
 
@@ -496,7 +473,6 @@ export const reverseImageSearch = async (
         method: "POST",
         body: formData,
     });
-    if (!res.ok) throw new Error("Reverse image search failed");
     return res.json();
 };
 
@@ -520,7 +496,6 @@ export const exportMetadata = async (
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ file_ids: fileIds, mode }),
     });
-    if (!res.ok) throw new Error("Metadata export failed");
     return res.json();
 };
 
@@ -532,7 +507,6 @@ export const exportAllMetadata = async (
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mode }),
     });
-    if (!res.ok) throw new Error("Metadata export failed");
     return res.json();
 };
 
@@ -553,13 +527,11 @@ export interface Album {
 
 export const fetchAlbums = async (): Promise<Album[]> => {
     const res = await safeFetch(`${API_BASE_URL}/albums/`);
-    if (!res.ok) throw new Error("Failed to fetch albums");
     return res.json();
 };
 
 export const fetchAlbum = async (id: number): Promise<Album> => {
     const res = await safeFetch(`${API_BASE_URL}/albums/${id}`);
-    if (!res.ok) throw new Error("Failed to fetch album");
     return res.json();
 };
 
@@ -569,7 +541,6 @@ export const createAlbum = async (name: string, isDynamic: boolean = false, quer
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, is_dynamic: isDynamic, query_json: queryJson }),
     });
-    if (!res.ok) throw new Error("Failed to create album");
     return res.json();
 };
 
@@ -579,7 +550,6 @@ export const updateAlbum = async (id: number, data: { name?: string; query_json?
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error("Failed to update album");
     return res.json();
 };
 
@@ -587,13 +557,11 @@ export const deleteAlbum = async (id: number): Promise<{ success: boolean }> => 
     const res = await safeFetch(`${API_BASE_URL}/albums/${id}`, {
         method: "DELETE",
     });
-    if (!res.ok) throw new Error("Failed to delete album");
     return res.json();
 };
 
 export const fetchAlbumMedia = async (id: number): Promise<MediaItem[]> => {
     const res = await safeFetch(`${API_BASE_URL}/albums/${id}/media`);
-    if (!res.ok) throw new Error("Failed to fetch album media");
     return res.json();
 };
 
@@ -603,7 +571,6 @@ export const addItemsToAlbum = async (id: number, fileIds: number[]): Promise<{ 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ file_ids: fileIds }),
     });
-    if (!res.ok) throw new Error("Failed to add items to album");
     return res.json();
 };
 
@@ -613,7 +580,6 @@ export const removeItemsFromAlbum = async (id: number, fileIds: number[]): Promi
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ file_ids: fileIds }),
     });
-    if (!res.ok) throw new Error("Failed to remove items from album");
     return res.json();
 };
 
@@ -623,7 +589,6 @@ export const removeItemsFromAlbum = async (id: number, fileIds: number[]): Promi
 
 export const browseFolder = async (): Promise<{ path: string | null; cancelled: boolean }> => {
     const res = await safeFetch(`${API_BASE_URL}/utils/browse-folder`);
-    if (!res.ok) throw new Error("Failed to open folder dialog");
     return res.json();
 };
 
@@ -644,7 +609,6 @@ export const addTags = async (fileId: number, tags: string[], category: TagCateg
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tags, category }),
     });
-    if (!res.ok) throw new Error("Failed to add tags");
     return res.json();
 };
 
@@ -654,7 +618,6 @@ export const removeTags = async (fileId: number, tags: string[], category: TagCa
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tags, category }),
     });
-    if (!res.ok) throw new Error("Failed to remove tags");
     return res.json();
 };
 
@@ -662,7 +625,6 @@ export const suggestTags = async (query: string, category?: TagCategory, limit: 
     const params = new URLSearchParams({ q: query, limit: limit.toString() });
     if (category) params.append("category", category);
     const res = await safeFetch(`${API_BASE_URL}/gallery/tags/suggest?${params.toString()}`);
-    if (!res.ok) throw new Error("Failed to fetch tag suggestions");
     return res.json();
 };
 
@@ -684,10 +646,6 @@ export const bulkUpdateTags = async (
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ file_ids: fileIds, action, tags, category }),
     });
-    if (!res.ok) {
-        const errorData = await res.json().catch(() => ({ detail: "Bulk update failed" }));
-        throw new Error(errorData.detail || "Bulk update failed");
-    }
     return res.json();
 };
 
@@ -715,14 +673,12 @@ export interface UntaggedFilesResponse {
 
 export const getTagStats = async (): Promise<TagStats> => {
     const res = await safeFetch(`${API_BASE_URL}/gallery/tags/stats`);
-    if (!res.ok) throw new Error("Failed to fetch tag stats");
     return res.json();
 };
 
 export const getUntaggedFiles = async (page: number = 1, perPage: number = 50): Promise<UntaggedFilesResponse> => {
     const params = new URLSearchParams({ page: page.toString(), per_page: perPage.toString() });
     const res = await safeFetch(`${API_BASE_URL}/gallery/untagged?${params.toString()}`);
-    if (!res.ok) throw new Error("Failed to fetch untagged files");
     return res.json();
 };
 
@@ -732,7 +688,6 @@ export const renameTag = async (oldTag: string, newTag: string, category: TagCat
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ old_tag: oldTag, new_tag: newTag, category }),
     });
-    if (!res.ok) throw new Error("Failed to rename tag");
     return res.json();
 };
 
@@ -748,7 +703,6 @@ export const rescanFile = async (fileId: number, mode: RescanMode = "append"): P
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mode }),
     });
-    if (!res.ok) throw new Error("Failed to trigger rescan");
     return res.json();
 };
 
@@ -758,10 +712,6 @@ export const bulkRescan = async (fileIds: number[], mode: RescanMode = "append")
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ file_ids: fileIds, mode }),
     });
-    if (!res.ok) {
-        const errorData = await res.json().catch(() => ({ detail: "Bulk rescan failed" }));
-        throw new Error(errorData.detail || "Bulk rescan failed");
-    }
     return res.json();
 };
 // ------------------------------------------------------------------ #
@@ -787,7 +737,6 @@ export interface InsightsResponse {
 
 export const getInsights = async (): Promise<InsightsResponse> => {
     const res = await safeFetch(`${API_BASE_URL}/insights`);
-    if (!res.ok) throw new Error("Failed to fetch insights");
     return res.json();
 };
 
@@ -801,13 +750,11 @@ export const detectScenes = async (fileId: number, force: boolean = false): Prom
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ force }),
     });
-    if (!res.ok) throw new Error("Failed to start scene detection");
     return res.json();
 };
 
 export const getScenes = async (fileId: number): Promise<Scene[]> => {
     const res = await safeFetch(`${API_BASE_URL}/media/${fileId}/scenes`);
-    if (!res.ok) throw new Error("Failed to fetch scenes");
     return res.json();
 };
 
@@ -832,19 +779,16 @@ export const searchScenes = async (query: string, topK: number = 20): Promise<Sc
 
 export const startDemo = async (): Promise<{ message: string; job: ScanJobInfo }> => {
     const res = await safeFetch(`${API_BASE_URL}/demo/start`, { method: "POST" });
-    if (!res.ok) throw new Error("Failed to start demo");
     return res.json();
 };
 
 export const resetDemo = async (): Promise<{ status: string }> => {
     const res = await safeFetch(`${API_BASE_URL}/demo/reset`, { method: "POST" });
-    if (!res.ok) throw new Error("Failed to reset demo");
     return res.json();
 };
 
 export const getDemoStatus = async (): Promise<{ demo_mode: boolean }> => {
     const res = await safeFetch(`${API_BASE_URL}/demo/status`);
-    if (!res.ok) throw new Error("Failed to fetch demo status");
     return res.json();
 };
 
@@ -876,13 +820,11 @@ export interface PrivacyStorage {
 
 export const runPrivacyAudit = async (): Promise<PrivacyAuditResult> => {
     const res = await safeFetch(`${API_BASE_URL}/privacy/audit`);
-    if (!res.ok) throw new Error("Privacy audit failed");
     return res.json();
 };
 
 export const getPrivacyStorage = async (): Promise<PrivacyStorage> => {
     const res = await safeFetch(`${API_BASE_URL}/privacy/storage`);
-    if (!res.ok) throw new Error("Failed to fetch storage locations");
     return res.json();
 };
 
