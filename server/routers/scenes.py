@@ -52,13 +52,16 @@ async def detect_scenes(
     if media_type != "video":
         raise HTTPException(status_code=422, detail="Only videos support scene detection")
 
-    # Check max duration from settings
+    # Check max duration
     if not req.force:
-        max_duration = 7200
+        max_duration = 7200 # Default
         try:
             m_val = db.get_setting("max_video_duration")
-            if m_val: max_duration = int(m_val)
-        except: pass
+            if m_val:
+                max_duration = int(m_val)
+        except Exception as e:
+            from src.data.db_manager import logger
+            logger.warning(f"Failed to fetch max_video_duration setting: {e}")
         
         if duration and duration > max_duration:
             raise HTTPException(status_code=422, detail=f"Video exceeds maximum duration ({duration}s > {max_duration}s). Use force=true to override.")
@@ -102,11 +105,14 @@ async def delete_scenes(file_id: int, db: DBManager = Depends(get_db_manager)):
                 from src.data.db_manager import logger
                 logger.error(f"FAISS index inconsistency: SQLite updated but FAISS operation failed for scene removal on file {file_id}: {fe}")
 
-        # 3. Disk Cleanup (Thumbnails)
+        # 3. Filesystem Cleanup
         for tp in thumbnails:
             if os.path.exists(tp):
-                try: os.remove(tp)
-                except: pass
+                try: 
+                    os.remove(tp)
+                except Exception as e:
+                    from src.data.db_manager import logger
+                    logger.error(f"Failed to remove thumbnail {tp}: {e}")
                 
         return {"status": "deleted", "count": len(thumbnails)}
     except Exception as e:

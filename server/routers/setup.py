@@ -190,3 +190,14 @@ def update_setting(req: SettingItem):
         db.set_setting(req.key, req.value)
 
     return {"status": "success", "key": req.key, "value": req.value, "requires_restart": False}
+
+@router.post("/backup")
+def create_backup():
+    """Trigger a manual database backup."""
+    from server.dependencies import get_db_manager
+    db = get_db_manager()
+    try:
+        path = db.create_backup()
+        return {"status": "success", "backup_path": path}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

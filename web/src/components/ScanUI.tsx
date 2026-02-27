@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { ScanSummary } from "@/components/ScanSummary";
+import { toast } from "sonner";
 
 // ScanUI now optionally accepts an initial path (e.g. from Setup Wizard)
 // and an onComplete callback for the Setup Wizard integration.
@@ -49,7 +50,9 @@ export function ScanUI({ initialPath, onComplete }: ScanUIProps) {
                     }
                 }
             })
-            .catch(() => { });
+            .catch((err) => {
+                console.error("Failed to fetch latest scan job", err);
+            });
     }, []);
 
     // Poll scan status
@@ -80,7 +83,10 @@ export function ScanUI({ initialPath, onComplete }: ScanUIProps) {
                             setCompletedJob(fullJob);
                             onComplete?.(fullJob);
                         }
-                    } catch { }
+                    } catch (err) {
+                        console.error("Failed to fetch completed job detail", err);
+                        toast.error(commonT("actionFailed"));
+                    }
                     timer = setTimeout(fetchStatus, 8000);
                 } else {
                     timer = setTimeout(fetchStatus, 1000);
@@ -93,7 +99,7 @@ export function ScanUI({ initialPath, onComplete }: ScanUIProps) {
 
         fetchStatus();
         return () => clearTimeout(timer);
-    }, [jobId, onComplete]);
+    }, [jobId, onComplete, commonT]);
 
     const handleStart = async () => {
         if (!path.trim()) return;

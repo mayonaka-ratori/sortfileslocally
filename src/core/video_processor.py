@@ -8,9 +8,9 @@ from typing import List, Dict, Any, Union, Tuple
 import tempfile
 import subprocess
 import logging
-from scenedetect import detect, ContentDetector
-from .ai_models import AIEngine
 from .vlm_engine import VLMEngine
+
+logger = logging.getLogger(__name__)
 
 class VideoProcessor:
     def __init__(self):
@@ -86,7 +86,7 @@ class VideoProcessor:
                     'duration': frame_count / fps if fps > 0 else 0
                 }
             except Exception as e:
-                print(f"Parallel Load Error {path}: {e}")
+                logger.error(f"Parallel Load Error for {path}: {e}")
                 return i, None
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -107,8 +107,7 @@ class VideoProcessor:
             # scene_list is a list of (start_time, end_time) as FrameTimecode objects
             return [(s[0].get_seconds(), s[1].get_seconds()) for s in scene_list]
         except Exception as e:
-            # logging.error(f"Scene detection failed for {video_path}: {e}")
-            print(f"Scene detection failed for {video_path}: {e}")
+            logger.error(f"Scene detection failed for {video_path}: {e}")
             return []
 
     def process_video(self, video_path: str, skip_face: bool = False, skip_whisper: bool = False, scene_threshold: float = 27.0) -> Dict[str, Any]:
@@ -121,7 +120,7 @@ class VideoProcessor:
         try:
             vr = VideoReader(video_path, ctx=self.ctx)
         except Exception as e:
-            print(f"Failed to open video {video_path}: {e}")
+            logger.error(f"Failed to open video {video_path} with decord: {e}")
             return None
 
         # Metadata
@@ -146,7 +145,7 @@ class VideoProcessor:
                 if os.path.exists(tmp_audio_path):
                     os.remove(tmp_audio_path)
             except Exception as e:
-                print(f"Failed to process audio for {video_path}: {e}")
+                logger.error(f"Failed to process audio for {video_path}: {e}")
                 if 'tmp_audio_path' in locals() and os.path.exists(tmp_audio_path):
                     os.remove(tmp_audio_path)
         
@@ -191,7 +190,7 @@ class VideoProcessor:
                         'text': action_text
                     })
             except Exception as e:
-                print(f"VLM prediction failed for frame: {e}")
+                logger.error(f"VLM prediction failed for frame from {video_path}: {e}")
 
         # Average CLIP embeddings
         if clip_embeddings:
@@ -230,7 +229,7 @@ class VideoProcessor:
                              self._vlm_engine = _VLMEngine()
                          scene_caption = self._vlm_engine.generate_detailed_caption(pil_scene) or ""
                      except Exception as ve:
-                         print(f"Scene captioning failed: {ve}")
+                         logger.error(f"Scene captioning failed: {ve}")
 
                      scenes_data.append({
                          'start_time': start_s,
@@ -253,7 +252,7 @@ class VideoProcessor:
                  import gc
                  gc.collect()
         except Exception as se:
-            print(f"Scene analysis failed for {video_path}: {se}")
+            logger.error(f"Scene analysis/segmentation failed for {video_path}: {se}")
 
         return {
             'file_path': video_path,

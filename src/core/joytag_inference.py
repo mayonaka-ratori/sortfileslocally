@@ -118,7 +118,8 @@ class JoyTagONNX:
             batch_preds = self.session.run(None, {self.input_name: batch_blob})[0]
             batch_preds = 1 / (1 + np.exp(-batch_preds))
             return [self._classify_tags(preds, threshold) for preds in batch_preds]
-        except Exception:
+        except Exception as e:
+            logging.error(f"JoyTag batch processing error: {e}")
             # Fallback to sequential if batching fails or model fixed batch size
             results = []
             for blob in blobs:

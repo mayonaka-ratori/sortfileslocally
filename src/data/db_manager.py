@@ -28,6 +28,7 @@ class DBManager:
         self._init_sqlite()
         self._migrate_schema()
         self._init_faiss()
+        self.verify_index_integrity()
 
     def _connect(self):
         conn = sqlite3.connect(self.sqlite_path, timeout=30)
@@ -175,12 +176,14 @@ class DBManager:
         ]:
             try:
                 c.execute(f"ALTER TABLE video_scenes ADD COLUMN {col} {definition}")
-            except Exception:
+            except Exception as e:
+                logger.debug(f"Column migration for video_scenes skipped or failed: {e}")
                 pass # Column already exists
         
         try:
             c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_scene_file_index ON video_scenes(file_id, scene_index)")
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Index migration for video_scenes skipped or failed: {e}")
             pass
         
         # Vector Mapping Table
@@ -219,8 +222,16 @@ class DBManager:
                 if not c.fetchone():
                     import time
                     c.execute("INSERT INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)", (key, default, time.time()))
-            except Exception:
+            except Exception as e:
+                logger.debug(f"Default setting insert failed for {key}: {e}")
                 pass
+
+        # Create indexes for performance
+        c.execute("CREATE INDEX IF NOT EXISTS idx_files_tags ON files(tags)")
+        c.execute("CREATE INDEX IF NOT EXISTS idx_files_media_type ON files(media_type)")
+        c.execute("CREATE INDEX IF NOT EXISTS idx_files_favorite ON files(rating)")
+        c.execute("CREATE INDEX IF NOT EXISTS idx_files_modified ON files(modified_at)")
+        c.execute("CREATE INDEX IF NOT EXISTS idx_video_scenes_file_id ON video_scenes(file_id)")
 
         conn.commit()
         conn.close()
@@ -398,6 +409,65 @@ class DBManager:
             faiss.write_index(self.clip_index, self.faiss_path)
             faiss.write_index(self.face_index, self.face_faiss_path)
 
+    def verify_index_integrity(self):
+        """Check FAISS index count matches SQLite vector_mapping count on startup."""
+        try:
+            conn = self._connect()
+            c = conn.cursor()
+            c.execute("SELECT COUNT(*) FROM vector_mapping")
+            sqlite_count = c.fetchone()[0]
+            conn.close()
+            
+            faiss_count = 0
+            if self.clip_index:
+                try:
+                    faiss_count = self.clip_index.ntotal
+                except Exception as e:
+                    logger.error(f"Failed to get FAISS ntotal: {e}")
+                    faiss_count = 0
+
+            if sqlite_count != faiss_count:
+                logger.warning(f"Index mismatch detected: SQLite mapping={sqlite_count}, FAISS index={faiss_count}. Sync required.")
+            else:
+                logger.info(f"Index integrity OK: {sqlite_count} vectors mapped")
+        except Exception as e:
+            logger.error(f"Index integrity check failed: {e}")
+
+
+    def create_backup(self):
+        """Create a backup of the SQLite database."""
+        from datetime import datetime
+        backup_dir = os.path.join(self.db_dir, 'backups')
+        os.makedirs(backup_dir, exist_ok=True)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        
+        db_path = self.sqlite_path
+        backup_path = os.path.join(backup_dir, f'localcurator_{timestamp}.db')
+        
+        try:
+            # Use SQLite backup API for hot backup
+            src = sqlite3.connect(db_path)
+            dst = sqlite3.connect(backup_path)
+            with dst:
+                src.backup(dst)
+            dst.close()
+            src.close()
+            
+            # Keep only last 5 backups
+            backups = sorted([f for f in os.listdir(backup_dir) if f.endswith('.db')])
+            while len(backups) > 5:
+                old_backup = backups.pop(0)
+                try:
+                    os.remove(os.path.join(backup_dir, old_backup))
+                except Exception as e:
+                    logger.error(f"Failed to remove old backup {old_backup}: {e}")
+            
+            logger.info(f"Database backed up to {backup_path}")
+            return backup_path
+        except Exception as e:
+            logger.error(f"Backup failed: {e}")
+            raise e
+
     def is_file_processed(self, file_path: str, file_hash: str) -> bool:
         """Check if file exists and hash matches."""
         conn = self._connect()
@@ -574,7 +644,7 @@ class DBManager:
             conn.commit()
             
         except Exception as e:
-            print(f"DB Error: {e}")
+            logger.error(f"DB Error in add_result for file {file_id}: {e}")
             conn.rollback()
             raise e
         finally:
@@ -986,7 +1056,9 @@ class DBManager:
             def safe_parse(val):
                 if not val: return []
                 try: return json.loads(val)
-                except: return []
+                except Exception as e:
+                    logger.warning(f"JSON parse failure for tags in remove_tags: {e}")
+                    return []
                 
             # Merge JSON arrays
             new_tags = list(set(safe_parse(src['tags']) + safe_parse(tgt['tags'])))
@@ -1090,7 +1162,9 @@ class DBManager:
             def safe_parse(val):
                 if not val: return []
                 try: return json.loads(val)
-                except: return []
+                except Exception as e:
+                    logger.warning(f"JSON parse failure for tags in add_tags: {e}")
+                    return []
             
             current_tags = safe_parse(row[0])
             # Case-insensitive deduplication while preserving original case if already present
@@ -1128,7 +1202,9 @@ class DBManager:
             def safe_parse(val):
                 if not val: return []
                 try: return json.loads(val)
-                except: return []
+                except Exception as e:
+                    logger.warning(f"JSON parse failure for tags in remove_tags: {e}")
+                    return []
                 
             current_tags = safe_parse(row[0])
             to_remove = set(t.lower() for t in tags)
@@ -1156,8 +1232,11 @@ class DBManager:
         
         def safe_parse(val):
             if not val: return []
-            try: return json.loads(val)
-            except: return []
+            try:
+                return json.loads(val)
+            except Exception as e:
+                logger.warning(f"JSON parse failure for tags in bulk_update_tags: {e}")
+                return []
 
         try:
             # We use a single transaction for efficiency

@@ -5,33 +5,9 @@ Local Curator Primeをさらに洗練されたプロフェッショナルなツ�
 
 ---
 
-## 🌐 5. 公開・配布の成熟 (Distribution & Public Release)
+### 🌐 5. 公開・配布の成熟 (Distribution & Public Release)
 
-同じニーズ（プライバシーを守りながらAIでメディア管理）を持つユーザーに届けるための準備です。
-
-### 5.1 デスクトップアプリ化 (Native Desktop Packaging)
-- **Tauri + PyInstaller** でバックエンド同梱 of 単一実行ファイル化。
-- Windows `.msi`、Mac `.dmg`、Linux `.AppImage` で配布。
-- Python・Node.jsの事前インストール不要に。
-- GPUドライバの検出・案内をウィザードに統合。
-
-### 5.2 初回体験の磨き込み (First-Run Experience Polish)
-- デモモード: サンプル画像10枚で検索体験を試せる導入。
-- スキャン中の具体的な残り時間表示（「150/3000枚 — 残り約12分」）。
-- 初回スキャン完了後の誘導（「まずは検索してみましょう」）。
-
-### 5.3 多言語対応 (Internationalization)
-- next-intl による日英切り替え対応。
-- UI全体のi18nキー化。
-
-### 5.4 プライバシー透明性 (Privacy Transparency)
-- 「完全ローカル」「データ送信なし」「アカウント不要」を明示するUI。
-- 起動時のネットワーク通信ログを出力し、ユーザーが検証可能に。
-- README・ランディングページでプライバシーを前面に。
-
-### 5.5 自動アップデート機能 (Auto-Update)
-- Tauri の組み込みアップデーターを利用。
-- ユーザーに通知 → ワンクリックでアップデート適用。
+配布に向けた残りのタスクです。
 
 ### 5.6 テスト基盤強化 (Test Infrastructure)
 - E2Eテスト（Playwright）の導入。
@@ -43,6 +19,29 @@ Local Curator Primeをさらに洗練されたプロフェッショナルなツ�
 ## ✅ 完了済みセクション (Completed)
 
 以下のセクションは実装・テスト・レビュー・ドキュメント更新がすべて完了しています。
+
+### 📦 5. 公開・配布の準備 (Distribution Preparation)
+
+#### [✅] 5.1 デスクトップアプリ化 (Native Desktop Packaging)
+- Tauri v2 + PyInstaller 統合。Next.js静的書き出し対応。
+- バックエンドサイドカー同期起動、ポート自動発見機能。
+- `scripts/build_desktop.py` による自動ビルドライン。
+
+#### [✅] 5.2 多言語対応 (Internationalization)
+- next-intl による日英完全対応。
+- UI/UX全域のキー抽出、`en.json` / `ja.json` の同期。
+
+#### [✅] 5.3 プライバシー透明性 (Privacy Transparency)
+- メインUIおよび設定画面でのローカル動作明示。
+- 起動時ネットワーク通信の監視とユーザー検証ログの実装。
+
+#### [✅] 5.4 自動アップデート機能 (Auto-Update)
+- Tauri Updater プラグイン統合。GitHub Releases連動。
+- フロントエンド通知バナーおよび設定画面での更新UI。
+
+#### [✅] 5.5 テスト基盤強化 (Test Infrastructure - Backend)
+- pytest-cov によるカバレッジ計測（90%目標）。
+- GitHub Actions によるCI自動実行基盤。
 
 ### 🏷 4. タグ管理・検索体験の深化 (Tag Management & Search Experience)
 

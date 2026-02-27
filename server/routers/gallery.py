@@ -19,7 +19,8 @@ def safe_parse_json(x):
     if not x: return []
     try:
         return json.loads(x)
-    except Exception:
+    except Exception as e:
+        logger.warning(f"JSON parse failure in gallery router: {e}")
         return []
 
 class MediaItemResponse(BaseModel):
@@ -266,13 +267,15 @@ def get_filters(db: DBManager = Depends(get_db_manager)):
         try:
             c.execute("SELECT DISTINCT value FROM files, json_each(character_tags) WHERE is_processed=1 AND character_tags IS NOT NULL")
             all_chars = [row[0] for row in c.fetchall() if row[0]]
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Character tag retrieval failed: {e}")
             all_chars = []
             
         try:
             c.execute("SELECT DISTINCT value FROM files, json_each(series_tags) WHERE is_processed=1 AND series_tags IS NOT NULL")
             all_series = [row[0] for row in c.fetchall() if row[0]]
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Series tag retrieval failed: {e}")
             all_series = []
                 
         return {
@@ -305,7 +308,8 @@ def chat_with_gallery(
         try:
             # Try opening as image first
             img = Image.open(request.file_path).convert("RGB")
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Media file {request.file_path} is not a common image format, trying video: {e}")
             # If it fails, assume it's a video and grab a frame
             try:
                 import decord
@@ -352,7 +356,8 @@ def get_file_faces(id: int, db: DBManager = Depends(get_db_manager)):
     for f in faces:
         try:
             bbox = json.loads(f['bbox']) if f['bbox'] else []
-        except:
+        except Exception as e:
+            logger.warning(f"Failed to parse face bbox for face {f['id']}: {e}")
             bbox = []
         results.append(FaceResponse(
             id=f['id'],

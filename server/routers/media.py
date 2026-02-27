@@ -156,7 +156,9 @@ def _safe_parse(val) -> list:
         return []
     try:
         return json.loads(val)
-    except Exception:
+    except Exception as e:
+        from src.data.db_manager import logger
+        logger.warning(f"JSON parse failure for tags in media router: {e}")
         return []
 
 
@@ -362,7 +364,9 @@ def _rescan_file_worker(file_id: int, mode: str, db: DBManager, processor: Proce
             if old:
                 def safe_parse(v):
                     try: return json.loads(v) if v else []
-                    except: return []
+                    except Exception as e: 
+                        logger.warning(f"JSON parse failure for tags in rescan worker: {e}")
+                        return []
                 
                 # Merge using DBManager helper
                 result.media_item.tags = db._deduplicate_tags_ci(safe_parse(old['tags']) + result.media_item.tags)
@@ -417,7 +421,10 @@ def _bulk_rescan_worker(file_ids: List[int], mode: str, db: DBManager, processor
     try:
         def safe_parse(v):
             try: return json.loads(v) if v else []
-            except: return []
+            except Exception as e: 
+                from src.data.db_manager import logger
+                logger.warning(f"JSON parse failure for tags in bulk rescan worker for file {fid}: {e}")
+                return []
 
         for i, fid in enumerate(file_ids):
             try:

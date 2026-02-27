@@ -20,7 +20,8 @@ class SemanticEngine:
             models = self.client.list()
             # Optionally check if model_name is in models
             return True
-        except Exception:
+        except Exception as e:
+            print(f"Ollama ping failed: {e}")
             return False
 
     def parse_and_execute(self, prompt: str, dest_root: str, operation: str, db_manager: DBManager, sorter: PhysicalSorter, logger: SortLog) -> Dict[str, Any]:

@@ -58,14 +58,31 @@ const safeFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
     try {
         const response = await fetch(input, init);
         logRequest(response.status);
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            let detail = "Request failed";
+            try {
+                const errorData = JSON.parse(errorText);
+                detail = errorData.detail || errorData.error || errorText;
+            } catch {
+                detail = errorText || `Error ${response.status}`;
+            }
+            // We throw a structured object that callers can catch
+            throw { status: response.status, detail };
+        }
+
         return response;
-    } catch (error) {
+    } catch (error: unknown) {
+        const err = error as { status?: number; detail?: string; message?: string };
+        if (err.status) throw err; // Already structured
+
         logRequest(500);
         if (typeof navigator !== 'undefined' && !navigator.onLine) {
             console.warn('Request failed while offline:', url);
-            throw new Error('You are offline. This request will retry when connection is restored.');
+            throw { status: 503, detail: 'You are offline. This request will retry when connection is restored.' };
         }
-        throw error;
+        throw { status: 500, detail: err.message || String(error) };
     }
 };
 
@@ -155,7 +172,6 @@ export const fetchMedia = async (
     if (options.media_type) params.append("media_type", options.media_type);
 
     const res = await safeFetch(`${API_BASE_URL}/gallery/?${params.toString()}`);
-    if (!res.ok) throw new Error("Failed to fetch media");
     return res.json();
 };
 
@@ -169,7 +185,6 @@ export const searchMedia = async (
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query, filters, top_k }),
     });
-    if (!res.ok) throw new Error("Search failed");
     return res.json();
 };
 
@@ -205,7 +220,6 @@ export const startScan = async (target_path: string, force_reprocess: boolean = 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ target_path, force_reprocess })
     });
-    if (!res.ok) throw new Error("Failed to start scan");
     return res.json();
 };
 

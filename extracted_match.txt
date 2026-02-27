@@ -1,0 +1,2 @@
+                     except Exception as ve:
+                         print(f"Scene captioning failed: {ve}")

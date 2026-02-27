@@ -35,5 +35,6 @@ class ImageProcessor:
         try:
             with Image.open(path) as img:
                 return img.size
-        except:
+        except Exception as e:
+            logger.error(f"Failed to get image dimensions for {path}: {e}")
             return (0, 0)

@@ -184,19 +184,17 @@ class Processor:
                 # Use VideoProcessor
                 # It returns dictionary
                 
-                # S5: Get scene threshold from settings
-                threshold = 27.0
                 try:
                     t_val = self.db_manager.get_setting("scene_threshold")
                     if t_val: threshold = float(t_val)
-                except: pass
+                except Exception as e:
+                    logger.warning(f"Failed to fetch scene_threshold: {e}")
 
-                # S5: Get auto-scene detection flag
-                auto_scene = False
                 try:
                     a_val = self.db_manager.get_setting("auto_scene_detection")
                     if a_val: auto_scene = (a_val.lower() == "true")
-                except: pass
+                except Exception as e:
+                    logger.warning(f"Failed to fetch auto_scene_detection: {e}")
 
                 res = self.video_processor.process_video(
                     item.file_path, 
@@ -250,7 +248,7 @@ class Processor:
                     item.character_tags = res_img['char_tags']
                     item.series_tags = res_img['series_tags']
                 except Exception as e:
-                    print(f"Failed character tagging for video {item.file_path}: {e}")
+                    logger.warning(f"Failed character tagging for video {item.file_path}: {e}")
 
                 # Map scenes to VideoSceneData
                 scenes_data = []
@@ -305,12 +303,11 @@ class Processor:
             # Re-inspect to get MediaItem
             item = self.scanner.inspect_file(file_path)
             
-            # Get threshold from settings
-            threshold = 27.0
             try:
                 t_val = self.db_manager.get_setting("scene_threshold")
                 if t_val: threshold = float(t_val)
-            except: pass
+            except Exception as e:
+                logger.warning(f"Failed to fetch scene_threshold for re-detection: {e}")
 
             res = self.video_processor.process_video(file_path, skip_face=True, skip_whisper=True, scene_threshold=threshold)
             if not res:
@@ -605,7 +602,7 @@ class Processor:
                                         ts = res['indices'][f_idx] / res['fps'] if res['fps'] > 0 else 0
                                         frame_descriptions.append({'timestamp': ts, 'text': action_text})
                             except Exception as e:
-                                print(f"Batch VLM Error: {e}")
+                                logger.error(f"Batch VLM Error during frame description for {item.file_path}: {e}")
                         item.frame_descriptions = frame_descriptions
                         
                         if item.frame_descriptions:

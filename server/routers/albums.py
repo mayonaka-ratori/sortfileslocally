@@ -49,7 +49,8 @@ def create_album(request: AlbumCreateRequest, db: DBManager = Depends(get_db_man
         try:
             data = json.loads(request.query_json)
             HybridSearchRequest(**data)
-        except Exception:
+        except Exception as e:
+            logger.error(f"Invalid query JSON in album create: {e}")
             raise HTTPException(status_code=422, detail="Invalid query format for dynamic album")
     return db.create_album(request.name, request.is_dynamic, request.query_json)
 
@@ -75,7 +76,8 @@ def update_album(id: int, request: AlbumUpdateRequest, db: DBManager = Depends(g
         try:
             data = json.loads(request.query_json)
             HybridSearchRequest(**data)
-        except Exception:
+        except Exception as e:
+            logger.error(f"Invalid query JSON in album update: {e}")
             raise HTTPException(status_code=422, detail="Invalid query format for dynamic album")
 
     db.update_album(id, name=request.name, query_json=request.query_json, cover_file_id=request.cover_file_id)

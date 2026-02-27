@@ -11,6 +11,9 @@ import threading
 from dataclasses import dataclass
 from typing import List, Optional, Dict, Any
 from pathlib import Path
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -59,8 +62,9 @@ class ModelInfo:
             result = try_to_load_from_cache(self.repo_id, filename)
             if result is not None and isinstance(result, str):
                 return result
-        except Exception:
-            pass
+        except Exception as e:
+            # We don't want to spam logs here as this is a frequent check, but at least debug log it
+            logger.debug(f"HF cache check failed for {self.repo_id} / {filename}: {e}")
 
         # Fallback: check direct path (for models downloaded with local_dir=)
         direct = os.path.join(self.local_dir, filename)
@@ -314,5 +318,5 @@ class ModelManager:
             return True
 
         except ImportError:
-            print("huggingface_hub not installed — cannot download models.")
+            logger.error("huggingface_hub not installed — cannot download models.")
             return False

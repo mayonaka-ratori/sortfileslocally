@@ -1,7 +1,10 @@
 import torch
 from transformers import AutoProcessor, AutoModelForCausalLM
+import logging
 from PIL import Image
 import threading
+
+logger = logging.getLogger(__name__)
 
 class VLMEngine:
     _instance = None
@@ -20,7 +23,7 @@ class VLMEngine:
                 return
 
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
-            print(f"VLMEngine initializing on device: {self.device}")
+            logger.info(f"VLMEngine initializing on device: {self.device}")
             
             self.model_id = "microsoft/Florence-2-base"
             
@@ -39,10 +42,10 @@ class VLMEngine:
         db = get_db_manager()
         profile = db.get_setting("execution_profile", "balanced")
         if profile == "lightweight":
-            print("Skipping VLM load (lightweight profile)")
+            logger.info("Skipping VLM load (lightweight profile)")
             return
 
-        print(f"Loading VLM model ({self.model_id})...")
+        logger.info(f"Loading VLM model ({self.model_id})...")
         try:
             self.model = AutoModelForCausalLM.from_pretrained(
                 self.model_id, 
@@ -55,10 +58,10 @@ class VLMEngine:
             print("VLM model loaded successfully.")
         except Exception as e:
             self._load_failures += 1
-            print(f"Failed to load VLM model (attempt {self._load_failures}/3): {e}")
+            logger.error(f"Failed to load VLM model (attempt {self._load_failures}/3): {e}")
             self._loaded = False
             if self._load_failures >= 3:
-                 print("Max VLM load failures reached. Skipping subsequent attempts.")
+                 logger.error("Max VLM load failures reached. Skipping subsequent attempts.")
             raise e
 
     def _run_inference(self, image: Image.Image, task_prompt: str, input_text: str = None, max_new_tokens: int = 256) -> str:
@@ -66,8 +69,8 @@ class VLMEngine:
             if not self._loaded:
                 try:
                     self._load_model_unlocked()
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.error(f"Implicit model load failed in inference: {e}")
                 
             if not self._loaded or self.model is None:
                 return None
@@ -100,7 +103,7 @@ class VLMEngine:
                 )
                 return str(parsed_answer.get(task_prompt, "No answer"))
             except Exception as e:
-                 print(f"Error during VLM inference: {e}")
+                 logger.error(f"Error during VLM inference: {e}")
                  return None
 
     def ask_image(self, image: Image.Image, prompt: str) -> str:

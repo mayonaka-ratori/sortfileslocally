@@ -305,7 +305,9 @@ export default function Home() {
                               const video = document.querySelector('video')
                               if (video) {
                                 video.currentTime = startTime
-                                video.play().catch(() => { })
+                                video.play().catch((err) => {
+                                  console.warn("Auto-play failed on scene selection", err);
+                                })
                               }
                             }, 500)
                           }}

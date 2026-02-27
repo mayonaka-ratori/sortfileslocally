@@ -197,7 +197,9 @@ export function ChatPanel({ item, onClose, onFaceSearch, onItemUpdate }: ChatPan
         const video = document.querySelector('video')
         if (video) {
             video.currentTime = time
-            video.play().catch(() => { })
+            video.play().catch((err) => {
+                console.warn("Auto-play failed after seek", err);
+            })
         }
     }
 
