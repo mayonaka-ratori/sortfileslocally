@@ -131,6 +131,7 @@ export function TagInput({
                         }}
                         className="bg-zinc-950 border border-indigo-500 rounded-full px-3 py-1 text-xs text-white outline-none w-32 focus:w-48 transition-all"
                         placeholder={placeholder}
+                        aria-label={t('addTag')}
                     />
                     {/* Suggestions Dropdown */}
                     {(suggestions.length > 0 || isLoadingSuggestions) && (

@@ -113,6 +113,7 @@ export function CleanerUI() {
                         onClick={handleScan}
                         disabled={isScanning || isApplying}
                         className="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-sm font-medium px-4 py-2 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50 border border-zinc-700 shrink-0"
+                        aria-label={t('scanButton')}
                     >
                         {isScanning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                         {isScanning ? t('scanning') : t('scanButton')}
@@ -153,8 +154,8 @@ export function CleanerUI() {
                         </div>
 
                         <div className="max-h-[500px] overflow-y-auto p-4 flex flex-col gap-6">
-                            {candidates.map((pair, idx) => (
-                                <div key={idx} className="flex flex-col gap-3 bg-zinc-900/50 p-4 rounded-lg border border-zinc-800/50">
+                            {candidates.map((pair) => (
+                                <div key={`${pair.file_a.file_path}-${pair.file_b.file_path}`} className="flex flex-col gap-3 bg-zinc-900/50 p-4 rounded-lg border border-zinc-800/50">
                                     <div className="flex justify-between items-center text-xs text-zinc-500">
                                         <span>{t('similarity')}: {(pair.similarity * 100).toFixed(1)}%</span>
                                         <span className="text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded font-mono">{t('reason')}: {pair.reason}</span>
@@ -219,4 +220,3 @@ export function CleanerUI() {
         </div>
     );
 }
-

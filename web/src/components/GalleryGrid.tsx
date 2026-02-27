@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from "react"
 
 import { MediaItem, getThumbnailUrl, getOriginalUrl } from "@/lib/api"
-import { Search, Loader2, Menu, PlayCircle, FileText, CheckCircle2, Download, X } from "lucide-react"
+import { Search, Loader2, Menu, PlayCircle, FileText, CheckCircle2, Download, X, AlertCircle } from "lucide-react"
 import { useInView } from "react-intersection-observer"
 import Image from "next/image"
 import { BulkExportModal } from "./BulkExportModal"
@@ -144,6 +144,8 @@ interface GalleryGridProps {
     focusedIndex?: number
     selectedIds?: Set<number>
     onSelectionChange?: (ids: Set<number>) => void
+    error?: string
+    onRetry?: () => void
 }
 
 export function GalleryGrid({
@@ -156,7 +158,9 @@ export function GalleryGrid({
     onImageDrop,
     focusedIndex = -1,
     selectedIds: externalSelectedIds,
-    onSelectionChange
+    onSelectionChange,
+    error,
+    onRetry
 }: GalleryGridProps) {
     const t = useTranslations("gallery");
     const commonT = useTranslations("common");
@@ -249,7 +253,11 @@ export function GalleryGrid({
             {/* Search Header */}
             <div className="sticky top-0 z-10 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800 p-4 flex items-center gap-3">
                 {onMenuClick && (
-                    <button onClick={onMenuClick} className="md:hidden p-2 text-zinc-400 hover:text-white transition-colors">
+                    <button
+                        onClick={onMenuClick}
+                        className="md:hidden p-2 text-zinc-400 hover:text-white transition-colors"
+                        aria-label={commonT('actions')}
+                    >
                         <Menu className="w-6 h-6" />
                     </button>
                 )}
@@ -355,7 +363,21 @@ export function GalleryGrid({
 
             {/* Grid */}
             <div className="flex-1 overflow-y-auto p-4">
-                {media.length === 0 ? (
+                {error ? (
+                    <div className="flex flex-col items-center justify-center h-64 text-red-400 gap-4">
+                        <AlertCircle className="w-12 h-12 opacity-50" />
+                        <p className="text-sm font-medium">{error}</p>
+                        {onRetry && (
+                            <button
+                                onClick={onRetry}
+                                className="flex items-center gap-2 px-6 py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold rounded-xl border border-zinc-700 transition-all select-none active:scale-95"
+                            >
+                                <RefreshCw className="w-4 h-4" />
+                                {commonT("retry")}
+                            </button>
+                        )}
+                    </div>
+                ) : media.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-64 text-zinc-500">
                         <Search className="w-12 h-12 mb-4 opacity-20" />
                         <p className="text-lg">{t("emptySearch")}</p>
@@ -375,7 +397,7 @@ export function GalleryGrid({
                         ))}
                     </div>
                 )}
-                {hasMore && media.length > 0 && (
+                {hasMore && media.length > 0 && !error && (
                     <div ref={ref} className="w-full flex justify-center py-8">
                         <Loader2 className="w-8 h-8 animate-spin text-zinc-500" />
                     </div>

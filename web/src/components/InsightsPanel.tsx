@@ -11,7 +11,8 @@ import {
     Loader2,
     ChevronRight,
     Sparkles,
-    CheckCircle2
+    CheckCircle2,
+    RefreshCw
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -20,6 +21,7 @@ export const InsightsPanel: React.FC = () => {
     const t = useTranslations("insights");
     const [insights, setInsights] = useState<InsightItem[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(false);
     const [dismissed, setDismissed] = useState<string[]>([]);
     const [creatingAlbum, setCreatingAlbum] = useState<string | null>(null);
     const router = useRouter();
@@ -48,10 +50,12 @@ export const InsightsPanel: React.FC = () => {
 
     const fetchInsights = async () => {
         try {
+            setError(false);
             const data = await getInsights();
-            setInsights(data.insights);
+            setInsights(data.insights || []);
         } catch (error) {
             console.error("Failed to fetch insights", error);
+            setError(true);
         } finally {
             setLoading(false);
         }
@@ -117,6 +121,24 @@ export const InsightsPanel: React.FC = () => {
         );
     }
 
+    if (error) {
+        return (
+            <div className="mb-10 p-6 bg-rose-500/5 border border-rose-500/20 rounded-2xl flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3 text-rose-400">
+                    <AlertTriangle className="w-5 h-5" />
+                    <span className="text-sm font-medium">{t("fetchError")}</span>
+                </div>
+                <button
+                    onClick={() => { setLoading(true); fetchInsights(); }}
+                    className="px-4 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold rounded-xl border border-zinc-700 transition-all flex items-center gap-2"
+                >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    Retry
+                </button>
+            </div>
+        );
+    }
+
     if (visibleInsights.length === 0) {
         return (
             <div className="mb-10 p-6 bg-zinc-900/20 border border-zinc-800/50 rounded-2xl border-dashed flex items-center justify-center gap-3 text-zinc-500">
@@ -142,6 +164,7 @@ export const InsightsPanel: React.FC = () => {
                         <button
                             onClick={() => handleDismiss(insight.type)}
                             className="absolute top-3 right-3 p-1 hover:bg-zinc-800 rounded-md text-zinc-600 hover:text-zinc-400 transition-colors"
+                            aria-label={t('dismiss')}
                         >
                             <X className="w-4 h-4" />
                         </button>

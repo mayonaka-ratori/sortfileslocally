@@ -48,7 +48,7 @@ export function ShortcutHelpModal({ isOpen, onClose }: ShortcutHelpModalProps) {
     return (
         <AnimatePresence>
             {isOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="shortcuts-title">
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
@@ -63,13 +63,14 @@ export function ShortcutHelpModal({ isOpen, onClose }: ShortcutHelpModalProps) {
                         className="relative w-full max-w-lg bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden"
                     >
                         <div className="p-6 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/50">
-                            <h2 className="text-xl font-bold text-white flex items-center gap-3">
+                            <h2 id="shortcuts-title" className="text-xl font-bold text-white flex items-center gap-3">
                                 <span className="w-8 h-8 rounded-lg bg-indigo-600/20 text-indigo-400 flex items-center justify-center text-lg">?</span>
                                 {t('title')}
                             </h2>
                             <button
                                 onClick={onClose}
                                 className="p-2 text-zinc-500 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
+                                aria-label={t('close')}
                                 title={t('close')}
                             >
                                 <X className="w-5 h-5" />

@@ -156,6 +156,7 @@ export function ModelManagerUI() {
                                 onChange={(e) => setCustomDir(e.target.value)}
                                 placeholder={t('defaultCachePlaceholder')}
                                 className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-sm text-zinc-300 focus:outline-none focus:border-indigo-500 transition-colors pl-10"
+                                aria-label={t('storage')}
                             />
                             <FolderOpen className="w-4 h-4 absolute left-3 top-2.5 text-zinc-600" />
                         </div>
@@ -249,7 +250,7 @@ export function ModelManagerUI() {
 
                             {/* Progress Bar Expansion */}
                             {prog && (isDownloading || hasError) && (
-                                <div className="px-5 pb-5 pt-1 border-t border-zinc-800/50 bg-zinc-950/30">
+                                <div className="px-5 pb-5 pt-1 border-t border-zinc-800/50 bg-zinc-950/30" aria-live="polite">
                                     <div className="flex justify-between text-[11px] text-zinc-400 mb-2 font-mono uppercase tracking-wider">
                                         <span className="truncate pr-4 flex-1">{prog.filename}</span>
                                         <span>
@@ -277,4 +278,3 @@ export function ModelManagerUI() {
         </div>
     );
 }
-

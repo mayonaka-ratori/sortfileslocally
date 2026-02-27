@@ -189,6 +189,7 @@ export function ScanUI({ initialPath, onComplete }: ScanUIProps) {
                         className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-3 py-2 focus:outline-none focus:border-indigo-500 transition-colors placeholder-zinc-700 font-mono text-xs text-zinc-300"
                         disabled={isActive}
                         id="scan-folder-input"
+                        aria-label={t('sourceDir')}
                     />
                     <button
                         id="scan-browse-btn"
@@ -269,7 +270,7 @@ export function ScanUI({ initialPath, onComplete }: ScanUIProps) {
                     {t("startButton")}
                 </button>
             ) : (
-                <div className="mt-2 flex flex-col gap-3 bg-zinc-950 rounded-lg p-3 border border-indigo-900/50 relative overflow-hidden">
+                <div className="mt-2 flex flex-col gap-3 bg-zinc-950 rounded-lg p-3 border border-indigo-900/50 relative overflow-hidden" aria-live="polite">
                     {/* Current file + percent */}
                     <div className="flex items-center justify-between text-xs text-indigo-300 font-medium">
                         <div className="flex items-center gap-1.5 flex-1 min-w-0">

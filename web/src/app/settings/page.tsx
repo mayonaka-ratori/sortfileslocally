@@ -40,7 +40,7 @@ export default function SettingsPage() {
                 {/* Updates Section */}
                 <section className="flex flex-col gap-4">
                     <div className="flex flex-col gap-1">
-                        <h2 className="text-lg font-bold">Software Updates</h2>
+                        <h2 className="text-lg font-bold">{common('softwareUpdates')}</h2>
                     </div>
                     <UpdateUI />
                 </section>

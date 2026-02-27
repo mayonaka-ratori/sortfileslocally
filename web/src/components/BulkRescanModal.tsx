@@ -56,14 +56,18 @@ export function BulkRescanModal({ selectedItems, onClose, onSuccess }: BulkResca
 
     if (jobId) {
         return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" role="dialog" aria-modal="true" aria-labelledby="rescan-progress-title">
                 <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
                     <div className="p-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-900/50">
-                        <h2 className="text-sm font-bold uppercase tracking-widest text-zinc-400">
+                        <h2 id="rescan-progress-title" className="text-sm font-bold uppercase tracking-widest text-zinc-400">
                             {t("rescanning", { count })}
                         </h2>
                         {(!status || status.progress_percent >= 100) && (
-                            <button onClick={onClose} className="p-1 hover:bg-zinc-800 rounded-lg text-zinc-500 hover:text-white">
+                            <button
+                                onClick={onClose}
+                                className="p-1 hover:bg-zinc-800 rounded-lg text-zinc-500 hover:text-white"
+                                aria-label={commonT('close')}
+                            >
                                 <X className="w-5 h-5" />
                             </button>
                         )}
@@ -82,7 +86,7 @@ export function BulkRescanModal({ selectedItems, onClose, onSuccess }: BulkResca
                             </div>
                         )}
 
-                        <div className="space-y-1">
+                        <div className="space-y-1" aria-live="polite">
                             <h3 className="text-white font-bold">
                                 {status?.progress_percent === 100 ? t("rescanComplete") : t("processing")}
                             </h3>
@@ -116,13 +120,17 @@ export function BulkRescanModal({ selectedItems, onClose, onSuccess }: BulkResca
     }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" role="dialog" aria-modal="true" aria-labelledby="rescan-title">
             <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
                 <div className="p-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-900/50">
-                    <h2 className="text-sm font-bold uppercase tracking-widest text-zinc-400">
+                    <h2 id="rescan-title" className="text-sm font-bold uppercase tracking-widest text-zinc-400">
                         {t("rescanTitle", { count })}
                     </h2>
-                    <button onClick={onClose} className="p-1 hover:bg-zinc-800 rounded-lg text-zinc-500 hover:text-white">
+                    <button
+                        onClick={onClose}
+                        className="p-1 hover:bg-zinc-800 rounded-lg text-zinc-500 hover:text-white"
+                        aria-label={commonT('close')}
+                    >
                         <X className="w-5 h-5" />
                     </button>
                 </div>

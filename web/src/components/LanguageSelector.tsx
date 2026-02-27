@@ -3,8 +3,10 @@
 import React, { useEffect, useState } from "react"
 import { Languages, Check, Loader2 } from "lucide-react"
 import { getAppSettings, updateAppSetting } from "@/lib/api"
+import { useTranslations } from "next-intl"
 
 export function LanguageSelector() {
+    const t = useTranslations('settings.language');
     const [locale, setLocale] = useState<string>("en")
     const [loading, setLoading] = useState(true)
     const [isUpdating, setIsUpdating] = useState(false)
@@ -50,7 +52,7 @@ export function LanguageSelector() {
         <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2 text-zinc-400 mb-1">
                 <Languages className="w-4 h-4" />
-                <span className="text-[10px] font-bold uppercase tracking-widest">Language / 言語</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest">{t('title')}</span>
             </div>
             <div className="grid grid-cols-2 gap-2">
                 {languages.map((lang) => (

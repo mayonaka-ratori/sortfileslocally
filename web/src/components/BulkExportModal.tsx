@@ -42,10 +42,10 @@ export function BulkExportModal({ selectedItems, onClose, onSuccess }: BulkExpor
     const isOverLimit = selectedItems.length > 500;
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200" role="dialog" aria-modal="true" aria-labelledby="bulk-export-title">
             <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col">
                 <div className="flex items-center justify-between p-4 border-b border-zinc-800">
-                    <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                    <h2 id="bulk-export-title" className="text-lg font-bold text-white flex items-center gap-2">
                         <Database className="w-5 h-5 text-indigo-500" />
                         {t("bulkTitle")}
                     </h2>
@@ -53,6 +53,7 @@ export function BulkExportModal({ selectedItems, onClose, onSuccess }: BulkExpor
                         onClick={handleClose}
                         disabled={isExporting}
                         className="p-1 hover:bg-zinc-800 rounded-md transition-colors text-zinc-400 hover:text-white disabled:opacity-30"
+                        aria-label={commonT('close')}
                     >
                         <X className="w-6 h-6" />
                     </button>

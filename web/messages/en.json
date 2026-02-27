@@ -7,6 +7,7 @@
         "confirm": "Confirm",
         "loading": "Loading...",
         "error": "An error occurred",
+        "softwareUpdates": "Software Updates",
         "actionFailed": "Action failed. Please try again.",
         "success": "Success",
         "search": "Search",
@@ -44,6 +45,7 @@
         "albums": "Albums",
         "tags": "Tags",
         "settings": "Settings",
+        "appName": "Curator Prime",
         "shortcuts": "Keyboard Shortcuts",
         "moreAlbums": "+ {count} more..."
     },
@@ -166,14 +168,22 @@
         "executeExport": "Execute Export",
         "toggleFavorite": "Toggle Favorite (F)",
         "exportOptions": "Export Options (E)",
-        "closePanel": "Close Panel"
+        "closePanel": "Close Panel",
+        "fetchFacesError": "Failed to fetch faces",
+        "nameFaceError": "Failed to name face",
+        "saveName": "Save Name",
+        "cancel": "Cancel",
+        "send": "Send message"
     },
     "insights": {
         "empty": "Your library is well organized. Nice work!",
         "title": "Actionable Insights",
         "createAlbum": "Create Smart Album",
         "priority": "Priority",
-        "createAlbumFailed": "Failed to create album"
+        "createAlbumFailed": "Failed to create album",
+        "fetchError": "Failed to load insights",
+        "dismiss": "Dismiss",
+        "retryDesc": "Failed to connect to the analysis engine. Please ensure the backend is running and try again."
     },
     "scan": {
         "title": "Folder Scanner",
@@ -311,7 +321,8 @@
             "localFirstDesc": "All media analysis, face detection, and semantic search happen locally on your hardware. Your data never leaves this machine.",
             "checkingModels": "Checking model availability...",
             "allCached": "All AI models are cached locally. Full functionality available offline.",
-            "partialCached": "{count} / {total} models downloaded. Some features may require internet."
+            "partialCached": "{count} / {total} models downloaded. Some features may require internet.",
+            "activeHistory": "Active session history • {count} entries"
         },
         "cleaner": {
             "title": "Deduplication Scanner",
@@ -529,6 +540,7 @@
         "audit": "Privacy Audit",
         "runAudit": "Run Privacy Audit",
         "auditRunning": "Scanning codebase...",
+        "auditHint": "Run a scan to verify no external connections exist in the codebase.",
         "auditPass": "Fully Private",
         "auditFail": "Review Needed",
         "filesScanned": "{count} files scanned",

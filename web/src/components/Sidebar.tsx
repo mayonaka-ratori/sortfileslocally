@@ -43,7 +43,7 @@ export function Sidebar({ isOpen, onClose }: Omit<SidebarProps, 'onFilterChange'
                 <div className="sticky top-0 bg-zinc-950/80 backdrop-blur z-10 p-5 pb-4">
                     <div className="flex items-center gap-2 font-black text-white px-1 tracking-tight text-xl mb-4">
                         <LayoutGrid className="w-6 h-6 text-indigo-500 shrink-0" />
-                        <span className="bg-gradient-to-r from-zinc-100 to-zinc-400 bg-clip-text text-transparent">Curator Prime</span>
+                        <span className="bg-gradient-to-r from-zinc-100 to-zinc-400 bg-clip-text text-transparent">{t('appName')}</span>
                     </div>
                 </div>
 

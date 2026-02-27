@@ -17,8 +17,8 @@ def engine_components():
     from PIL import Image
     
     # Internal core modules
-    from core.ai_models import AIEngine
-    from core.video_processor import VideoProcessor
+    from src.core.ai_models import AIEngine
+    from src.core.video_processor import VideoProcessor
     
     return {
         "np": np,

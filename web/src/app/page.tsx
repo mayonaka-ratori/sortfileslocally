@@ -239,10 +239,6 @@ export default function Home() {
               {t("loadingGallery")}
             </div>
           </div>
-        ) : error ? (
-          <div className="flex items-center justify-center h-full text-red-500">
-            {error}
-          </div>
         ) : (
           <div className="flex flex-col h-full">
             <div className="p-4 border-b border-zinc-800 bg-zinc-950/50 backdrop-blur-sm sticky top-0 z-20">
@@ -335,6 +331,8 @@ export default function Home() {
                     focusedIndex={focusedIndex}
                     selectedIds={selectedIds}
                     onSelectionChange={setSelectedIds}
+                    error={error}
+                    onRetry={() => { setError(""); loadMedia(0); }}
                   />
                 )}
               </div>

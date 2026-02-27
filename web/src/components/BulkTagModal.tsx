@@ -51,17 +51,18 @@ export function BulkTagModal({ selectedItems, onClose, onSuccess }: BulkTagModal
     }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" role="dialog" aria-modal="true" aria-labelledby="bulk-tag-title">
             <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
                 {/* Header */}
                 <div className="p-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-900/50">
-                    <h2 className="text-sm font-bold uppercase tracking-widest text-zinc-400">
+                    <h2 id="bulk-tag-title" className="text-sm font-bold uppercase tracking-widest text-zinc-400">
                         {t("title", { count })}
                     </h2>
                     <button
                         onClick={onClose}
                         disabled={isProcessing}
                         className="p-1 hover:bg-zinc-800 rounded-lg text-zinc-500 hover:text-white transition-colors disabled:opacity-50"
+                        aria-label={commonT('close')}
                     >
                         <X className="w-5 h-5" />
                     </button>

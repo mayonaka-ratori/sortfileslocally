@@ -7,6 +7,7 @@
         "confirm": "確認",
         "loading": "読み込み中...",
         "error": "エラーが発生しました",
+        "softwareUpdates": "ソフトウェアアップデート",
         "actionFailed": "操作に失敗しました。もう一度お試しください。",
         "success": "成功",
         "search": "検索",
@@ -44,6 +45,7 @@
         "albums": "アルバム",
         "tags": "タグ",
         "settings": "設定",
+        "appName": "Curator Prime",
         "shortcuts": "キーボードショートカット",
         "moreAlbums": "他 {count} 件..."
     },
@@ -166,14 +168,22 @@
         "executeExport": "エクスポート実行",
         "toggleFavorite": "お気に入りを切り替え (F)",
         "exportOptions": "エクスポート設定 (E)",
-        "closePanel": "パネルを閉じる"
+        "closePanel": "パネルを閉じる",
+        "fetchFacesError": "顔データの取得に失敗しました",
+        "nameFaceError": "名前の設定に失敗しました",
+        "saveName": "名前を保存",
+        "cancel": "キャンセル",
+        "send": "メッセージを送信"
     },
     "insights": {
         "empty": "ライブラリはよく整理されています。素晴らしいです！",
         "title": "改善提案",
         "createAlbum": "スマートアルバムを作成",
         "priority": "優先",
-        "createAlbumFailed": "アルバムの作成に失敗しました"
+        "createAlbumFailed": "アルバムの作成に失敗しました",
+        "fetchError": "改善提案の取得に失敗しました",
+        "dismiss": "非表示",
+        "retryDesc": "解析エンジンに接続できませんでした。バックエンドが実行中であることを確認して、再度お試しください。"
     },
     "scan": {
         "title": "フォルダスキャナー",
@@ -311,7 +321,8 @@
             "localFirstDesc": "メディア解析、顔検出、セマンティック検索はすべてローカルハードウェア上で行われます。データがこのマシンから外部に送信されることは一切ありません。",
             "checkingModels": "モデルの可用性を確認中...",
             "allCached": "すべてのAIモデルがローカルにキャッシュされています。オフラインで全機能を利用可能です。",
-            "partialCached": "{count} / {total} 個のモデルがダウンロード済みです。一部の機能を使用するにはインターネット接続が必要な場合があります。"
+            "partialCached": "{count} / {total} 個のモデルがダウンロード済みです。一部の機能を使用するにはインターネット接続が必要な場合があります。",
+            "activeHistory": "有効なセッション履歴 • {count} 件"
         },
         "cleaner": {
             "title": "重複スキャナー",
@@ -529,6 +540,7 @@
         "audit": "プライバシー監査",
         "runAudit": "プライバシー監査を実行",
         "auditRunning": "コードベースをスキャン中...",
+        "auditHint": "コードベースをスキャンして、外部接続が存在しないことを確認します。",
         "auditPass": "完全にプライベート",
         "auditFail": "確認が必要",
         "filesScanned": "{count} ファイルをスキャン",

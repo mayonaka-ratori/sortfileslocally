@@ -9,6 +9,7 @@ import { MetadataExportOptions, ExportMode } from "./MetadataExportOptions"
 import { TagEditorPanel } from "./TagEditorPanel"
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts"
 import { useTranslations } from "next-intl"
+import { toast } from "sonner"
 
 interface ChatPanelProps {
     item: MediaItem | null
@@ -53,7 +54,10 @@ export function ChatPanel({ item, onClose, onFaceSearch, onItemUpdate }: ChatPan
                     content: t("initialMessage")
                 }
             ])
-            getFaces(item.id).then(setFaces).catch(console.error)
+            getFaces(item.id).then(setFaces).catch(err => {
+                console.error("Failed to fetch faces", err);
+                toast.error(t("fetchFacesError"));
+            })
         }
 
         const handleGlobalClose = () => onClose()
@@ -120,12 +124,9 @@ export function ChatPanel({ item, onClose, onFaceSearch, onItemUpdate }: ChatPan
                 }
                 if (status.error) throw new Error(status.error)
             }
-            alert(t("rescanSuccess"))
+            toast.success(t("rescanSuccess"))
             // Force a refresh of the item in the UI
             if (onItemUpdate) {
-                // We'd ideally re-fetch the item from the API here to get the new tags
-                // For now, let's just refresh the window or wait for user to re-select
-                // Better: fetch single item from API
                 const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/gallery/${item.id}`)
                 if (res.ok) {
                     const newItem = await res.json()
@@ -133,7 +134,7 @@ export function ChatPanel({ item, onClose, onFaceSearch, onItemUpdate }: ChatPan
                 }
             }
         } catch (err) {
-            alert(err instanceof Error ? err.message : t("rescanFailed"))
+            toast.error(err instanceof Error ? err.message : t("rescanFailed"))
         } finally {
             setIsRescanning(false)
         }
@@ -173,6 +174,7 @@ export function ChatPanel({ item, onClose, onFaceSearch, onItemUpdate }: ChatPan
             setEditingFaceId(null)
         } catch (error) {
             console.error("Failed to name face", error)
+            toast.error(t("nameFaceError"))
         }
     }
 
@@ -182,14 +184,14 @@ export function ChatPanel({ item, onClose, onFaceSearch, onItemUpdate }: ChatPan
         try {
             const result = await exportMetadata([item.id], exportMode)
             if (result.success > 0) {
-                alert(t("exportSuccess", { mode: exportMode.toUpperCase() }))
+                toast.success(t("exportSuccess", { mode: exportMode.toUpperCase() }))
                 setShowExportOptions(false)
             } else {
-                alert(t("exportFailed"))
+                toast.error(t("exportFailed"))
             }
         } catch (err) {
             console.error("Export metadata failed:", err);
-            alert(t("exportError"))
+            toast.error(t("exportError"))
         } finally {
             setIsExporting(false)
         }
@@ -253,6 +255,7 @@ export function ChatPanel({ item, onClose, onFaceSearch, onItemUpdate }: ChatPan
                             item?.favorite ? 'text-red-500 bg-red-500/10' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
                             }`}
                         title={t("toggleFavorite")}
+                        aria-label={t("toggleFavorite")}
                     >
                         <Heart className={`w-4 h-4 ${
                             // @ts-expect-error - favorite may not be in type
@@ -263,6 +266,7 @@ export function ChatPanel({ item, onClose, onFaceSearch, onItemUpdate }: ChatPan
                         onClick={() => setShowExportOptions(!showExportOptions)}
                         className={`p-1.5 rounded-md transition-colors ${showExportOptions ? 'bg-indigo-600 text-white' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'}`}
                         title={t("exportOptions")}
+                        aria-label={t("exportOptions")}
                     >
                         <Settings2 className="w-4 h-4" />
                     </button>
@@ -270,6 +274,7 @@ export function ChatPanel({ item, onClose, onFaceSearch, onItemUpdate }: ChatPan
                         onClick={onClose}
                         className="p-1 hover:bg-zinc-800 rounded-md transition-colors text-zinc-400 hover:text-white"
                         title={t("closePanel")}
+                        aria-label={t("closePanel")}
                     >
                         <X className="w-5 h-5" />
                     </button>
@@ -311,7 +316,7 @@ export function ChatPanel({ item, onClose, onFaceSearch, onItemUpdate }: ChatPan
             {activeTab === "chat" ? (
                 <>
                     {/* Messages */}
-                    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                    <div className="flex-1 overflow-y-auto p-4 space-y-4" aria-live="polite">
                         {messages.map((msg, idx) => (
                             <div
                                 key={idx}
@@ -348,11 +353,13 @@ export function ChatPanel({ item, onClose, onFaceSearch, onItemUpdate }: ChatPan
                                 placeholder={t("placeholder")}
                                 className="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-3 pl-4 pr-12 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-indigo-500 transition-colors"
                                 disabled={isLoading}
+                                aria-label={t("placeholder")}
                             />
                             <button
                                 type="submit"
                                 disabled={!input.trim() || isLoading}
                                 className="absolute right-2 p-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-white rounded-lg transition-colors"
+                                aria-label={t("send")}
                             >
                                 <Send className="w-4 h-4" />
                             </button>
@@ -382,11 +389,12 @@ export function ChatPanel({ item, onClose, onFaceSearch, onItemUpdate }: ChatPan
                                                 onKeyDown={e => e.key === 'Enter' && handleNameFace(face.id)}
                                                 className="bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-sm text-white w-32 focus:outline-none focus:border-indigo-500"
                                                 placeholder={t("namePlaceholder")}
+                                                aria-label={t("namePlaceholder")}
                                             />
-                                            <button onClick={() => handleNameFace(face.id)} className="text-green-500 hover:text-green-400">
+                                            <button onClick={() => handleNameFace(face.id)} className="text-green-500 hover:text-green-400" aria-label={t('saveName')}>
                                                 <Check className="w-4 h-4" />
                                             </button>
-                                            <button onClick={() => setEditingFaceId(null)} className="text-zinc-500 hover:text-zinc-400">
+                                            <button onClick={() => setEditingFaceId(null)} className="text-zinc-500 hover:text-zinc-400" aria-label={t('cancel')}>
                                                 <X className="w-4 h-4" />
                                             </button>
                                         </div>
@@ -411,6 +419,7 @@ export function ChatPanel({ item, onClose, onFaceSearch, onItemUpdate }: ChatPan
                                             }}
                                             className="p-1.5 hover:bg-zinc-700 text-zinc-400 rounded transition-colors"
                                             title={t("editName")}
+                                            aria-label={t("editName")}
                                         >
                                             <Edit2 className="w-4 h-4" />
                                         </button>
@@ -418,6 +427,7 @@ export function ChatPanel({ item, onClose, onFaceSearch, onItemUpdate }: ChatPan
                                             onClick={() => onFaceSearch && onFaceSearch(face.id)}
                                             className="p-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded transition-colors"
                                             title={t("searchPerson")}
+                                            aria-label={t("searchPerson")}
                                         >
                                             <Search className="w-4 h-4" />
                                         </button>
@@ -434,6 +444,8 @@ export function ChatPanel({ item, onClose, onFaceSearch, onItemUpdate }: ChatPan
                             onClick={() => setShowRescanOptions(!showRescanOptions)}
                             disabled={isRescanning}
                             className={`w-full py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${isRescanning ? 'bg-zinc-800 text-zinc-500' : 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/30 hover:bg-indigo-600/20'}`}
+                            aria-expanded={showRescanOptions}
+                            aria-haspopup="true"
                         >
                             {isRescanning ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                             {isRescanning ? t("rescanning") : t("rescan")}

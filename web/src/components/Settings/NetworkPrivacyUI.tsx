@@ -213,7 +213,7 @@ export function NetworkPrivacyUI() {
                                         <ShieldCheck className="w-6 h-6 text-zinc-600" />
                                     </div>
                                     <p className="text-[11px] text-zinc-500 font-medium">
-                                        Run a scan to verify no external connections exist in the codebase.
+                                        {tp('auditHint')}
                                     </p>
                                 </motion.div>
                             ) : isAuditing ? (
@@ -293,7 +293,7 @@ export function NetworkPrivacyUI() {
                             <Activity className="w-4 h-4 text-indigo-500" />
                             {tp('networkLog')}
                         </h3>
-                        <p className="text-[10px] text-zinc-500 font-bold mt-1 uppercase tracking-tight">Active session history • {logs.length} entries</p>
+                        <p className="text-[10px] text-zinc-500 font-bold mt-1 uppercase tracking-tight">{t('activeHistory', { count: logs.length })}</p>
                     </div>
                     <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2 bg-zinc-950 px-3 py-1.5 rounded-full border border-zinc-800">
