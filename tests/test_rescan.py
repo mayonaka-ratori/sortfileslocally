@@ -5,13 +5,13 @@ from unittest.mock import MagicMock, patch
 # Ensure project root is in path
 sys.path.append(os.getcwd())
 
-# Mock AI and system modules
+# Mock AI and system modules only if missing
 for mod in [
-    "open_clip", "decord", "PIL", "numpy", "facenet_pytorch", "insightface", 
-    "torch", "torchvision", "torchaudio", "onnxruntime", "pandas", "faiss", 
-    "cv2", "sklearn", "sklearn.cluster", "scipy", "scipy.io"
+    "open_clip", "decord", "facenet_pytorch", "insightface", 
+    "onnxruntime", "cv2", "sklearn", "sklearn.cluster"
 ]:
-    sys.modules[mod] = MagicMock()
+    if mod not in sys.modules:
+        sys.modules[mod] = MagicMock()
 
 # Mock internal components that would pull in heavy AI dependencies
 sys.modules["src.core.ai_models"] = MagicMock()

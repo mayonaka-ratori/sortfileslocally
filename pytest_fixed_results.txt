@@ -1,0 +1,47 @@
+============================= test session starts =============================
+platform win32 -- Python 3.14.0, pytest-9.0.2, pluggy-1.6.0 -- C:\Python314\python.exe
+cachedir: .pytest_cache
+rootdir: C:\tools\organizefiles0112\LocalCuratorPrime
+configfile: pytest.ini
+plugins: anyio-4.12.1, cov-7.0.0
+collecting ... collected 77 items / 1 error / 4 skipped
+
+=================================== ERRORS ====================================
+_____________________ ERROR collecting tests/test_vlm.py ______________________
+tests\test_vlm.py:22: in <module>
+    if is_dependency_missing_or_mocked("torch") or is_dependency_missing_or_mocked("transformers") or os.environ.get("SKIP_GPU_TESTS") == "1":
+                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_vlm.py:9: in is_dependency_missing_or_mocked
+    __import__(name)
+C:\Users\hosom\AppData\Roaming\Python\Python314\site-packages\transformers\__init__.py:776: in <module>
+    sys.modules[__name__] = _LazyModule(
+C:\Users\hosom\AppData\Roaming\Python\Python314\site-packages\transformers\utils\import_utils.py:1962: in __init__
+    if not callable():
+           ^^^^^^^^^^
+C:\Users\hosom\AppData\Roaming\Python\Python314\site-packages\transformers\utils\import_utils.py:1111: in is_torchaudio_available
+    return _is_package_available("torchaudio")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\hosom\AppData\Roaming\Python\Python314\site-packages\transformers\utils\import_utils.py:50: in _is_package_available
+    spec = importlib.util.find_spec(pkg_name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib.util>:107: in find_spec
+    ???
+E   ValueError: torchaudio.__spec__ is not set
+============================== warnings summary ===============================
+<frozen importlib._bootstrap>:491
+  <frozen importlib._bootstrap>:491: DeprecationWarning: builtin type SwigPyPacked has no __module__ attribute
+
+<frozen importlib._bootstrap>:491
+  <frozen importlib._bootstrap>:491: DeprecationWarning: builtin type SwigPyObject has no __module__ attribute
+
+<frozen importlib._bootstrap>:491
+  <frozen importlib._bootstrap>:491: DeprecationWarning: builtin type swigvarlink has no __module__ attribute
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+SKIPPED [1] tests\test_engine.py:19: Core modules failed to import (likely missing torch/faiss)
+SKIPPED [1] tests\test_intelligence.py:21: Core modules failed to import
+SKIPPED [1] tests\test_vlm_debug.py:18: Torch/Transformers/PIL not available
+SKIPPED [1] tests\test_whisper_sub.py:5: CI skip requested for GPU/heavy models
+!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+================== 4 skipped, 3 warnings, 1 error in 18.18s ===================

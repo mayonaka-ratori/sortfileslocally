@@ -15,8 +15,8 @@ def is_available(mod_name):
     except (ImportError, Exception):
         return False
 
-# Mock ONLY if missing
-for mod in ["open_clip", "decord", "PIL", "facenet_pytorch", "insightface", "torch", "torchvision", "torchaudio", "onnxruntime", "pandas", "faiss", "cv2"]:
+# Mock ONLY if missing and not already real
+for mod in ["open_clip", "decord", "facenet_pytorch", "insightface", "onnxruntime", "pandas", "cv2"]:
     if not is_available(mod):
         sys.modules[mod] = MagicMock()
 

@@ -5,9 +5,10 @@ from unittest.mock import MagicMock
 # Ensure project root is in path
 sys.path.append(os.getcwd())
 
-# Mock AI and system modules
-for mod in ["open_clip", "decord", "PIL", "numpy", "facenet_pytorch", "insightface", "torch", "torchvision", "torchaudio", "onnxruntime", "pandas", "faiss", "cv2"]:
-    sys.modules[mod] = MagicMock()
+# Mock AI and system modules only if missing
+for mod in ["open_clip", "decord", "facenet_pytorch", "insightface", "onnxruntime", "pandas", "cv2"]:
+    if mod not in sys.modules:
+        sys.modules[mod] = MagicMock()
 
 sys.modules["src.core.ai_models"] = MagicMock()
 sys.modules["src.core.vlm_engine"] = MagicMock()

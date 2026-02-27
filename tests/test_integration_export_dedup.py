@@ -11,8 +11,8 @@ def is_available(mod_name):
     except ImportError:
         return False
 
-# Mock AI and system modules before they are imported by server.main
-for mod in ["open_clip", "decord", "PIL", "facenet_pytorch", "insightface", "torch", "torchvision", "torchaudio", "onnxruntime", "pandas", "faiss", "cv2"]:
+# Mock AI and system modules only if missing and not already real
+for mod in ["open_clip", "decord", "facenet_pytorch", "insightface", "onnxruntime", "pandas", "cv2"]:
     if not is_available(mod):
         sys.modules[mod] = MagicMock()
 

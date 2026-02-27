@@ -32,11 +32,20 @@ def mock_open(fp, **kwargs):
     mock_img.height = 100
     return mock_img
 
-# Mock ONLY if missing
-for mod in ["open_clip", "decord", "PIL", "facenet_pytorch", "insightface", "torch", "torchvision", "torchaudio", "onnxruntime", "pandas", "faiss", "cv2"]:
+# Mock ONLY if missing and not already mocked or real
+# Modules we want to test real logic for should not be mocked here
+for mod in ["open_clip", "decord", "facenet_pytorch", "insightface", "onnxruntime", "pandas", "cv2"]:
     if not is_available(mod):
         m = MagicMock()
         sys.modules[mod] = m
+
+# We want REAL PIL, numpy, faiss, torch, torchvision if available
+# because the endpoint imports them and we might want to patch them specifically.
+for mod in ["PIL", "numpy", "faiss", "torch", "torchvision"]:
+    if not is_available(mod):
+        # Even if missing, we'll let the individual tests handle mocking or skipping
+        # to avoid polluting sys.modules for other tests that might have them.
+        pass
 
 # Models must be mocked
 sys.modules["src.core.ai_models"] = MagicMock()

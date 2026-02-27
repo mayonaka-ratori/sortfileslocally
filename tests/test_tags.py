@@ -5,9 +5,14 @@ from unittest.mock import MagicMock
 # Ensure project root is in path
 sys.path.append(os.getcwd())
 
-# Mock AI and system modules before they are imported
-for mod in ["open_clip", "decord", "PIL", "numpy", "facenet_pytorch", "insightface", "torch", "torchvision", "torchaudio", "onnxruntime", "pandas", "faiss", "cv2"]:
-    sys.modules[mod] = MagicMock()
+# Mock AI and system modules only if missing, to avoid breaking other tests
+for mod in ["open_clip", "decord", "facenet_pytorch", "insightface", "onnxruntime", "pandas", "cv2"]:
+    if mod not in sys.modules:
+        sys.modules[mod] = MagicMock()
+
+# Do NOT globally mock PIL, numpy, faiss, torch here as they are needed by other tests.
+# If they are missing, the imports in this file will fail, which is better than silent pollution.
+# But since we want the tests to pass in CI where they are in requirements, it's fine.
 
 sys.modules["src.core.ai_models"] = MagicMock()
 sys.modules["src.core.vlm_engine"] = MagicMock()

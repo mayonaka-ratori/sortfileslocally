@@ -17,7 +17,7 @@ def is_available(mod_name):
         return True
     except: return False
 
-for mod in ["open_clip", "decord", "PIL", "facenet_pytorch", "insightface", "torch", "torchvision", "torchaudio", "onnxruntime", "pandas", "faiss", "cv2", "scenedetect", "transformers", "sklearn"]:
+for mod in ["open_clip", "decord", "facenet_pytorch", "insightface", "onnxruntime", "cv2", "scenedetect", "sklearn"]:
     if not is_available(mod):
         sys.modules[mod] = MagicMock()
 
