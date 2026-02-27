@@ -27,7 +27,7 @@ jobs:
       
       - name: Install Python dependencies
         run: |
-          pip install -r requirements.txt || true
+          pip install -r requirements-cpu.txt || true
           pip install pytest pytest-cov uvicorn
       
       - name: Install Node dependencies
@@ -76,7 +76,7 @@ jobs:
       
       - name: Install dependencies
         run: |
-          pip install -r requirements.txt || true
+          pip install -r requirements-cpu.txt || true
           pip install pytest uvicorn
           cd web && npm ci
           npx playwright install chromium --with-deps
