@@ -1,22 +1,17 @@
-"use client";
+"use client"
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { getAppSettings, updateAppSetting } from "@/lib/api";
-import { Loader2, Settings2, Save } from "lucide-react";
 import { toast } from "sonner";
-
-interface SettingsState {
-    auto_scene_detection: boolean;
-    scene_threshold: number;
-    max_video_duration: number;
-}
+import { Clapperboard, Sliders, Clock, Save, Loader2 } from "lucide-react";
 
 export function SceneSettings() {
-    const scenes = useTranslations("scenes");
+    const t = useTranslations('settings.video');
+    const scenes = useTranslations('settings.scenes');
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [settings, setSettings] = useState<SettingsState>({
+    const [settings, setSettings] = useState({
         auto_scene_detection: false,
         scene_threshold: 27,
         max_video_duration: 7200,
@@ -34,8 +29,8 @@ export function SceneSettings() {
                     scene_threshold: (s.scene_threshold as number) ?? 27,
                     max_video_duration: (s.max_video_duration as number) ?? 7200,
                 });
-            } catch (err) {
-                console.error("Failed to load settings:", err);
+            } catch {
+                console.error("Failed to load settings:");
             } finally {
                 setLoading(false);
             }
@@ -52,8 +47,7 @@ export function SceneSettings() {
                 updateAppSetting("max_video_duration", settings.max_video_duration.toString()),
             ]);
             toast.success(scenes('saveSuccess'));
-        } catch (err) {
-            console.error("Failed to save settings:", err);
+        } catch {
             toast.error(scenes('saveFailed'));
         } finally {
             setSaving(false);
@@ -69,77 +63,80 @@ export function SceneSettings() {
     }
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-center gap-3 mb-2">
-                <div className="p-2 bg-indigo-500/10 rounded-lg">
-                    <Settings2 className="w-5 h-5 text-indigo-400" />
-                </div>
-                <div>
-                    <h2 className="text-lg font-bold text-white">{scenes('settingsTitle')}</h2>
-                    <p className="text-xs text-zinc-500">{scenes('settingsDesc')}</p>
-                </div>
+        <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 space-y-6">
+            <div className="flex items-center gap-3 border-b border-zinc-800 pb-4">
+                <Clapperboard className="w-5 h-5 text-indigo-400" />
+                <h3 className="text-sm font-bold uppercase tracking-wider">{t('sectionTitle')}</h3>
             </div>
 
-            <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 space-y-6">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h3 className="text-sm font-semibold text-zinc-200">{scenes('autoDetect')}</h3>
-                        <p className="text-xs text-zinc-500">{scenes('autoDetectDesc')}</p>
+            <div className="space-y-6">
+                <div className="flex items-center justify-between group">
+                    <div className="space-y-1">
+                        <label className="text-sm font-bold text-zinc-200">{t('autoDetect')}</label>
+                        <p className="text-[11px] text-zinc-500">{t('autoDetectDesc')}</p>
                     </div>
                     <button
-                        onClick={() => setSettings(prev => ({ ...prev, auto_scene_detection: !prev.auto_scene_detection }))}
-                        className={`w-12 h-6 rounded-full transition-colors relative ${settings.auto_scene_detection ? 'bg-indigo-600' : 'bg-zinc-700'}`}
+                        onClick={() => setSettings(s => ({ ...s, auto_scene_detection: !s.auto_scene_detection }))}
+                        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${settings.auto_scene_detection ? 'bg-indigo-600' : 'bg-zinc-700'}`}
                     >
-                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${settings.auto_scene_detection ? 'left-7' : 'left-1'}`} />
+                        <span
+                            className={`inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${settings.auto_scene_detection ? 'translate-x-5' : 'translate-x-0'}`}
+                        />
                     </button>
                 </div>
 
                 <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-semibold text-zinc-200">{scenes('threshold')}</h3>
-                        <span className="text-xs font-mono text-indigo-400">{settings.scene_threshold}</span>
+                        <div className="flex items-center gap-2">
+                            <Sliders className="w-4 h-4 text-zinc-500" />
+                            <label className="text-sm font-bold text-zinc-200">{t('sensitivity')}</label>
+                        </div>
+                        <span className="text-xs font-mono text-indigo-400 font-bold bg-indigo-500/10 px-2 py-0.5 rounded">
+                            {settings.scene_threshold}
+                        </span>
                     </div>
                     <input
                         type="range"
-                        min="10"
+                        min="15"
                         max="50"
-                        step="0.5"
                         value={settings.scene_threshold}
-                        onChange={(e) => setSettings(prev => ({ ...prev, scene_threshold: parseFloat(e.target.value) }))}
+                        onChange={(e) => setSettings(s => ({ ...s, scene_threshold: parseInt(e.target.value) }))}
                         className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
                     />
-                    <p className="text-[10px] text-zinc-600">{scenes('thresholdHelp')}</p>
+                    <div className="flex justify-between text-[10px] text-zinc-500 font-bold uppercase tracking-widest">
+                        <span>{t('fine')}</span>
+                        <span>{t('coarse')}</span>
+                    </div>
                 </div>
 
                 <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-semibold text-zinc-200">{scenes('maxDuration')}</h3>
-                        <span className="text-xs font-mono text-indigo-400">{Math.floor(settings.max_video_duration / 60)} {scenes('minutes')}</span>
+                        <div className="flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-zinc-500" />
+                            <label className="text-sm font-bold text-zinc-200">{t('maxDuration')}</label>
+                        </div>
+                        <input
+                            type="number"
+                            value={settings.max_video_duration}
+                            onChange={(e) => setSettings(s => ({ ...s, max_video_duration: parseInt(e.target.value) || 0 }))}
+                            className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs font-mono text-white w-24 focus:outline-none focus:border-indigo-500 transition-colors"
+                        />
                     </div>
-                    <select
-                        value={settings.max_video_duration}
-                        onChange={(e) => setSettings(prev => ({ ...prev, max_video_duration: parseInt(e.target.value) }))}
-                        className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-300 focus:outline-none focus:border-indigo-500"
-                    >
-                        <option value={1800}>30 {scenes('minutes')}</option>
-                        <option value={3600}>1 {scenes('hour')}</option>
-                        <option value={7200}>2 {scenes('hours')}</option>
-                        <option value={14400}>4 {scenes('hours')}</option>
-                    </select>
-                    <p className="text-[10px] text-zinc-600">{scenes('maxDurationHelp')}</p>
+                    <p className="text-[11px] text-zinc-500">{t('maxDurationDesc')}</p>
                 </div>
+            </div>
 
-                <div className="pt-2">
-                    <button
-                        onClick={handleSave}
-                        disabled={saving}
-                        className="w-full flex items-center justify-center gap-2 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-all shadow-lg shadow-indigo-900/20"
-                    >
-                        {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                        {scenes('saveSettings')}
-                    </button>
-                </div>
+            <div className="pt-4 flex justify-end">
+                <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-all shadow-lg shadow-indigo-900/40 active:scale-95"
+                >
+                    {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                    {t('saveButton')}
+                </button>
             </div>
         </div>
     );
 }
+
