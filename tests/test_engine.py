@@ -1,24 +1,36 @@
-import sys
 import os
+import sys
 import pytest
+from unittest.mock import MagicMock, patch
 
-try:
+# Skip if requested in CI
+if os.environ.get("SKIP_GPU_TESTS") == "1":
+    pytest.skip("Skipping engine tests in CI", allow_module_level=True)
+
+@pytest.fixture
+def engine_components():
     import numpy as np
-    import cv2
+    try:
+        import cv2
+    except ImportError:
+        cv2 = MagicMock()
     from PIL import Image
-except Exception:
-    pytest.skip("Dependencies missing for engine test (cv2, numpy, PIL)", allow_module_level=True)
-
-# Add src to path
-sys.path.append(os.path.abspath("src"))
-
-try:
+    
+    # Internal core modules
     from core.ai_models import AIEngine
     from core.video_processor import VideoProcessor
-except Exception:
-    pytest.skip("Core modules failed to import (likely missing torch/faiss)", allow_module_level=True)
+    
+    return {
+        "np": np,
+        "cv2": cv2,
+        "Image": Image,
+        "AIEngine": AIEngine,
+        "VideoProcessor": VideoProcessor
+    }
 
-def create_dummy_video(filename="dummy_video.mp4", duration_sec=5, fps=30):
+def create_dummy_video(filename="dummy_video.mp4", duration_sec=5, fps=30, components=None):
+    cv2 = components["cv2"]
+    np = components["np"]
     height, width = 640, 640
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     out = cv2.VideoWriter(filename, fourcc, fps, (width, height))
@@ -37,7 +49,8 @@ def create_dummy_video(filename="dummy_video.mp4", duration_sec=5, fps=30):
     out.release()
 
 @pytest.mark.ai_models
-def test_engine_initialization():
+def test_engine_initialization(engine_components):
+    AIEngine = engine_components["AIEngine"]
     try:
         engine = AIEngine()
         assert engine is not None
@@ -45,7 +58,10 @@ def test_engine_initialization():
         pytest.fail(f"AIEngine failed to initialize: {e}")
 
 @pytest.mark.ai_models
-def test_clip_extraction():
+def test_clip_extraction(engine_components):
+    AIEngine = engine_components["AIEngine"]
+    np = engine_components["np"]
+    Image = engine_components["Image"]
     engine = AIEngine()
     dummy_image = Image.fromarray(np.random.randint(0, 255, (224, 224, 3), dtype=np.uint8))
     
@@ -56,7 +72,9 @@ def test_clip_extraction():
         pytest.fail(f"CLIP extraction failed: {e}")
 
 @pytest.mark.ai_models
-def test_insightface_execution():
+def test_insightface_execution(engine_components):
+    AIEngine = engine_components["AIEngine"]
+    np = engine_components["np"]
     engine = AIEngine()
     dummy_face_img = np.random.randint(0, 255, (640, 640, 3), dtype=np.uint8)
     
@@ -68,9 +86,10 @@ def test_insightface_execution():
 
 @pytest.mark.ai_models
 @pytest.mark.slow
-def test_video_processor():
+def test_video_processor(engine_components):
+    VideoProcessor = engine_components["VideoProcessor"]
     dummy_vid_name = "dummy_video_test.mp4"
-    create_dummy_video(dummy_vid_name)
+    create_dummy_video(dummy_vid_name, components=engine_components)
     
     try:
         vp = VideoProcessor()

@@ -1,33 +1,44 @@
-import sys
-import os
-from unittest.mock import MagicMock
-
-# Ensure project root is in path
-sys.path.append(os.getcwd())
-
-# Mock AI and system modules only if missing
-for mod in ["open_clip", "decord", "facenet_pytorch", "insightface", "onnxruntime", "pandas", "cv2"]:
-    if mod not in sys.modules:
-        sys.modules[mod] = MagicMock()
-
-sys.modules["src.core.ai_models"] = MagicMock()
-sys.modules["src.core.vlm_engine"] = MagicMock()
-sys.modules["src.core.processor"] = MagicMock()
-
-import pytest
-from fastapi.testclient import TestClient
-from server.main import app
-from src.data.db_manager import DBManager
 import os
 import json
 import sqlite3
+import pytest
+from unittest.mock import MagicMock, patch
+
+@pytest.fixture(autouse=True)
+def mock_missing_deps():
+    from importlib.machinery import ModuleSpec
+    
+    mocks = {}
+    for mod_name in ["open_clip", "decord", "facenet_pytorch", "insightface", "onnxruntime", "pandas", "cv2", "src.core.ai_models", "src.core.vlm_engine", "src.core.processor"]:
+        m = MagicMock()
+        m.__spec__ = ModuleSpec(mod_name, None)
+        mocks[mod_name] = m
+        
+    with patch.dict("sys.modules", mocks):
+        yield mocks
 
 @pytest.fixture
-def client():
+def api_components():
+    from fastapi.testclient import TestClient
+    from server.main import app
+    from src.data.db_manager import DBManager
+    from server.dependencies import get_db_manager
+    return {
+        "TestClient": TestClient,
+        "app": app,
+        "DBManager": DBManager,
+        "get_db_manager": get_db_manager
+    }
+
+@pytest.fixture
+def client(api_components):
+    TestClient = api_components["TestClient"]
+    app = api_components["app"]
     return TestClient(app)
 
 @pytest.fixture
-def db(request):
+def db(request, api_components):
+    DBManager = api_components["DBManager"]
     # Use a unique database per test to avoid interference
     test_name = request.node.name
     db_dir = f"data/test_{test_name}"
@@ -123,9 +134,10 @@ def test_invalid_file_id(db):
         db.add_tags(999, ["tag"], "general")
 
 # Integration tests for FastAPI endpoints
-from server.dependencies import get_db_manager
 
-def test_api_add_tags(client, db):
+def test_api_add_tags(client, db, api_components):
+    app = api_components["app"]
+    get_db_manager = api_components["get_db_manager"]
     app.dependency_overrides[get_db_manager] = lambda: db
     response = client.post("/media/1/tags", json={"tags": ["api_tag"], "category": "general"})
     assert response.status_code == 200
@@ -133,7 +145,9 @@ def test_api_add_tags(client, db):
     assert "api_tag" in data["tags"]
     app.dependency_overrides.clear()
 
-def test_api_suggest_tags(client, db):
+def test_api_suggest_tags(client, db, api_components):
+    app = api_components["app"]
+    get_db_manager = api_components["get_db_manager"]
     app.dependency_overrides[get_db_manager] = lambda: db
     db.add_tags(1, ["apple", "apricot"], "general")
     response = client.get("/gallery/tags/suggest?q=ap")
@@ -143,7 +157,9 @@ def test_api_suggest_tags(client, db):
     assert any(s["tag"] == "apricot" for s in data)
     app.dependency_overrides.clear()
 
-def test_api_404(client, db):
+def test_api_404(client, db, api_components):
+    app = api_components["app"]
+    get_db_manager = api_components["get_db_manager"]
     app.dependency_overrides[get_db_manager] = lambda: db
     response = client.post("/media/999/tags", json={"tags": ["tag"], "category": "general"})
     assert response.status_code == 404

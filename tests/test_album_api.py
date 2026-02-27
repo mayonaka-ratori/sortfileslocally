@@ -1,39 +1,41 @@
-import sys
 import os
-from unittest.mock import MagicMock
-
-# Robust availability check
-def is_available(mod_name):
-    if mod_name in sys.modules:
-        mod = sys.modules[mod_name]
-        if 'mock' in str(type(mod)).lower(): return False
-        return True
-    try:
-        mod = __import__(mod_name)
-        if 'mock' in str(type(mod)).lower(): return False
-        return True
-    except (ImportError, Exception):
-        return False
-
-# Mock ONLY if missing and not already real
-for mod in ["open_clip", "decord", "facenet_pytorch", "insightface", "onnxruntime", "pandas", "cv2"]:
-    if not is_available(mod):
-        sys.modules[mod] = MagicMock()
-
-# Models must be mocked to avoid model loading during test collection
-sys.modules["src.core.ai_models"] = MagicMock()
-sys.modules["src.core.vlm_engine"] = MagicMock()
-sys.modules["src.core.processor"] = MagicMock()
-
-import pytest
 import json
-from fastapi.testclient import TestClient
-from server.main import app
-from server.dependencies import get_db_manager
-from src.data.db_manager import DBManager
+import pytest
+from unittest.mock import MagicMock, patch
+
+@pytest.fixture(autouse=True)
+def mock_missing_deps():
+    from importlib.machinery import ModuleSpec
+    
+    mocks = {}
+    for mod_name in ["open_clip", "decord", "facenet_pytorch", "insightface", "onnxruntime", "pandas", "cv2", "src.core.ai_models", "src.core.vlm_engine", "src.core.processor"]:
+        m = MagicMock()
+        m.__spec__ = ModuleSpec(mod_name, None)
+        mocks[mod_name] = m
+        
+    with patch.dict("sys.modules", mocks):
+        yield mocks
 
 @pytest.fixture
-def client(tmp_path):
+def api_components():
+    from fastapi.testclient import TestClient
+    from server.main import app
+    from src.data.db_manager import DBManager
+    from server.dependencies import get_db_manager
+    return {
+        "TestClient": TestClient,
+        "app": app,
+        "DBManager": DBManager,
+        "get_db_manager": get_db_manager
+    }
+
+@pytest.fixture
+def client(tmp_path, api_components):
+    TestClient = api_components["TestClient"]
+    app = api_components["app"]
+    DBManager = api_components["DBManager"]
+    get_db_manager = api_components["get_db_manager"]
+    
     db_dir = tmp_path / "db"
     db = DBManager(db_dir=str(db_dir))
     

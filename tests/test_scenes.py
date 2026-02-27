@@ -9,62 +9,84 @@ import numpy as np
 from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
 
-# Mock missing dependencies
-def is_available(mod_name):
-    if mod_name in sys.modules: return True
-    try:
-        __import__(mod_name)
-        return True
-    except: return False
+# Mocking for environment-dependent imports
+@pytest.fixture(autouse=True)
+def mock_missing_deps():
+    from importlib.machinery import ModuleSpec
+    
+    mocks = {}
+    # Modules to mock with __spec__ for robust import behavior
+    for mod_name in [
+        "open_clip", "decord", "facenet_pytorch", "insightface", "onnxruntime", 
+        "pandas", "cv2", "scenedetect", "sklearn", 
+        "src.core.ai_models", "src.core.vlm_engine", "src.core.inference", 
+        "src.core.intelligence", "src.core.video_processor", "src.core.exporter",
+        "src.core.processor" # Added from instruction
+    ]:
+        m = MagicMock()
+        m.__spec__ = ModuleSpec(mod_name, None)
+        mocks[mod_name] = m
+        
+    # Mock AIEngine class specifically
+    mock_ai_engine_cls = MagicMock()
+    mock_ai_engine_inst = MagicMock()
+    mock_ai_engine_inst.extract_clip_feature.return_value = np.zeros(768, dtype=np.float32)
+    mock_ai_engine_inst.extract_clip_text_feature.return_value = np.zeros(768, dtype=np.float32)
+    mock_ai_engine_cls.return_value = mock_ai_engine_inst
+    mocks["src.core.ai_models"].AIEngine = mock_ai_engine_cls
 
-for mod in ["open_clip", "decord", "facenet_pytorch", "insightface", "onnxruntime", "cv2", "scenedetect", "sklearn"]:
-    if not is_available(mod):
-        sys.modules[mod] = MagicMock()
-
-# Global mocks
-mock_ai_engine = MagicMock()
-mock_ai_engine.extract_clip_feature.return_value = np.zeros(768, dtype=np.float32)
-mock_ai_engine.extract_clip_text_feature.return_value = np.zeros(768, dtype=np.float32)
-
-# Mock problematic src.core modules early
-sys.modules["src.core.ai_models"] = MagicMock()
-sys.modules["src.core.ai_models"].AIEngine = MagicMock(return_value=mock_ai_engine)
-sys.modules["src.core.vlm_engine"] = MagicMock()
-sys.modules["src.core.inference"] = MagicMock()
-sys.modules["src.core.intelligence"] = MagicMock()
-sys.modules["src.core.video_processor"] = MagicMock()
-sys.modules["src.core.exporter"] = MagicMock()
-
-from server.main import app
-from server.dependencies import get_db_manager, get_ai_engine, get_processor
-from src.data.db_manager import DBManager
-from src.data.schemas import MediaItem, ProcessingResult, VideoSceneData
+    with patch.dict("sys.modules", mocks):
+        yield mocks
 
 @pytest.fixture
-def test_db(tmp_path):
+def api_components():
+    # Import inside fixture to avoid top-level import issues
+    from server.main import app
+    from server.dependencies import get_db_manager, get_ai_engine, get_processor
+    from src.data.db_manager import DBManager
+    from src.data.schemas import MediaItem, ProcessingResult, VideoSceneData
+    return {
+        "app": app,
+        "get_db_manager": get_db_manager,
+        "get_ai_engine": get_ai_engine,
+        "get_processor": get_processor,
+        "DBManager": DBManager,
+        "MediaItem": MediaItem,
+        "ProcessingResult": ProcessingResult,
+        "VideoSceneData": VideoSceneData
+    }
+
+@pytest.fixture
+def test_db(tmp_path, api_components):
     test_db_dir = str(tmp_path / "data" / "test_db_scenes")
     if os.path.exists(test_db_dir):
         shutil.rmtree(test_db_dir, ignore_errors=True)
     
+    app = api_components["app"]
+    DBManager = api_components["DBManager"]
+    
     db = DBManager(test_db_dir)
+    mock_ai_engine = MagicMock()
+    mock_ai_engine.extract_clip_feature.return_value = np.zeros(768, dtype=np.float32)
+    mock_ai_engine.extract_clip_text_feature.return_value = np.zeros(768, dtype=np.float32)
     db.ai_engine = mock_ai_engine
     db._migrate_schema() # Ensure schema is up to date
 
     # Patch dependencies
-    app.dependency_overrides[get_db_manager] = lambda: db
-    app.dependency_overrides[get_ai_engine] = lambda: mock_ai_engine
-    app.dependency_overrides[get_processor] = lambda: MagicMock()
+    app.dependency_overrides[api_components["get_db_manager"]] = lambda: db
+    app.dependency_overrides[api_components["get_ai_engine"]] = lambda: mock_ai_engine
+    app.dependency_overrides[api_components["get_processor"]] = lambda: MagicMock()
     
     yield db, test_db_dir
     
     app.dependency_overrides.clear()
-    # Close any connections. In sqlite3, this is tricky if not handled by DBManager
-    # We'll just ignore errors on cleanup if needed
     if os.path.exists(test_db_dir):
         shutil.rmtree(test_db_dir, ignore_errors=True)
 
-def test_detect_scenes_endpoint(test_db):
+def test_detect_scenes_endpoint(test_db, api_components):
     db, _ = test_db
+    app = api_components["app"]
+    get_processor = api_components["get_processor"]
     
     # 1. Setup a video file in DB
     conn = db._connect()
@@ -87,8 +109,9 @@ def test_detect_scenes_endpoint(test_db):
         assert response.json()["status"] == "processing"
         mock_processor.process_video_scenes.assert_called_once_with(file_id)
 
-def test_delete_scenes_endpoint(test_db):
+def test_delete_scenes_endpoint(test_db, api_components):
     db, _ = test_db
+    app = api_components["app"]
     
     # 1. Setup video and scenes
     conn = db._connect()
@@ -120,8 +143,9 @@ def test_delete_scenes_endpoint(test_db):
         assert c.fetchone()[0] == 0
         conn.close()
 
-def test_scene_search_endpoint(test_db):
+def test_scene_search_endpoint(test_db, api_components):
     db, _ = test_db
+    app = api_components["app"]
     
     # Mock db.search_scenes
     db.search_scenes = MagicMock(return_value=[
@@ -142,8 +166,11 @@ def test_scene_search_endpoint(test_db):
         assert data[0]["caption"] == "test scene"
         assert "nature" in data[0]["tags"]
 
-def test_db_manager_new_columns(test_db):
+def test_db_manager_new_columns(test_db, api_components):
     db, _ = test_db
+    MediaItem = api_components["MediaItem"]
+    VideoSceneData = api_components["VideoSceneData"]
+    ProcessingResult = api_components["ProcessingResult"]
     
     # Verify add_result populates new columns
     item = MediaItem("v2.mp4", "h2", 100, "video", 1, 1)
@@ -179,13 +206,15 @@ def test_db_manager_new_columns(test_db):
     assert row_dict["clip_vector_id"] is not None
     conn.close()
 
-def test_detect_scenes_not_found(test_db):
+def test_detect_scenes_not_found(test_db, api_components):
+    app = api_components["app"]
     with TestClient(app) as client:
         response = client.post("/scenes/99999/detect")
         assert response.status_code == 404
 
-def test_detect_scenes_not_video(test_db):
+def test_detect_scenes_not_video(test_db, api_components):
     db, _ = test_db
+    app = api_components["app"]
     conn = db._connect()
     c = conn.cursor()
     c.execute("INSERT INTO files (file_path, media_type) VALUES (?, ?)", ("img.jpg", "image"))
@@ -197,8 +226,9 @@ def test_detect_scenes_not_video(test_db):
         response = client.post(f"/scenes/{fid}/detect")
         assert response.status_code == 422
 
-def test_detect_scenes_duration_limit(test_db):
+def test_detect_scenes_duration_limit(test_db, api_components):
     db, _ = test_db
+    app = api_components["app"]
     conn = db._connect()
     c = conn.cursor()
     c.execute("INSERT INTO files (file_path, media_type, duration) VALUES (?, ?, ?)", ("long.mp4", "video", 8000))
@@ -211,8 +241,9 @@ def test_detect_scenes_duration_limit(test_db):
         assert response.status_code == 422
         assert "exceeds maximum duration" in response.json()["detail"]
 
-def test_detect_scenes_force_override(test_db):
+def test_detect_scenes_force_override(test_db, api_components):
     db, _ = test_db
+    app = api_components["app"]
     conn = db._connect()
     c = conn.cursor()
     c.execute("INSERT INTO files (file_path, media_type, duration) VALUES (?, ?, ?)", ("long_force.mp4", "video", 8000))
@@ -225,8 +256,9 @@ def test_detect_scenes_force_override(test_db):
         assert response.status_code == 200
         assert response.json()["status"] == "processing"
 
-def test_get_scenes_empty(test_db):
+def test_get_scenes_empty(test_db, api_components):
     db, _ = test_db
+    app = api_components["app"]
     conn = db._connect()
     c = conn.cursor()
     c.execute("INSERT INTO files (file_path, media_type) VALUES (?, ?)", ("empty.mp4", "video"))
@@ -240,8 +272,9 @@ def test_get_scenes_empty(test_db):
         assert response.status_code == 200
         assert response.json() == []
 
-def test_delete_scenes_cleans_thumbnails(test_db, tmp_path):
+def test_delete_scenes_cleans_thumbnails(test_db, tmp_path, api_components):
     db, _ = test_db
+    app = api_components["app"]
     thumb_dir = tmp_path / "thumbs"
     thumb_dir.mkdir()
     t1 = thumb_dir / "t1.jpg"

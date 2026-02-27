@@ -8,6 +8,17 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "slow: tests that take > 30 seconds")
 
 @pytest.fixture(autouse=True)
+def cleanup_app_overrides():
+    yield
+    # Safely try to clear overrides if the module is loaded
+    if "server.main" in sys.modules:
+        try:
+            from server.main import app
+            app.dependency_overrides.clear()
+        except:
+            pass
+
+@pytest.fixture(autouse=True)
 def cleanup_sys_modules():
     # Capture initial sys.modules state if needed, but here we just want to remove mocks
     # that were added at top level of test files.

@@ -1,36 +1,43 @@
-import sys
 import os
+import pytest
 from unittest.mock import MagicMock, patch
 
-# Ensure project root is in path
-sys.path.append(os.getcwd())
-
-# Mock AI and system modules only if missing
-for mod in [
-    "open_clip", "decord", "facenet_pytorch", "insightface", 
-    "onnxruntime", "cv2", "sklearn", "sklearn.cluster"
-]:
-    if mod not in sys.modules:
-        sys.modules[mod] = MagicMock()
-
-# Mock internal components that would pull in heavy AI dependencies
-sys.modules["src.core.ai_models"] = MagicMock()
-sys.modules["src.core.vlm_engine"] = MagicMock()
-sys.modules["src.core.inference"] = MagicMock()
-sys.modules["src.core.video_processor"] = MagicMock()
-
-import pytest
-from fastapi.testclient import TestClient
-from server.main import app
-from src.data.db_manager import DBManager
-from server.dependencies import get_db_manager, get_processor
+@pytest.fixture(autouse=True)
+def mock_missing_deps():
+    from importlib.machinery import ModuleSpec
+    
+    mocks = {}
+    for mod_name in ["open_clip", "decord", "facenet_pytorch", "insightface", "onnxruntime", "pandas", "cv2", "sklearn", "src.core.ai_models", "src.core.vlm_engine", "src.core.processor"]:
+        m = MagicMock()
+        m.__spec__ = ModuleSpec(mod_name, None)
+        mocks[mod_name] = m
+        
+    with patch.dict("sys.modules", mocks):
+        yield mocks
 
 @pytest.fixture
-def client():
+def api_components():
+    from fastapi.testclient import TestClient
+    from server.main import app
+    from src.data.db_manager import DBManager
+    from server.dependencies import get_db_manager, get_processor
+    return {
+        "TestClient": TestClient,
+        "app": app,
+        "DBManager": DBManager,
+        "get_db_manager": get_db_manager,
+        "get_processor": get_processor
+    }
+
+@pytest.fixture
+def client(api_components):
+    TestClient = api_components["TestClient"]
+    app = api_components["app"]
     return TestClient(app)
 
 @pytest.fixture
-def db(request):
+def db(request, api_components):
+    DBManager = api_components["DBManager"]
     test_name = request.node.name
     db_dir = f"data/test_rescan_{test_name}"
     
@@ -78,7 +85,10 @@ def mock_processor():
     proc._process_item.return_value = result_mock
     return proc
 
-def test_single_rescan(client, db, mock_processor):
+def test_single_rescan(client, db, mock_processor, api_components):
+    app = api_components["app"]
+    get_db_manager = api_components["get_db_manager"]
+    get_processor = api_components["get_processor"]
     app.dependency_overrides[get_db_manager] = lambda: db
     app.dependency_overrides[get_processor] = lambda: mock_processor
     
@@ -92,7 +102,10 @@ def test_single_rescan(client, db, mock_processor):
     
     app.dependency_overrides.clear()
 
-def test_bulk_rescan(client, db, mock_processor):
+def test_bulk_rescan(client, db, mock_processor, api_components):
+    app = api_components["app"]
+    get_db_manager = api_components["get_db_manager"]
+    get_processor = api_components["get_processor"]
     app.dependency_overrides[get_db_manager] = lambda: db
     app.dependency_overrides[get_processor] = lambda: mock_processor
     
@@ -110,7 +123,10 @@ def test_bulk_rescan(client, db, mock_processor):
     
     app.dependency_overrides.clear()
 
-def test_bulk_rescan_limit(client, db, mock_processor):
+def test_bulk_rescan_limit(client, db, mock_processor, api_components):
+    app = api_components["app"]
+    get_db_manager = api_components["get_db_manager"]
+    get_processor = api_components["get_processor"]
     app.dependency_overrides[get_db_manager] = lambda: db
     app.dependency_overrides[get_processor] = lambda: mock_processor
     
@@ -127,7 +143,10 @@ def test_bulk_rescan_limit(client, db, mock_processor):
     
     app.dependency_overrides.clear()
 
-def test_rescan_invalid_file(client, db, mock_processor):
+def test_rescan_invalid_file(client, db, mock_processor, api_components):
+    app = api_components["app"]
+    get_db_manager = api_components["get_db_manager"]
+    get_processor = api_components["get_processor"]
     app.dependency_overrides[get_db_manager] = lambda: db
     app.dependency_overrides[get_processor] = lambda: mock_processor
     

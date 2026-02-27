@@ -3,13 +3,32 @@ import sys
 import shutil
 import sqlite3
 import json
+import pytest
+from unittest.mock import MagicMock, patch
 
-sys.path.append(os.path.abspath("."))
-sys.path.append(os.path.abspath("src"))
+@pytest.fixture(autouse=True)
+def mock_missing_deps():
+    from importlib.machinery import ModuleSpec
+    
+    mocks = {}
+    for mod_name in ["open_clip", "decord", "facenet_pytorch", "insightface", "onnxruntime", "pandas", "cv2", "src.core.ai_models", "src.core.vlm_engine", "src.core.processor"]:
+        m = MagicMock()
+        m.__spec__ = ModuleSpec(mod_name, None)
+        mocks[mod_name] = m
+        
+    with patch.dict("sys.modules", mocks):
+        yield mocks
 
-from src.data.db_manager import DBManager
+@pytest.fixture
+def db_components():
+    from src.data.db_manager import DBManager
+    return {
+        "DBManager": DBManager
+    }
 
-def test_metadata_merge():
+@pytest.mark.ai_models
+def test_metadata_merge(db_components):
+    DBManager = db_components["DBManager"]
     print("=== Testing Metadata Merge ===")
     
     test_db_dir = "data/test_db_merge"
@@ -86,11 +105,6 @@ def test_metadata_merge():
     # Test via API dedup delete logic simulation (Target in deletion list)
     from server.routers.dedup import apply_deduplication, DeleteRequest
     
-    # Need to override DB manager for the API path
-    class MockDeps:
-        def __init__(self, db):
-            self.db = db
-            
     try:
         res = apply_deduplication(DeleteRequest(
             file_paths=["src.jpg", "tgt.jpg"],

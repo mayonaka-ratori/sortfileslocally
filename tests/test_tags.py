@@ -1,36 +1,44 @@
-import sys
-import os
-from unittest.mock import MagicMock
-
-# Ensure project root is in path
-sys.path.append(os.getcwd())
-
-# Mock AI and system modules only if missing, to avoid breaking other tests
-for mod in ["open_clip", "decord", "facenet_pytorch", "insightface", "onnxruntime", "pandas", "cv2"]:
-    if mod not in sys.modules:
-        sys.modules[mod] = MagicMock()
-
-# Do NOT globally mock PIL, numpy, faiss, torch here as they are needed by other tests.
-# If they are missing, the imports in this file will fail, which is better than silent pollution.
-# But since we want the tests to pass in CI where they are in requirements, it's fine.
-
-sys.modules["src.core.ai_models"] = MagicMock()
-sys.modules["src.core.vlm_engine"] = MagicMock()
-sys.modules["src.core.processor"] = MagicMock()
-
-import pytest
-from fastapi.testclient import TestClient
-from server.main import app
-from src.data.db_manager import DBManager
 import os
 import json
+import sqlite3
+import pytest
+from unittest.mock import MagicMock, patch
+
+@pytest.fixture(autouse=True)
+def mock_missing_deps():
+    from importlib.machinery import ModuleSpec
+    
+    mocks = {}
+    for mod_name in ["open_clip", "decord", "facenet_pytorch", "insightface", "onnxruntime", "pandas", "cv2", "src.core.ai_models", "src.core.vlm_engine", "src.core.processor"]:
+        m = MagicMock()
+        m.__spec__ = ModuleSpec(mod_name, None)
+        mocks[mod_name] = m
+        
+    with patch.dict("sys.modules", mocks):
+        yield mocks
 
 @pytest.fixture
-def client():
+def api_components():
+    from fastapi.testclient import TestClient
+    from server.main import app
+    from src.data.db_manager import DBManager
+    from server.dependencies import get_db_manager
+    return {
+        "TestClient": TestClient,
+        "app": app,
+        "DBManager": DBManager,
+        "get_db_manager": get_db_manager
+    }
+
+@pytest.fixture
+def client(api_components):
+    TestClient = api_components["TestClient"]
+    app = api_components["app"]
     return TestClient(app)
 
 @pytest.fixture
-def db(request):
+def db(request, api_components):
+    DBManager = api_components["DBManager"]
     # Use a unique database per test to avoid interference
     test_name = request.node.name
     db_dir = f"data/test_{test_name}"
@@ -149,9 +157,10 @@ def test_delete_tag(db):
     assert "night" not in gen
 
 # Integration tests for FastAPI endpoints
-from server.dependencies import get_db_manager
 
-def test_api_tag_stats(client, db):
+def test_api_tag_stats(client, db, api_components):
+    app = api_components["app"]
+    get_db_manager = api_components["get_db_manager"]
     app.dependency_overrides[get_db_manager] = lambda: db
     response = client.get("/gallery/tags/stats")
     assert response.status_code == 200
@@ -159,7 +168,9 @@ def test_api_tag_stats(client, db):
     assert data["total_tags"] == 4
     app.dependency_overrides.clear()
 
-def test_api_untagged(client, db):
+def test_api_untagged(client, db, api_components):
+    app = api_components["app"]
+    get_db_manager = api_components["get_db_manager"]
     app.dependency_overrides[get_db_manager] = lambda: db
     response = client.get("/gallery/untagged")
     assert response.status_code == 200
@@ -167,7 +178,9 @@ def test_api_untagged(client, db):
     assert data["total_count"] == 2
     app.dependency_overrides.clear()
 
-def test_api_rename(client, db):
+def test_api_rename(client, db, api_components):
+    app = api_components["app"]
+    get_db_manager = api_components["get_db_manager"]
     app.dependency_overrides[get_db_manager] = lambda: db
     response = client.post("/gallery/tags/rename", json={
         "old_tag": "landscape",

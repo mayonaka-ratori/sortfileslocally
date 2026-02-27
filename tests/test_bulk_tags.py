@@ -1,31 +1,42 @@
-import sys
 import os
-from unittest.mock import MagicMock
-
-# Ensure project root is in path
-sys.path.append(os.getcwd())
-
-# Mock AI and system modules only if missing
-for mod in ["open_clip", "decord", "facenet_pytorch", "insightface", "onnxruntime", "pandas", "cv2"]:
-    if mod not in sys.modules:
-        sys.modules[mod] = MagicMock()
-
-sys.modules["src.core.ai_models"] = MagicMock()
-sys.modules["src.core.vlm_engine"] = MagicMock()
-sys.modules["src.core.processor"] = MagicMock()
-
 import pytest
-from fastapi.testclient import TestClient
-from server.main import app
-from src.data.db_manager import DBManager
-from server.dependencies import get_db_manager
+from unittest.mock import MagicMock, patch
+
+@pytest.fixture(autouse=True)
+def mock_missing_deps():
+    from importlib.machinery import ModuleSpec
+    
+    mocks = {}
+    for mod_name in ["open_clip", "decord", "facenet_pytorch", "insightface", "onnxruntime", "pandas", "cv2", "src.core.ai_models", "src.core.vlm_engine", "src.core.processor"]:
+        m = MagicMock()
+        m.__spec__ = ModuleSpec(mod_name, None)
+        mocks[mod_name] = m
+        
+    with patch.dict("sys.modules", mocks):
+        yield mocks
 
 @pytest.fixture
-def client():
+def api_components():
+    from fastapi.testclient import TestClient
+    from server.main import app
+    from src.data.db_manager import DBManager
+    from server.dependencies import get_db_manager
+    return {
+        "TestClient": TestClient,
+        "app": app,
+        "DBManager": DBManager,
+        "get_db_manager": get_db_manager
+    }
+
+@pytest.fixture
+def client(api_components):
+    TestClient = api_components["TestClient"]
+    app = api_components["app"]
     return TestClient(app)
 
 @pytest.fixture
-def db(request):
+def db(request, api_components):
+    DBManager = api_components["DBManager"]
     test_name = request.node.name
     db_dir = f"data/test_bulk_{test_name}"
     
@@ -53,7 +64,9 @@ def db(request):
         import shutil
         shutil.rmtree(db_dir)
 
-def test_bulk_add_tags(client, db):
+def test_bulk_add_tags(client, db, api_components):
+    app = api_components["app"]
+    get_db_manager = api_components["get_db_manager"]
     app.dependency_overrides[get_db_manager] = lambda: db
     payload = {
         "file_ids": [1, 2, 3],
@@ -75,7 +88,9 @@ def test_bulk_add_tags(client, db):
         assert len(tags) == 3
     app.dependency_overrides.clear()
 
-def test_bulk_remove_tags(client, db):
+def test_bulk_remove_tags(client, db, api_components):
+    app = api_components["app"]
+    get_db_manager = api_components["get_db_manager"]
     app.dependency_overrides[get_db_manager] = lambda: db
     payload = {
         "file_ids": [1, 2],
@@ -94,7 +109,9 @@ def test_bulk_remove_tags(client, db):
     assert "tagA" in db.add_tags(3, [], "general")
     app.dependency_overrides.clear()
 
-def test_bulk_replace_tags(client, db):
+def test_bulk_replace_tags(client, db, api_components):
+    app = api_components["app"]
+    get_db_manager = api_components["get_db_manager"]
     app.dependency_overrides[get_db_manager] = lambda: db
     payload = {
         "file_ids": [1, 2, 3],
@@ -111,7 +128,9 @@ def test_bulk_replace_tags(client, db):
         assert tags == ["new_tag"]
     app.dependency_overrides.clear()
 
-def test_bulk_limit_exceeded(client, db):
+def test_bulk_limit_exceeded(client, db, api_components):
+    app = api_components["app"]
+    get_db_manager = api_components["get_db_manager"]
     app.dependency_overrides[get_db_manager] = lambda: db
     payload = {
         "file_ids": list(range(501)),
@@ -124,7 +143,9 @@ def test_bulk_limit_exceeded(client, db):
     assert response.json()["detail"] == "Maximum 500 files per bulk operation"
     app.dependency_overrides.clear()
 
-def test_bulk_mixed_results(client, db):
+def test_bulk_mixed_results(client, db, api_components):
+    app = api_components["app"]
+    get_db_manager = api_components["get_db_manager"]
     app.dependency_overrides[get_db_manager] = lambda: db
     # 1 valid (ID 1), 1 invalid (ID 999)
     payload = {
@@ -141,7 +162,9 @@ def test_bulk_mixed_results(client, db):
     assert data["errors"][0]["file_id"] == 999
     app.dependency_overrides.clear()
 
-def test_bulk_empty_tags(client, db):
+def test_bulk_empty_tags(client, db, api_components):
+    app = api_components["app"]
+    get_db_manager = api_components["get_db_manager"]
     app.dependency_overrides[get_db_manager] = lambda: db
     payload = {
         "file_ids": [1, 2],
@@ -153,7 +176,9 @@ def test_bulk_empty_tags(client, db):
     assert response.status_code == 422
     app.dependency_overrides.clear()
 
-def test_bulk_add_tags_deduplication(client, db):
+def test_bulk_add_tags_deduplication(client, db, api_components):
+    app = api_components["app"]
+    get_db_manager = api_components["get_db_manager"]
     app.dependency_overrides[get_db_manager] = lambda: db
     # Insert a file with no tags for clean test
     conn = db._connect()

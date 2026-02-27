@@ -1,19 +1,31 @@
-
 import os
 import sys
 import shutil
 import time
-from PIL import Image
-import numpy as np
+import pytest
+from unittest.mock import MagicMock, patch
 
-# Add src to path
-sys.path.append(os.path.abspath("src"))
+# Skip if requested in CI
+if os.environ.get("SKIP_GPU_TESTS") == "1":
+    pytest.skip("Skipping optimization tests in CI", allow_module_level=True)
 
-from src.core.processor import Processor
-from src.data.db_manager import DBManager
+@pytest.fixture
+def opt_components():
+    from PIL import Image
+    import numpy as np
+    from src.core.processor import Processor
+    from src.data.db_manager import DBManager
+    return {
+        "Image": Image,
+        "np": np,
+        "Processor": Processor,
+        "DBManager": DBManager
+    }
 
-def setup_benchmark_data(num_images=50):
+def setup_benchmark_data(num_images=50, components=None):
     """Create a folder with N dummy images."""
+    Image = components["Image"]
+    np = components["np"]
     bench_dir = "data/bench_inputs"
     if os.path.exists(bench_dir):
         shutil.rmtree(bench_dir)
@@ -33,12 +45,14 @@ def clean_db(suffix):
         shutil.rmtree(db_dir)
     return db_dir
 
-def benchmark():
+def benchmark(components):
+    Processor = components["Processor"]
+    DBManager = components["DBManager"]
     print("=== Starting Performance Benchmark ===")
     
     # Setup
     num_images = 32 # Match expected batch size for fair single comparison
-    input_dir = setup_benchmark_data(num_images)
+    input_dir = setup_benchmark_data(num_images, components=components)
     
     processor = Processor() # Init once to load models (exclude model load time)
     # Force initialize models
@@ -74,6 +88,11 @@ def benchmark():
         print(f"\n✅ Optimization SUCCESS! Speedup: {speedup:.2f}x")
     else:
         print("\n⚠️ Optimization FAILED. Batch processing was slower.")
+
+@pytest.mark.ai_models
+@pytest.mark.slow
+def test_benchmark(opt_components):
+    benchmark(opt_components)
 
 if __name__ == "__main__":
     benchmark()

@@ -6,24 +6,27 @@ import pytest
 import sys
 from unittest.mock import MagicMock, patch
 
-# Robust availability check
-def is_available(mod_name):
-    if mod_name in sys.modules:
-        mod = sys.modules[mod_name]
-        if 'mock' in str(type(mod)).lower(): return False
-        return True
-    try:
-        mod = __import__(mod_name)
-        if 'mock' in str(type(mod)).lower(): return False
-        return True
-    except (ImportError, Exception):
-        return False
+@pytest.fixture(autouse=True)
+def mock_missing_deps():
+    from importlib.machinery import ModuleSpec
+    
+    mocks = {}
+    for mod_name in ["open_clip", "decord", "facenet_pytorch", "insightface", "onnxruntime", "pandas", "cv2", "src.core.ai_models", "src.core.vlm_engine", "src.core.processor"]:
+        m = MagicMock()
+        m.__spec__ = ModuleSpec(mod_name, None)
+        mocks[mod_name] = m
+        
+    with patch.dict("sys.modules", mocks):
+        yield mocks
 
 # Negative test mock for PIL
 def mock_open(fp, **kwargs):
     # Ensure fp is at start if it's a stream
     if hasattr(fp, 'seek'): fp.seek(0)
-    content = fp.read()
+    if hasattr(fp, 'read'):
+        content = fp.read()
+    else:
+        content = b""
     if b"Hello world" in content:
         raise OSError("cannot identify image file")
     mock_img = MagicMock()
@@ -32,40 +35,33 @@ def mock_open(fp, **kwargs):
     mock_img.height = 100
     return mock_img
 
-# Mock ONLY if missing and not already mocked or real
-# Modules we want to test real logic for should not be mocked here
-for mod in ["open_clip", "decord", "facenet_pytorch", "insightface", "onnxruntime", "pandas", "cv2"]:
-    if not is_available(mod):
-        m = MagicMock()
-        sys.modules[mod] = m
-
-# We want REAL PIL, numpy, faiss, torch, torchvision if available
-# because the endpoint imports them and we might want to patch them specifically.
-for mod in ["PIL", "numpy", "faiss", "torch", "torchvision"]:
-    if not is_available(mod):
-        # Even if missing, we'll let the individual tests handle mocking or skipping
-        # to avoid polluting sys.modules for other tests that might have them.
-        pass
-
-# Models must be mocked
-sys.modules["src.core.ai_models"] = MagicMock()
-
-import numpy as np
-from fastapi.testclient import TestClient
-from server.main import app
-from server.dependencies import get_db_manager, get_ai_engine
-from src.data.db_manager import DBManager
+@pytest.fixture
+def api_components():
+    import numpy as np
+    from server.main import app
+    from server.dependencies import get_db_manager, get_ai_engine
+    from src.data.db_manager import DBManager
+    return {
+        "np": np,
+        "app": app,
+        "get_db_manager": get_db_manager,
+        "get_ai_engine": get_ai_engine,
+        "DBManager": DBManager
+    }
 
 # Mock AIEngine
 class MockAIEngine:
+    def __init__(self, np_mod):
+        self.np = np_mod
     def extract_clip_feature(self, img):
-        vec = np.ones(768, dtype=np.float32)
-        return vec / np.linalg.norm(vec)
+        vec = self.np.ones(768, dtype=self.np.float32)
+        return vec / self.np.linalg.norm(vec)
     def extract_clip_text_feature(self, text):
         pass
 
 @pytest.fixture
-def mock_db_rev_search(tmp_path):
+def mock_db_rev_search(tmp_path, api_components):
+    DBManager = api_components["DBManager"]
     test_db_dir = str(tmp_path / "data" / "test_db_rev_search")
     if os.path.exists(test_db_dir):
         shutil.rmtree(test_db_dir)
@@ -95,15 +91,20 @@ def mock_db_rev_search(tmp_path):
     if os.path.exists(test_db_dir):
         shutil.rmtree(test_db_dir)
 
-def test_reverse_search_endpoint(mock_db_rev_search):
+def test_reverse_search_endpoint(mock_db_rev_search, api_components):
     db, test_db_dir, fids = mock_db_rev_search
+    app = api_components["app"]
+    get_db_manager = api_components["get_db_manager"]
+    get_ai_engine = api_components["get_ai_engine"]
+    np = api_components["np"]
+    from fastapi.testclient import TestClient
     
     db.search_similar_images = MagicMock(return_value=[("test1.jpg", 0.999), ("test2.png", 0.5)])
     
     def override_get_db_manager():
         return db
     def override_get_ai_engine():
-        return MockAIEngine()
+        return MockAIEngine(np)
 
     app.dependency_overrides[get_db_manager] = override_get_db_manager
     app.dependency_overrides[get_ai_engine] = override_get_ai_engine

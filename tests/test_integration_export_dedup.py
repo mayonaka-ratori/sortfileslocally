@@ -1,40 +1,48 @@
-import sys
 import os
-from unittest.mock import MagicMock
-
-# Robust availability check
-def is_available(mod_name):
-    try:
-        mod = __import__(mod_name)
-        if 'mock' in str(type(mod)).lower(): return False
-        return True
-    except ImportError:
-        return False
-
-# Mock AI and system modules only if missing and not already real
-for mod in ["open_clip", "decord", "facenet_pytorch", "insightface", "onnxruntime", "pandas", "cv2"]:
-    if not is_available(mod):
-        sys.modules[mod] = MagicMock()
-
-# Models must be mocked
-sys.modules["src.core.ai_models"] = MagicMock()
-sys.modules["src.core.vlm_engine"] = MagicMock()
-sys.modules["src.core.processor"] = MagicMock()
-
 import pytest
-from fastapi.testclient import TestClient
-from server.main import app
-from src.data.schemas import MediaItem, ProcessingResult
+from unittest.mock import MagicMock, patch
 
-# Handle PIL mock
-if is_available("PIL"):
-    from PIL import Image
-else:
-    Image = MagicMock()
+@pytest.fixture(autouse=True)
+def mock_missing_deps():
+    from importlib.machinery import ModuleSpec
+    
+    mocks = {}
+    for mod_name in ["open_clip", "decord", "facenet_pytorch", "insightface", "onnxruntime", "pandas", "cv2", "src.core.ai_models", "src.core.vlm_engine", "src.core.processor"]:
+        m = MagicMock()
+        m.__spec__ = ModuleSpec(mod_name, None)
+        mocks[mod_name] = m
+        
+    with patch.dict("sys.modules", mocks):
+        yield mocks
 
-client = TestClient(app)
+@pytest.fixture
+def api_components():
+    from fastapi.testclient import TestClient
+    from server.main import app
+    from src.data.schemas import MediaItem, ProcessingResult
+    from server.dependencies import get_db_manager
+    try:
+        from PIL import Image
+    except ImportError:
+        Image = MagicMock()
+    return {
+        "TestClient": TestClient,
+        "app": app,
+        "MediaItem": MediaItem,
+        "ProcessingResult": ProcessingResult,
+        "get_db_manager": get_db_manager,
+        "Image": Image
+    }
 
-def test_integration_export_dedup_deletes_xmp(tmp_path):
+def test_integration_export_dedup_deletes_xmp(tmp_path, api_components):
+    TestClient = api_components["TestClient"]
+    app = api_components["app"]
+    MediaItem = api_components["MediaItem"]
+    ProcessingResult = api_components["ProcessingResult"]
+    get_db_manager = api_components["get_db_manager"]
+    Image = api_components["Image"]
+    client = TestClient(app)
+    
     # Setup test file - Use normalized absolute path
     test_img_path = (tmp_path / "test_dedup_export.jpg").resolve()
     if not isinstance(Image, MagicMock):
@@ -46,7 +54,6 @@ def test_integration_export_dedup_deletes_xmp(tmp_path):
     img_path_str = str(test_img_path)
     
     # Needs db
-    from server.dependencies import get_db_manager
     db = get_db_manager()
     
     import time

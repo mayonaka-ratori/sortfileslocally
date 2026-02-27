@@ -1,17 +1,44 @@
 import pytest
-from fastapi.testclient import TestClient
 import os
-from server.main import app
+from unittest.mock import MagicMock, patch
 
-client = TestClient(app)
+@pytest.fixture(autouse=True)
+def mock_missing_deps():
+    from importlib.machinery import ModuleSpec
+    
+    mocks = {}
+    for mod_name in ["open_clip", "decord", "facenet_pytorch", "insightface", "onnxruntime", "pandas", "cv2", "src.core.ai_models", "src.core.vlm_engine", "src.core.processor"]:
+        m = MagicMock()
+        m.__spec__ = ModuleSpec(mod_name, None)
+        mocks[mod_name] = m
+        
+    with patch.dict("sys.modules", mocks):
+        yield mocks
 
-def test_get_setup_settings():
+@pytest.fixture
+def api_components():
+    from fastapi.testclient import TestClient
+    from server.main import app
+    return {
+        "TestClient": TestClient,
+        "app": app
+    }
+
+@pytest.fixture
+def client(api_components):
+    TestClient = api_components["TestClient"]
+    app = api_components["app"]
+    return TestClient(app)
+
+@pytest.mark.ai_models
+def test_get_setup_settings(client):
     response = client.get("/setup/settings")
     assert response.status_code == 200
     data = response.json()
     assert "custom_model_dir" in data
 
-def test_post_setup_settings_valid(tmp_path):
+@pytest.mark.ai_models
+def test_post_setup_settings_valid(tmp_path, client):
     valid_dir = str(tmp_path)
     response = client.post("/setup/settings", json={"key": "custom_model_dir", "value": valid_dir})
     assert response.status_code == 200
@@ -21,12 +48,14 @@ def test_post_setup_settings_valid(tmp_path):
     assert data["value"] == valid_dir
     assert data["requires_restart"] is True
 
-def test_post_setup_settings_invalid_not_exist():
+@pytest.mark.ai_models
+def test_post_setup_settings_invalid_not_exist(client):
     response = client.post("/setup/settings", json={"key": "custom_model_dir", "value": "/does/not/exist/ever123"})
     assert response.status_code == 422
     assert "does not exist" in response.json()["detail"].lower()
 
-def test_post_setup_settings_invalid_not_dir(tmp_path):
+@pytest.mark.ai_models
+def test_post_setup_settings_invalid_not_dir(tmp_path, client):
     test_file = tmp_path / "test.txt"
     test_file.write_text("test")
     response = client.post("/setup/settings", json={"key": "custom_model_dir", "value": str(test_file)})

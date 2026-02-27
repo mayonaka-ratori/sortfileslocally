@@ -1,31 +1,43 @@
-import sys
 import os
-from unittest.mock import MagicMock
-
-# Ensure project root is in path
-sys.path.append(os.getcwd())
-
-# Mock AI and system modules only if missing
-for mod in ["open_clip", "decord", "facenet_pytorch", "insightface", "onnxruntime", "pandas", "cv2"]:
-    if mod not in sys.modules:
-        sys.modules[mod] = MagicMock()
-
-sys.modules["src.core.ai_models"] = MagicMock()
-sys.modules["src.core.vlm_engine"] = MagicMock()
-sys.modules["src.core.processor"] = MagicMock()
-
-import pytest
-from fastapi.testclient import TestClient
-from server.main import app
-from src.data.db_manager import DBManager
 import json
+import pytest
+from unittest.mock import MagicMock, patch
+
+@pytest.fixture(autouse=True)
+def mock_missing_deps():
+    from importlib.machinery import ModuleSpec
+    
+    mocks = {}
+    for mod_name in ["open_clip", "decord", "facenet_pytorch", "insightface", "onnxruntime", "pandas", "cv2", "src.core.ai_models", "src.core.vlm_engine", "src.core.processor"]:
+        m = MagicMock()
+        m.__spec__ = ModuleSpec(mod_name, None)
+        mocks[mod_name] = m
+        
+    with patch.dict("sys.modules", mocks):
+        yield mocks
 
 @pytest.fixture
-def client():
+def api_components():
+    from fastapi.testclient import TestClient
+    from server.main import app
+    from src.data.db_manager import DBManager
+    from server.dependencies import get_db_manager
+    return {
+        "TestClient": TestClient,
+        "app": app,
+        "DBManager": DBManager,
+        "get_db_manager": get_db_manager
+    }
+
+@pytest.fixture
+def client(api_components):
+    TestClient = api_components["TestClient"]
+    app = api_components["app"]
     return TestClient(app)
 
 @pytest.fixture
-def db(request):
+def db(request, api_components):
+    DBManager = api_components["DBManager"]
     test_name = request.node.name
     db_dir = f"data/test_{test_name}"
     
@@ -133,8 +145,9 @@ def test_low_quality_tags_insight(db):
     assert len(low_qual) == 1
     assert low_qual[0]["count"] == 11
 
-def test_api_insights_endpoint(client, db):
-    from server.dependencies import get_db_manager
+def test_api_insights_endpoint(client, db, api_components):
+    app = api_components["app"]
+    get_db_manager = api_components["get_db_manager"]
     app.dependency_overrides[get_db_manager] = lambda: db
     
     response = client.get("/insights")

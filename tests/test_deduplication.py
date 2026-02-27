@@ -1,39 +1,44 @@
 import os
-import sys
 import shutil
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
-def is_available(mod_name):
+# Skip if requested in CI
+if os.environ.get("SKIP_GPU_TESTS") == "1":
+    pytest.skip("Skipping deduplication tests in CI", allow_module_level=True)
+
+@pytest.fixture
+def dedup_components():
+    import numpy as np
     try:
-        # Check if already in sys.modules and if it's a mock
-        if mod_name in sys.modules:
-            mod = sys.modules[mod_name]
-            if 'mock' in str(type(mod)).lower():
-                return False
-        # Try importing
-        mod = __import__(mod_name)
-        if 'mock' in str(type(mod)).lower():
-            return False
-        return True
+        import faiss
     except ImportError:
-        return False
-
-if not is_available("faiss") or not is_available("numpy") or not is_available("PIL"):
-    pytest.skip("Deduplication requires real faiss/numpy/PIL", allow_module_level=True)
-
-sys.path.append(os.path.abspath("src"))
-
-try:
+        faiss = MagicMock()
+    from PIL import Image
+    
+    # Internal core modules
     from src.core.deduplication import Deduplicator
     from src.data.db_manager import DBManager
     from src.data.schemas import MediaItem, ProcessingResult, VectorData
-except Exception as e:
-    pytest.skip(f"Core modules failed to import: {e}", allow_module_level=True)
+    
+    return {
+        "np": np,
+        "faiss": faiss,
+        "Image": Image,
+        "Deduplicator": Deduplicator,
+        "DBManager": DBManager,
+        "MediaItem": MediaItem,
+        "ProcessingResult": ProcessingResult,
+        "VectorData": VectorData
+    }
 
-def test_deduplication_logic(tmp_path):
-    import numpy as np
-    from PIL import Image
+@pytest.mark.ai_models
+def test_deduplication_logic(tmp_path, dedup_components):
+    np = dedup_components["np"]
+    Image = dedup_components["Image"]
+    DBManager = dedup_components["DBManager"]
+    Deduplicator = dedup_components["Deduplicator"]
+    MediaItem = dedup_components["MediaItem"]
     
     test_db_dir = str(tmp_path / "data" / "test_db_dedup")
     if os.path.exists(test_db_dir):
@@ -65,8 +70,8 @@ def test_deduplication_logic(tmp_path):
         vec2 /= np.linalg.norm(vec2)
         
         # Store
-        _inject_item(db, item_a, vec1)
-        _inject_item(db, item_b, vec2)
+        _inject_item(db, item_a, vec1, dedup_components)
+        _inject_item(db, item_b, vec2, dedup_components)
         
         # Pair 2: Video, Different Duration
         vec3 = np.random.randn(768).astype(np.float32)
@@ -77,8 +82,8 @@ def test_deduplication_logic(tmp_path):
         vid_a = MediaItem("vid_a.mp4", "h_va", 5000, "video", 100, 100, 1920, 1080, duration=60.0)
         vid_b = MediaItem("vid_b.mp4", "h_vb", 5000, "video", 100, 100, 1920, 1080, duration=120.0)
         
-        _inject_item(db, vid_a, vec3)
-        _inject_item(db, vid_b, vec4)
+        _inject_item(db, vid_a, vec3, dedup_components)
+        _inject_item(db, vid_b, vec4, dedup_components)
         
         # Run
         pairs = deduper.find_duplicates(threshold_img=0.90, threshold_vid=0.90)
@@ -94,11 +99,11 @@ def test_deduplication_logic(tmp_path):
         if os.path.exists(tdir):
             shutil.rmtree(tdir)
 
-def _inject_item(db, item, vector):
+def _inject_item(db, item, vector, components):
     import sqlite3
     import json
-    import faiss
-    import numpy as np
+    faiss = components["faiss"]
+    np = components["np"]
     conn = sqlite3.connect(db.sqlite_path)
     c = conn.cursor()
     

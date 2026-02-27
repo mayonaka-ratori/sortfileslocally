@@ -13,6 +13,10 @@ def is_available(mod_name):
 
 sys.path.append(os.path.abspath("src"))
 
+# Skip if requested in CI
+if os.environ.get("SKIP_GPU_TESTS") == "1":
+    pytest.skip("Skipping VLM debug tests in CI", allow_module_level=True)
+
 # Use allow_module_level=True to skip the whole file if dependencies are missing
 if not is_available("torch") or not is_available("transformers") or not is_available("PIL"):
     pytest.skip("Torch/Transformers/PIL not available", allow_module_level=True)

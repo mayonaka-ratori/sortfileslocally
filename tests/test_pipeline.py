@@ -1,16 +1,30 @@
-
 import os
 import sys
 import shutil
+import pytest
+from unittest.mock import MagicMock, patch
 
-# Add src to path
-sys.path.append(os.path.abspath("src"))
+# Skip if requested in CI
+if os.environ.get("SKIP_GPU_TESTS") == "1":
+    pytest.skip("Skipping pipeline tests in CI", allow_module_level=True)
 
-from src.core.processor import Processor
-from src.data.db_manager import DBManager
+@pytest.fixture
+def pipe_components():
+    import numpy as np
+    from PIL import Image
+    from src.core.processor import Processor
+    from src.data.db_manager import DBManager
+    return {
+        "np": np,
+        "Image": Image,
+        "Processor": Processor,
+        "DBManager": DBManager
+    }
 
-def create_dummy_data():
+def create_dummy_data(components):
     """Create a folder with some dummy files for testing."""
+    np = components["np"]
+    Image = components["Image"]
     test_dir = "data/inputs_test"
     if os.path.exists(test_dir):
         shutil.rmtree(test_dir)
@@ -21,9 +35,6 @@ def create_dummy_data():
         f.write("ignore me")
         
     # 2. Create dummy images (Noise)
-    import numpy as np
-    from PIL import Image
-    
     for i in range(3):
         # Generate random noise image
         img = Image.fromarray(np.random.randint(0, 255, (200, 200, 3), dtype=np.uint8))
@@ -39,11 +50,14 @@ def clean_db():
         shutil.rmtree(db_dir)
     return db_dir
 
-def test_pipeline():
+@pytest.mark.ai_models
+def test_pipeline_execution(pipe_components):
+    Processor = pipe_components["Processor"]
+    DBManager = pipe_components["DBManager"]
     print("=== Starting Phase 3 Pipeline Test ===")
     
     # Setup
-    input_dir = create_dummy_data()
+    input_dir = create_dummy_data(pipe_components)
     db_dir = clean_db()
     
     try:
@@ -63,7 +77,6 @@ def test_pipeline():
         db_mgr = DBManager(db_dir=db_dir)
         
         # Check SQLite
-        conn = db_mgr._init_sqlite() # Re-connect manually or check via new method
         import sqlite3
         conn = sqlite3.connect(os.path.join(db_dir, "metadata.db"))
         c = conn.cursor()
@@ -84,11 +97,13 @@ def test_pipeline():
             print("✅ Pipeline Success: All 3 images processed and indexed.")
         else:
             print("❌ Pipeline Verification Failed.")
+            raise ValueError("Pipeline verification failed")
             
     except Exception as e:
         print(f"❌ Pipeline Failed with Error: {e}")
         import traceback
         traceback.print_exc()
+        raise e
 
 if __name__ == "__main__":
     test_pipeline()

@@ -2,25 +2,47 @@ import os
 import sys
 import shutil
 import pytest
+from unittest.mock import MagicMock, patch
 
-try:
+# Skip if requested in CI
+if os.environ.get("SKIP_GPU_TESTS") == "1":
+    pytest.skip("Skipping intelligence tests in CI", allow_module_level=True)
+
+@pytest.fixture
+def intel_components():
     import numpy as np
-    import faiss
+    try:
+        import faiss
+    except ImportError:
+        faiss = MagicMock()
     from PIL import Image
-except Exception:
-    pytest.skip("Dependencies missing for intelligence test", allow_module_level=True)
-
-sys.path.append(os.path.abspath("src"))
-
-try:
+    
+    # Internal core modules
     from src.core.ai_models import AIEngine
     from src.core.intelligence import AutoTagger, FaceClusterer
     from src.data.db_manager import DBManager
     from src.data.schemas import MediaItem, ProcessingResult, VectorData, FaceData
-except Exception:
-    pytest.skip("Core modules failed to import", allow_module_level=True)
+    
+    return {
+        "np": np,
+        "faiss": faiss,
+        "Image": Image,
+        "AIEngine": AIEngine,
+        "AutoTagger": AutoTagger,
+        "FaceClusterer": FaceClusterer,
+        "DBManager": DBManager,
+        "MediaItem": MediaItem,
+        "ProcessingResult": ProcessingResult,
+        "VectorData": VectorData,
+        "FaceData": FaceData
+    }
 
-def test_auto_tagger():
+@pytest.mark.ai_models
+def test_auto_tagger(intel_components):
+    AIEngine = intel_components["AIEngine"]
+    AutoTagger = intel_components["AutoTagger"]
+    np = intel_components["np"]
+    
     # 1. Init Engine
     engine = AIEngine()
     tagger = AutoTagger(engine)
@@ -34,7 +56,13 @@ def test_auto_tagger():
     assert len(tags) == 3
     assert len(tags[0]) == 3
 
-def test_face_clustering(tmp_path):
+@pytest.mark.ai_models
+def test_face_clustering(tmp_path, intel_components):
+    DBManager = intel_components["DBManager"]
+    FaceClusterer = intel_components["FaceClusterer"]
+    np = intel_components["np"]
+    faiss = intel_components["faiss"]
+    
     test_db_dir = str(tmp_path / "data" / "test_db_intel")
     if os.path.exists(test_db_dir):
         shutil.rmtree(test_db_dir)
