@@ -4,9 +4,20 @@ import shutil
 import pytest
 from unittest.mock import MagicMock, patch
 
-# Skip if requested in CI
-if os.environ.get("SKIP_GPU_TESTS") == "1":
-    pytest.skip("Skipping intelligence tests in CI", allow_module_level=True)
+# Add src to path
+sys.path.append(os.path.abspath("src"))
+
+# Skip if requested in CI or missing deps
+def is_ai_deps_missing():
+    try:
+        import torch
+        import open_clip
+        return False
+    except ImportError:
+        return True
+
+if os.environ.get("SKIP_GPU_TESTS") == "1" or is_ai_deps_missing():
+    pytest.skip("Skipping intelligence tests (GPU omit or missing AI deps)", allow_module_level=True)
 
 @pytest.fixture
 def intel_components():
@@ -18,10 +29,10 @@ def intel_components():
     from PIL import Image
     
     # Internal core modules
-    from src.core.ai_models import AIEngine
-    from src.core.intelligence import AutoTagger, FaceClusterer
-    from src.data.db_manager import DBManager
-    from src.data.schemas import MediaItem, ProcessingResult, VectorData, FaceData
+    from core.ai_models import AIEngine
+    from core.intelligence import AutoTagger, FaceClusterer
+    from data.db_manager import DBManager
+    from data.schemas import MediaItem, ProcessingResult, VectorData, FaceData
     
     return {
         "np": np,
@@ -37,6 +48,7 @@ def intel_components():
         "FaceData": FaceData
     }
 
+@pytest.mark.skipif(os.environ.get("SKIP_GPU_TESTS") == "1", reason="GPU not available")
 @pytest.mark.ai_models
 def test_auto_tagger(intel_components):
     AIEngine = intel_components["AIEngine"]
@@ -56,6 +68,7 @@ def test_auto_tagger(intel_components):
     assert len(tags) == 3
     assert len(tags[0]) == 3
 
+@pytest.mark.skipif(os.environ.get("SKIP_GPU_TESTS") == "1", reason="GPU not available")
 @pytest.mark.ai_models
 def test_face_clustering(tmp_path, intel_components):
     DBManager = intel_components["DBManager"]

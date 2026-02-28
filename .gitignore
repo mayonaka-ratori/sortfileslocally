@@ -9,6 +9,7 @@ venv/
 # Data
 data/db/*.db
 data/db/*.index
+data/db/backups/
 data/inputs/
 data/logs/
 

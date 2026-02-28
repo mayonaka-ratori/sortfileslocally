@@ -3,16 +3,27 @@ import sys
 import pytest
 from unittest.mock import MagicMock, patch
 
-# Skip if requested in CI
-if os.environ.get("SKIP_GPU_TESTS") == "1":
-    pytest.skip("Skipping debug tests in CI", allow_module_level=True)
+# Add src to path
+sys.path.append(os.path.abspath("src"))
+
+# Skip if requested in CI or missing deps
+def is_ai_deps_missing():
+    try:
+        import torch
+        import open_clip
+        return False
+    except ImportError:
+        return True
+
+if os.environ.get("SKIP_GPU_TESTS") == "1" or is_ai_deps_missing():
+    pytest.skip("Skipping debug tests (GPU omit or missing AI deps)", allow_module_level=True)
 
 @pytest.fixture
 def debug_components():
     import numpy as np
     from PIL import Image
-    from src.core.inference import InferenceOrchestrator
-    from src.core.ai_models import AIEngine
+    from core.inference import InferenceOrchestrator
+    from core.ai_models import AIEngine
     return {
         "np": np,
         "Image": Image,
@@ -20,6 +31,7 @@ def debug_components():
         "AIEngine": AIEngine
     }
 
+@pytest.mark.skipif(os.environ.get("SKIP_GPU_TESTS") == "1", reason="GPU not available")
 @pytest.mark.ai_models
 def test_batch_unpacking(debug_components):
     np = debug_components["np"]

@@ -61,3 +61,21 @@ def test_post_setup_settings_invalid_not_dir(tmp_path, client):
     response = client.post("/setup/settings", json={"key": "custom_model_dir", "value": str(test_file)})
     assert response.status_code == 422
     assert "not a directory" in response.json()["detail"].lower()
+
+@pytest.mark.ai_models
+def test_post_setup_backup(client):
+    from server.dependencies import get_db_manager
+    mock_db = MagicMock()
+    mock_db.create_backup.return_value = "/mock/backup.db"
+    
+    # We need to override the dependency because the router uses it
+    from server.main import app
+    app.dependency_overrides[get_db_manager] = lambda: mock_db
+    
+    try:
+        response = client.post("/setup/backup")
+        assert response.status_code == 200
+        assert response.json()["status"] == "success"
+        assert "backup_path" in response.json()
+    finally:
+        app.dependency_overrides.pop(get_db_manager, None)

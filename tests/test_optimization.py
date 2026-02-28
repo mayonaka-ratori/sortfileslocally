@@ -5,16 +5,27 @@ import time
 import pytest
 from unittest.mock import MagicMock, patch
 
-# Skip if requested in CI
-if os.environ.get("SKIP_GPU_TESTS") == "1":
-    pytest.skip("Skipping optimization tests in CI", allow_module_level=True)
+# Add src to path
+sys.path.append(os.path.abspath("src"))
+
+# Skip if requested in CI or missing deps
+def is_ai_deps_missing():
+    try:
+        import torch
+        import open_clip
+        return False
+    except ImportError:
+        return True
+
+if os.environ.get("SKIP_GPU_TESTS") == "1" or is_ai_deps_missing():
+    pytest.skip("Skipping optimization tests (GPU omit or missing AI deps)", allow_module_level=True)
 
 @pytest.fixture
 def opt_components():
     from PIL import Image
     import numpy as np
-    from src.core.processor import Processor
-    from src.data.db_manager import DBManager
+    from core.processor import Processor
+    from data.db_manager import DBManager
     return {
         "Image": Image,
         "np": np,
@@ -89,6 +100,7 @@ def benchmark(components):
     else:
         print("\n⚠️ Optimization FAILED. Batch processing was slower.")
 
+@pytest.mark.skipif(os.environ.get("SKIP_GPU_TESTS") == "1", reason="GPU not available")
 @pytest.mark.ai_models
 @pytest.mark.slow
 def test_benchmark(opt_components):

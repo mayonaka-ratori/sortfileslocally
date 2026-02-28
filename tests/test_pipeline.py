@@ -4,16 +4,27 @@ import shutil
 import pytest
 from unittest.mock import MagicMock, patch
 
-# Skip if requested in CI
-if os.environ.get("SKIP_GPU_TESTS") == "1":
-    pytest.skip("Skipping pipeline tests in CI", allow_module_level=True)
+# Add src to path
+sys.path.append(os.path.abspath("src"))
+
+# Skip if requested in CI or missing deps
+def is_ai_deps_missing():
+    try:
+        import torch
+        import open_clip
+        return False
+    except ImportError:
+        return True
+
+if os.environ.get("SKIP_GPU_TESTS") == "1" or is_ai_deps_missing():
+    pytest.skip("Skipping pipeline tests (GPU omit or missing AI deps)", allow_module_level=True)
 
 @pytest.fixture
 def pipe_components():
     import numpy as np
     from PIL import Image
-    from src.core.processor import Processor
-    from src.data.db_manager import DBManager
+    from core.processor import Processor
+    from data.db_manager import DBManager
     return {
         "np": np,
         "Image": Image,
@@ -50,6 +61,7 @@ def clean_db():
         shutil.rmtree(db_dir)
     return db_dir
 
+@pytest.mark.skipif(os.environ.get("SKIP_GPU_TESTS") == "1", reason="GPU not available")
 @pytest.mark.ai_models
 def test_pipeline_execution(pipe_components):
     Processor = pipe_components["Processor"]

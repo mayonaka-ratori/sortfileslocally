@@ -3,9 +3,20 @@ import sys
 import pytest
 from unittest.mock import MagicMock, patch
 
-# Skip if requested in CI
-if os.environ.get("SKIP_GPU_TESTS") == "1":
-    pytest.skip("Skipping engine tests in CI", allow_module_level=True)
+# Add src to path
+sys.path.append(os.path.abspath("src"))
+
+# Skip if requested in CI or missing deps
+def is_ai_deps_missing():
+    try:
+        import torch
+        import open_clip
+        return False
+    except ImportError:
+        return True
+
+if os.environ.get("SKIP_GPU_TESTS") == "1" or is_ai_deps_missing():
+    pytest.skip("Skipping engine tests (GPU omit or missing AI deps)", allow_module_level=True)
 
 @pytest.fixture
 def engine_components():
@@ -17,8 +28,8 @@ def engine_components():
     from PIL import Image
     
     # Internal core modules
-    from src.core.ai_models import AIEngine
-    from src.core.video_processor import VideoProcessor
+    from core.ai_models import AIEngine
+    from core.video_processor import VideoProcessor
     
     return {
         "np": np,
@@ -48,6 +59,7 @@ def create_dummy_video(filename="dummy_video.mp4", duration_sec=5, fps=30, compo
     
     out.release()
 
+@pytest.mark.skipif(os.environ.get("SKIP_GPU_TESTS") == "1", reason="GPU not available")
 @pytest.mark.ai_models
 def test_engine_initialization(engine_components):
     AIEngine = engine_components["AIEngine"]
@@ -57,6 +69,7 @@ def test_engine_initialization(engine_components):
     except Exception as e:
         pytest.fail(f"AIEngine failed to initialize: {e}")
 
+@pytest.mark.skipif(os.environ.get("SKIP_GPU_TESTS") == "1", reason="GPU not available")
 @pytest.mark.ai_models
 def test_clip_extraction(engine_components):
     AIEngine = engine_components["AIEngine"]
@@ -71,6 +84,7 @@ def test_clip_extraction(engine_components):
     except Exception as e:
         pytest.fail(f"CLIP extraction failed: {e}")
 
+@pytest.mark.skipif(os.environ.get("SKIP_GPU_TESTS") == "1", reason="GPU not available")
 @pytest.mark.ai_models
 def test_insightface_execution(engine_components):
     AIEngine = engine_components["AIEngine"]
@@ -84,6 +98,7 @@ def test_insightface_execution(engine_components):
     except Exception as e:
         pytest.fail(f"InsightFace execution failed: {e}")
 
+@pytest.mark.skipif(os.environ.get("SKIP_GPU_TESTS") == "1", reason="GPU not available")
 @pytest.mark.ai_models
 @pytest.mark.slow
 def test_video_processor(engine_components):

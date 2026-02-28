@@ -2,29 +2,16 @@ import pytest
 import sys
 import os
 
-# Check if dependencies are missing or mocked
-def is_dependency_missing_or_mocked(name):
-    if name not in sys.modules:
-        try:
-            __import__(name)
-        except ImportError:
-            return True
-    
-    # Check if it's a MagicMock (common in this test suite's collection phase)
-    module = sys.modules.get(name)
-    if module and hasattr(module, "_mock_return_value"):
-        return True
-    if "MagicMock" in str(type(module)):
-        return True
-        
-    return False
-
-if is_dependency_missing_or_mocked("torch") or is_dependency_missing_or_mocked("transformers") or os.environ.get("SKIP_GPU_TESTS") == "1":
-    pytest.skip("VLM dependencies not installed, mocked, or CI skip requested", allow_module_level=True)
-
 import torch
-if not torch.cuda.is_available() or os.environ.get("SKIP_GPU_TESTS") == "1":
-    pytest.skip("VLM tests require GPU or CI skip requested", allow_module_level=True)
+
+if os.environ.get("SKIP_GPU_TESTS") == "1":
+    pytest.skip("CI skip requested for GPU tests", allow_module_level=True)
+
+try:
+    if not torch.cuda.is_available():
+        pytest.skip("VLM tests require CUDA", allow_module_level=True)
+except Exception:
+     pytest.skip("Torch not installed or working", allow_module_level=True)
 
 from PIL import Image
 

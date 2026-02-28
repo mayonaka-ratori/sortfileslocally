@@ -20,8 +20,14 @@ def cleanup_app_overrides():
 
 @pytest.fixture(autouse=True)
 def cleanup_sys_modules():
-    # Capture initial sys.modules state if needed, but here we just want to remove mocks
-    # that were added at top level of test files.
-    # This is a bit risky but better than the current state.
+    # Save a snapshot of sys.modules before the test
+    initial_modules = sys.modules.copy()
     yield
-    # No-op for now, better to fix the test files themselves.
+    # Restore sys.modules after the test
+    # First, remove any NEWLY added modules
+    current_modules = list(sys.modules.keys())
+    for mod in current_modules:
+        if mod not in initial_modules:
+            del sys.modules[mod]
+    # Then, restore original module objects
+    sys.modules.update(initial_modules)
