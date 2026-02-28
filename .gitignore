@@ -12,6 +12,8 @@ data/db/*.index
 data/db/backups/
 data/inputs/
 data/logs/
+data/db_test/
+data/db_test/metadata.db
 
 # Next.js
 web/.next/

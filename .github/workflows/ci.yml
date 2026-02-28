@@ -81,24 +81,21 @@ jobs:
           cd web && npm ci
           npx playwright install chromium --with-deps
       
-      - name: Start Servers and Run E2E Tests
+      - name: Start Backend and Run E2E Tests
         run: |
           # Start Backend
           python -m uvicorn server.main:app --host 0.0.0.0 --port 8000 &
           
-          # Start Frontend
-          cd web && npm run dev &
+          # Wait for backend to be ready
+          echo "Waiting for backend to be ready..."
+          timeout 60s bash -c "until curl -s http://localhost:8000/health > /dev/null; do sleep 2; done"
           
-          # Wait for both to be ready
-          echo "Waiting for servers to be ready..."
-          timeout 60s bash -c 'until curl -s http://localhost:8000/health > /dev/null && curl -s http://localhost:3000 > /dev/null; do sleep 2; done'
-          
-          # Run tests
-          cd web && npx playwright test --reporter=github
+          # Run tests (Playwright will handle frontend via webServer config)
+          cd web && npx playwright test
         env:
           NEXT_PUBLIC_API_URL: http://localhost:8000
-          # Skip heavy models in E2E unless specifically needed
           SKIP_GPU_TESTS: "1"
+          CI: "true"
       
       - name: Upload Playwright Report
         if: failure()
