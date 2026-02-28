@@ -9,7 +9,7 @@ test.describe('Keyboard Shortcuts', () => {
         await page.keyboard.press('Shift+?');
 
         // Verify modal appears with shortcut list
-        const modal = page.getByRole('dialog').or(page.locator('.modal')).first();
+        const modal = page.locator('[data-testid="shortcut-modal"]');
         await expect(modal).toBeVisible();
         await expect(modal).toContainText(/Shortcut|Keyboard/i);
 
@@ -25,7 +25,7 @@ test.describe('Keyboard Shortcuts', () => {
 
         // Open shortcut modal
         await page.keyboard.press('Shift+?');
-        const modal = page.getByRole('dialog').or(page.locator('.modal')).first();
+        const modal = page.locator('[data-testid="shortcut-modal"]');
         await expect(modal).toBeVisible();
 
         // Press Escape

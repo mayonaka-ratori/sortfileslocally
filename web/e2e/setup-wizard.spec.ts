@@ -6,19 +6,25 @@ test.describe('Setup Wizard', () => {
         // Navigate to /setup (using full URL as we match the requested route)
         await page.goto('/setup');
 
-        // Verify welcome step renders (Next.js 16 + next-intl usually has specific headings)
-        // We'll look for generic welcome text or a title
-        await expect(page.getByRole('heading')).toBeVisible();
+        // Step 1: Welcome
+        await expect(page.getByText(/Welcome to LocalCurator Prime/i)).toBeVisible();
+        await page.getByRole('button', { name: /next/i }).click();
 
-        // Verify step progression (Next missions or step indicators)
-        const nextButton = page.getByRole('button', { name: /next|continue/i });
-        if (await nextButton.isVisible()) {
-            await nextButton.click();
-        }
+        // Step 2: Media
+        await expect(page.getByText(/Tell us where your media is/i)).toBeVisible();
+        await page.getByRole('button', { name: /next/i }).click();
 
-        // Verify "Skip for now" link exists on final step
-        // In many setup flows, this is a button or a link
-        await expect(page.getByRole('link', { name: /skip/i }).or(page.getByRole('button', { name: /skip/i }))).toBeVisible();
+        // Step 3: Performance
+        await expect(page.getByText(/Hardware Profile/i)).toBeVisible();
+        await page.getByRole('button', { name: /next/i }).click();
+
+        // Step 4: Appearance
+        await expect(page.getByText(/Appearance/i)).toBeVisible();
+        await page.getByRole('button', { name: /next/i }).click();
+
+        // Step 5: Finalize
+        await expect(page.getByText(/You're all set/i)).toBeVisible();
+        await expect(page.locator('#setup-skip-scan')).toBeVisible();
     });
 
     test('setup wizard renders in Japanese', async ({ page }) => {

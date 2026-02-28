@@ -60,6 +60,7 @@ export function ShortcutHelpModal({ isOpen, onClose }: ShortcutHelpModalProps) {
                         initial={{ opacity: 0, scale: 0.95, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                        data-testid="shortcut-modal"
                         className="relative w-full max-w-lg bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden"
                     >
                         <div className="p-6 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/50">

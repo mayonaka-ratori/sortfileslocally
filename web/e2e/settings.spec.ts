@@ -6,7 +6,7 @@ test.describe('Settings Page', () => {
         await page.goto('/settings');
 
         // Verify Language selector exists
-        const languageSelector = page.getByRole('combobox').or(page.locator('select')).first();
+        const languageSelector = page.locator('[data-testid="language-selector"]');
         await expect(languageSelector).toBeVisible();
 
         // Verify Privacy section exists with "Network Activity Log"
@@ -17,17 +17,17 @@ test.describe('Settings Page', () => {
         await expect(auditButton).toBeVisible();
     });
 
-    test('language switch changes UI text', async ({ page }) => {
+    test('language switch updates UI', async ({ page }) => {
         // Navigate to /settings
         await page.goto('/settings');
 
-        // Switch language to Japanese
-        // This assumes a dropdown or button interaction
-        const langSelect = page.getByRole('combobox').or(page.locator('select')).first();
-        if (await langSelect.isVisible()) {
-            await langSelect.selectOption('ja');
-            // Verify some UI text changes to Japanese
-            await expect(page.locator('body')).toContainText(/設定|言語/);
-        }
+        // Switch language to Japanese using the button in language selector
+        const langSelector = page.locator('[data-testid="language-selector"]');
+        const jaButton = langSelector.getByRole('button', { name: /日本語/i });
+
+        await jaButton.click();
+
+        // Verify some UI text changes to Japanese
+        await expect(page.locator('body')).toContainText(/設定|言語/);
     });
 });

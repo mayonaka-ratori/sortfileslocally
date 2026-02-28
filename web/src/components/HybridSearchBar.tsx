@@ -168,7 +168,7 @@ export function HybridSearchBar({ onSearch, initialQuery = "" }: HybridSearchBar
 
 
     return (
-        <div className="w-full max-w-4xl mx-auto flex flex-col gap-3">
+        <div className="w-full max-w-4xl mx-auto flex flex-col gap-3" data-testid="search-bar">
             <div className="relative" ref={dropdownRef}>
                 <form onSubmit={handleSearch} className="relative group">
                     <input

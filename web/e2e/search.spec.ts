@@ -5,8 +5,9 @@ test.describe('Search Functionality', () => {
         // Navigate to /
         await page.goto('/');
 
-        // Click search input
-        const searchInput = page.locator('input[data-search-input]');
+        // Get search bar and input
+        const searchBar = page.locator('[data-testid="search-bar"]');
+        const searchInput = searchBar.locator('input[data-search-input]');
         await searchInput.click();
 
         // Type a query

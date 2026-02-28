@@ -49,7 +49,7 @@ export function LanguageSelector() {
     ]
 
     return (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2" data-testid="language-selector">
             <div className="flex items-center gap-2 text-zinc-400 mb-1">
                 <Languages className="w-4 h-4" />
                 <span className="text-[10px] font-bold uppercase tracking-widest">{t('title')}</span>

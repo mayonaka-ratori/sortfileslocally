@@ -13,10 +13,10 @@ export function PrivacyBadge() {
     const hasExternal = logs.some(log => !log.isLocal && log.status !== 'blocked');
 
     return (
-        <div className="group relative">
+        <div className="group relative" data-testid="privacy-badge">
             <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-[10px] font-bold uppercase tracking-wider transition-all duration-300 ${hasExternal
-                    ? "bg-amber-500/10 border-amber-500/20 text-amber-500"
-                    : "bg-green-500/10 border-green-500/20 text-green-500 shadow-[0_0_10px_rgba(34,197,94,0.1)]"
+                ? "bg-amber-500/10 border-amber-500/20 text-amber-500"
+                : "bg-green-500/10 border-green-500/20 text-green-500 shadow-[0_0_10px_rgba(34,197,94,0.1)]"
                 }`}>
                 {hasExternal ? (
                     <>

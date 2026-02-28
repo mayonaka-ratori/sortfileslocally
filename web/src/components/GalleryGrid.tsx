@@ -249,7 +249,7 @@ export function GalleryGrid({
     const selectedItems = media.filter(item => selectedIds.has(item.id))
 
     return (
-        <div className="flex flex-col h-full w-full bg-zinc-950 text-zinc-100 relative">
+        <div className="flex flex-col h-full w-full bg-zinc-950 text-zinc-100 relative" data-testid="gallery-grid">
             {/* Search Header */}
             <div className="sticky top-0 z-10 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800 p-4 flex items-center gap-3">
                 {onMenuClick && (

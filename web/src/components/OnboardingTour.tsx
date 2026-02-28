@@ -120,6 +120,7 @@ export function OnboardingTour({
             role="dialog"
             aria-modal="true"
             aria-label="Onboarding Tour"
+            data-testid="onboarding-tour"
         >
             <div
                 className="absolute inset-0"
