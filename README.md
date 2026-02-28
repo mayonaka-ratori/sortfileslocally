@@ -21,6 +21,7 @@
 **Local Curator Prime** is a powerful, offline-first media management suite designed to intelligently catalog, tag, and search your local image and video collections. By leveraging state-of-the-art Vision-Language Models (VLM) and Semantic Search, it transforms your folders into a searchable, interactive digital library.
 
 ### ✨ Key Features
+
 - **🔍 Semantic Search**: Search using natural language (e.g., *"a cat sleeping on a sunny windowsill"*) instead of just filenames.
 - **🤖 Automated AI Tagging**: Automatically detects characters, series, and objects in your images.
 - **🎬 Video Understanding**: Transcribes audio with Whisper and describes scenes using VLM for deep video search.
@@ -30,6 +31,7 @@
 - **🛡️ 100% Privacy**: All AI processing happens locally. No data ever leaves your machine.
 
 ### 🏗 Project Structure
+
 ```text
 LocalCuratorPrime/
 ├── server/            # FastAPI Backend (Python)
@@ -45,12 +47,15 @@ LocalCuratorPrime/
 ```
 
 ### 🛠 Tech Stack
+
 - **Frontend**: Next.js 16.1.6 (React 19.2.3), Tailwind CSS 4, Lucide React, Framer Motion.
 - **Backend**: FastAPI 0.129.0, Uvicorn, SQLite3.
 - **AI Core**: PyTorch 2.5.1, Transformers, FAISS (Vector DB), InsightFace (Face ID), faster-whisper.
 
 ### 🚀 Quick Start
+
 **1. Backend Setup**
+
 ```bash
 # Enter project directory
 cd LocalCuratorPrime
@@ -71,7 +76,9 @@ pip install -r requirements.txt
 cd server
 python main.py
 ```
+
 **2. Frontend Setup**
+
 ```bash
 # Open a new terminal
 cd LocalCuratorPrime/web
@@ -80,6 +87,7 @@ cd LocalCuratorPrime/web
 npm install
 npm run dev
 ```
+
 Visit `http://localhost:3000`.
 
 ---
@@ -89,6 +97,7 @@ Visit `http://localhost:3000`.
 **Local Curator Prime** は、ローカルに保存された大量の画像や動画を AI でスマートに管理するための、完全オフライン型のメディア管理スイートです。最新の視覚言語モデル (VLM) とセマンティック検索を組み合わせ、単なるファイル管理を超えた「対話可能なライブラリ」を実現します。
 
 ### ✨ 主な機能
+
 - **🔍 セマンティック検索**: 「夕暮れの浜辺を歩く犬」のような自然言語での記述でメディアを瞬時に特定します。
 - **🤖 自動AIタグ付け**: 画像からキャラクター、作品名、一般属性を自動で抽出・付与します。
 - **🎬 動画解析**: Whisper による音声文字起こしと、VLM によるシーン説明により、動画内の特定の場面を検索可能です。
@@ -98,12 +107,15 @@ Visit `http://localhost:3000`.
 - **🛡️ 100% プライバシー**: すべての推論処理はローカルで完結します。データが外部に送信されることはありません。
 
 ### 🛠 テックスタック
+
 - **フロントエンド**: Next.js 16.1.6 (React 19.2.3), Tailwind CSS 4, Lucide React.
 - **バックエンド**: FastAPI 0.129.0, Uvicorn, SQLite3.
 - **AI Core**: PyTorch 2.5.1, Transformers, FAISS, faster-whisper.
 
 ### 🚀 クイックスタート
+
 **1. バックエンドのセットアップ**
+
 ```bash
 # ディレクトリへ移動
 cd LocalCuratorPrime
@@ -123,6 +135,7 @@ python main.py
 ```
 
 **2. フロントエンドのセットアップ**
+
 ```bash
 # 新しいターミナルを開く
 cd LocalCuratorPrime/web
@@ -131,15 +144,26 @@ cd LocalCuratorPrime/web
 npm install
 npm run dev
 ```
+
 Webブラウザで `http://localhost:3000` を開いてください。
 
 詳細な使い方は [USER_MANUAL.md](docs/USER_MANUAL_JP.md) をご覧ください。
 
 ---
 
+## 📚 Documentation
+
+- **[Changelog](CHANGELOG.md)**: View the full history of changes for each release.
+- **[API Reference](docs/api.md)**: Detailed documentation of all backend endpoints.
+- **[I18n Localization Guide](docs/i18n.md)**: Learn how to add new languages and update translations.
+- **[User Manual (JP)](docs/USER_MANUAL_JP.md)**: 詳細なユーザーマニュアル（日本語）.
+
+---
+
 ## 🧪 Testing
 
 ### Backend Tests
+
 The backend uses `pytest` with `pytest-cov` for coverage reporting.
 
 ```powershell
@@ -157,6 +181,7 @@ python -m pytest tests/ -v -m "not ai_models and not slow"
 ```
 
 ### Frontend Tests
+
 The frontend uses Playwright for E2E testing.
 
 ```powershell
@@ -175,12 +200,14 @@ npm run test:e2e:ui
 ## 🏗️ Building Desktop App
 
 ### Prerequisites
+
 - Python 3.11 (due to `onnxruntime` compatibility constraints)
 - Rust toolchain (rustc, cargo)
 - Node.js 20+
 - PyInstaller: `pip install pyinstaller`
 
 ### Build Backend (PyInstaller)
+
 ```powershell
 # CPU-only (smaller footprint, ~300-500 MB)
 python scripts/build_backend.py --cpu-only
@@ -190,10 +217,12 @@ python scripts/build_backend.py
 ```
 
 ### Build Desktop App (Tauri)
+
 ```powershell
 # Unified build: statically exports frontend and bundles with backend sidecar
 npm run tauri:build
 ```
 
 ## 📄 License
+
 This project is licensed under the MIT License - see the LICENSE file for details.
