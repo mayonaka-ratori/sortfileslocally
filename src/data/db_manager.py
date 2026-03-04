@@ -429,26 +429,96 @@ class DBManager:
             faiss.write_index(self.face_index, self.face_faiss_path)
 
     def verify_index_integrity(self):
-        """Check FAISS index count matches SQLite vector_mapping count on startup."""
+        """Check FAISS index count matches SQLite vector_mapping count on startup.
+        Repairs any orphaned vectors or dangling references automatically."""
         try:
             conn = self._connect()
             c = conn.cursor()
-            c.execute("SELECT COUNT(*) FROM vector_mapping")
-            sqlite_count = c.fetchone()[0]
-            conn.close()
+            c.execute("SELECT faiss_id, entity_type, entity_id FROM vector_mapping")
+            mapping_rows = c.fetchall()
+            
+            sqlite_ids = {row[0] for row in mapping_rows}
+            mapping_dict = {row[0]: (row[1], row[2]) for row in mapping_rows}
+            sqlite_count = len(sqlite_ids)
             
             faiss_count = 0
+            faiss_ids_set = set()
             if self.clip_index:
                 try:
                     faiss_count = self.clip_index.ntotal
+                    # Get all faiss IDs
+                    if faiss_count > 0:
+                        faiss_ids_array = faiss.vector_to_array(self.clip_index.id_map)
+                        faiss_ids_set = set(int(fid) for fid in faiss_ids_array if fid != -1)
                 except Exception as e:
-                    logger.error(f"Failed to get FAISS ntotal: {e}")
+                    logger.error(f"Failed to get FAISS ntotal or extract IDs: {e}")
                     faiss_count = 0
 
-            if sqlite_count != faiss_count:
-                logger.warning(f"Index mismatch detected: SQLite mapping={sqlite_count}, FAISS index={faiss_count}. Sync required.")
-            else:
+            # Find Orphans and Dangling references
+            orphans = faiss_ids_set - sqlite_ids
+            dangling = sqlite_ids - faiss_ids_set
+            
+            if not orphans and not dangling:
                 logger.info(f"Index integrity OK: {sqlite_count} vectors mapped")
+                conn.close()
+                return
+
+            logger.info(f"Index mismatch detected. Starting active repair. SQLite={sqlite_count}, FAISS={faiss_count}")
+            
+            needs_save = False
+
+            if orphans:
+                logger.info(f"Found {len(orphans)} orphaned vectors in FAISS. Removing...")
+                try:
+                    with self._faiss_lock:
+                        self.clip_index.remove_ids(np.array(list(orphans), dtype='int64'))
+                    needs_save = True
+                    logger.info(f"Successfully removed {len(orphans)} orphaned vectors from FAISS.")
+                except Exception as e:
+                    logger.error(f"Failed to remove orphaned vectors from FAISS: {e}")
+
+            if dangling:
+                logger.info(f"Found {len(dangling)} dangling references in SQLite mappings. Cleaning up...")
+                
+                # To trigger re-scan, find the specific file IDs involved.
+                file_ids_to_rescan = set()
+                mapping_ids_to_delete = list(dangling)
+                
+                for faiss_id in dangling:
+                    entity_type, entity_id = mapping_dict.get(faiss_id, (None, None))
+                    if entity_type == 'file':
+                        file_ids_to_rescan.add(entity_id)
+                    elif entity_type == 'scene':
+                        # Find the corresponding file_id for the scene
+                        c.execute("SELECT file_id FROM video_scenes WHERE id = ?", (entity_id,))
+                        row = c.fetchone()
+                        if row:
+                            file_ids_to_rescan.add(row[0])
+
+                try:
+                    # Set is_processed=0 for these files
+                    if file_ids_to_rescan:
+                        placeholders = ','.join(['?'] * len(file_ids_to_rescan))
+                        c.execute(f"UPDATE files SET is_processed = 0 WHERE id IN ({placeholders})", list(file_ids_to_rescan))
+                        logger.info(f"Set is_processed=0 for {len(file_ids_to_rescan)} files to trigger re-scan.")
+                    
+                    # Delete mappings
+                    if mapping_ids_to_delete:
+                        placeholders = ','.join(['?'] * len(mapping_ids_to_delete))
+                        c.execute(f"DELETE FROM vector_mapping WHERE faiss_id IN ({placeholders})", mapping_ids_to_delete)
+                        logger.info(f"Deleted {len(mapping_ids_to_delete)} dangling mappings from SQLite.")
+
+                    conn.commit()
+                except Exception as e:
+                    logger.error(f"Failed to cleanup dangling references in SQLite: {e}")
+                    conn.rollback()
+
+            if needs_save:
+                self.save_indices()
+                logger.info("Saved repaired FAISS index.")
+
+            conn.close()
+            
         except Exception as e:
             logger.error(f"Index integrity check failed: {e}")
 
