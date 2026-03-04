@@ -1,0 +1,12 @@
+[tool.pytest.ini_options]
+testpaths = ["tests", "src", "server"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+markers = [
+    "gpu: requires CUDA GPU",
+    "ai_models: requires real AI model weights",
+    "slow: long-running tests (>10s)",
+    "e2e: end-to-end integration tests",
+]
+addopts = "-ra --strict-markers"
