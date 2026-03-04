@@ -34,3 +34,10 @@
 ## Next Recommended Audit Date
 
 - **2026-04-04** (Monthly)
+
+### diskcache — mitigation status (updated 2026-03-04)
+- **Issue**: Deserialization vulnerability allowing arbitrary code execution via crafted cache files.
+- **Upstream fix**: Not yet released as of 2026-03-04.
+- **Risk level**: LOW for this project — LocalCurator Prime is offline-first, cache files are local-only and not user-facing.
+- **Mitigation**: (1) Cache directory permissions restricted to current user. (2) No external cache file import feature. (3) Monitoring PyPI for patched version.
+- **Action**: Will upgrade immediately when patch is released. Re-check monthly.
