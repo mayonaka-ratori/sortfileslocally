@@ -1,0 +1,8 @@
+feat(core): implement persistent Whisper worker process with IPC
+
+- Create whisper_worker.py with Queue-based multiprocessing
+- Replace per-file subprocess spawning with persistent worker
+- Lazy worker startup on first transcription request
+- Health check with auto-restart on worker death
+- 60s timeout per file with graceful skip
+- Add tests: batch processing, invalid file handling, shutdown/restart

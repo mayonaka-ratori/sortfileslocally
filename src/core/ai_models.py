@@ -102,8 +102,43 @@ class AIEngine:
         # --- 4. Whisper Model ---
         # NOTE: Whisper (ctranslate2) is run in a subprocess to avoid DLL conflicts
         # with onnxruntime-gpu. No model is loaded here.
+        self._whisper_process = None
+        self._whisper_task_queue = None
+        self._whisper_result_queue = None
+        self._whisper_lock = threading.Lock()
 
         self._initialized = True
+
+    def _ensure_whisper_worker_running(self):
+        with self._whisper_lock:
+            if self._whisper_process is None or not self._whisper_process.is_alive():
+                print("Starting persistent Whisper worker process...")
+                import multiprocessing
+                from .whisper_worker import whisper_worker_process
+                
+                self._whisper_task_queue = multiprocessing.Queue()
+                self._whisper_result_queue = multiprocessing.Queue()
+                self._whisper_process = multiprocessing.Process(
+                    target=whisper_worker_process,
+                    args=(self._whisper_task_queue, self._whisper_result_queue),
+                    daemon=True
+                )
+                self._whisper_process.start()
+                
+                # Wait for initialization
+                import queue
+                try:
+                    init_msg = self._whisper_result_queue.get(timeout=60)
+                    if init_msg.get('status') == 'ready':
+                        print("Whisper worker process started and initialized successfully.")
+                    else:
+                        print(f"Whisper worker initialization failed: {init_msg}")
+                except queue.Empty:
+                    print("Error: Whisper worker initialization timed out after 60s.")
+                    if self._whisper_process.is_alive():
+                        self._whisper_process.terminate()
+                except Exception as e:
+                    print(f"Error waiting for Whisper worker initialization: {e}")
 
     def classify_style(self, image: Image.Image) -> str:
         """
@@ -227,7 +262,7 @@ class AIEngine:
     def transcribe_audio(self, audio_path: str) -> List[Dict[str, Any]]:
         """
         Transcribe audio file using Whisper.
-        Isolated to a subprocess to prevent ctranslate2/onnxruntime DLL conflicts.
+        Isolated to a persistent subprocess to prevent ctranslate2/onnxruntime DLL conflicts.
         Returns: [{'start': float, 'end': float, 'text': str}, ...]
         """
         if not HAS_WHISPER:
@@ -239,66 +274,42 @@ class AIEngine:
             return []
 
         try:
-            import tempfile, subprocess, json, sys
+            import uuid
+            import queue
             
-            # Create a tiny Python script to run Whisper isolated from the main process
-            script_code = '''
-import sys, json
-try:
-    from faster_whisper import WhisperModel
-    model = WhisperModel('base', device='cpu', compute_type='int8')
-    segs, info = model.transcribe(sys.argv[1], beam_size=5)
-    out = [{'start': s.start, 'end': s.end, 'text': s.text.strip()} for s in segs]
-    print(json.dumps(out))
-except Exception as e:
-    import traceback
-    traceback.print_exc(file=sys.stderr)
-    print(json.dumps({'error': str(e)}))
-'''
-            # Windows requires the absolute audio path and correct escaping
+            self._ensure_whisper_worker_running()
+            
+            task_id = str(uuid.uuid4())
             abs_audio_path = os.path.abspath(audio_path).replace('\\', '/')
             
-            with tempfile.NamedTemporaryFile(suffix='.py', delete=False, mode='w', encoding='utf-8') as f:
-                f.write(script_code)
-                script_path = f.name
+            with self._whisper_lock:
+                self._whisper_task_queue.put({
+                    'task_id': task_id,
+                    'audio_path': abs_audio_path
+                })
                 
-            cmd = [sys.executable, script_path, abs_audio_path]
-            # Suppress console window on windows
-            creationflags = 0
-            if os.name == 'nt':
-                creationflags = subprocess.CREATE_NO_WINDOW
-                
-            try:
-                res = subprocess.run(cmd, capture_output=True, text=True, creationflags=creationflags, timeout=60)
-            except subprocess.TimeoutExpired:
-                print("WARNING: Whisper subprocess timed out")
-                if os.path.exists(script_path):
-                    os.remove(script_path)
-                return []
-            
-            if os.path.exists(script_path):
-                os.remove(script_path)
-                
-            if res.returncode != 0:
-                print(f"Whisper subprocess failed: {res.stderr}")
-                return []
-                
-            try:
-                # Find the JSON array line as ctranslate2 might print warnings
-                lines = res.stdout.strip().splitlines()
-                json_str = lines[-1] if lines else "[]"
-                
-                # Check if it returned an error dictionary
-                result_data = json.loads(json_str)
-                if isinstance(result_data, dict) and 'error' in result_data:
-                    print(f"Whisper Error: {result_data['error']}")
+                try:
+                    # Wait for result with 60s timeout
+                    result_msg = self._whisper_result_queue.get(timeout=60)
+                except queue.Empty:
+                    print(f"WARNING: Whisper worker timed out waiting for {audio_path}")
+                    # Consider worker dead if it times out
+                    if self._whisper_process and self._whisper_process.is_alive():
+                        self._whisper_process.terminate()
                     return []
                     
-                return result_data
-            except Exception as e:
-                print(f"Failed to parse Whisper output: {e}\nSTDOUT: {res.stdout}")
-                return []
+                if result_msg.get('task_id') != task_id:
+                    print(f"WARNING: Whisper worker returned result for wrong task ID. Expected {task_id}, got {result_msg.get('task_id')}")
+                    return []
+                    
+                if 'error' in result_msg:
+                    print(f"Whisper Error for {audio_path}: {result_msg['error']}")
+                    return []
+                    
+                return result_msg.get('result', [])
                 
         except Exception as e:
             print(f"Error executing transcribe_audio: {e}")
+            import traceback
+            traceback.print_exc()
             return []
