@@ -250,3 +250,15 @@ async def stream_download_progress(request: Request):
             pass
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+@router.get("/hardware-report")
+def get_hardware_report():
+    import sys
+    import os
+    # Add project root to path to import script
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+    try:
+        from scripts.hardware_report import generate_report
+        return generate_report()
+    except Exception as e:
+        return {"error": str(e)}
