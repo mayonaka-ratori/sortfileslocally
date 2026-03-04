@@ -10,6 +10,18 @@ export function BackendStatusBanner() {
     const { status, retryNow } = useBackendHealth()
     const t = useTranslations('common') // Fallback to common if network not found
 
+    const handleRestartBackend = async () => {
+        if (typeof window !== 'undefined' && ('__TAURI__' in window || 'rpc' in window)) {
+            try {
+                const { invoke } = await import('@tauri-apps/api/core');
+                await invoke('restart_backend');
+                // The polling will immediately show "recovering" via events
+            } catch (err) {
+                console.error("Failed to manual restart sidecar:", err);
+            }
+        }
+    };
+
     return (
         <AnimatePresence>
             {status !== 'healthy' && (
@@ -42,6 +54,17 @@ export function BackendStatusBanner() {
                                 >
                                     再試行 / Retry
                                 </button>
+                                {typeof window !== 'undefined' && ('__TAURI__' in window || 'rpc' in window) && (
+                                    <>
+                                        <div className="h-4 w-[1px] bg-red-950/20" />
+                                        <button
+                                            onClick={handleRestartBackend}
+                                            className="px-2 py-0.5 bg-red-950/10 hover:bg-red-950/20 rounded transition-colors whitespace-nowrap"
+                                        >
+                                            再起動 / Restart
+                                        </button>
+                                    </>
+                                )}
                             </>
                         )}
                     </div>

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useBackendHealthStore, backendHealthStore } from '@/stores/backendHealthStore';
+import { initApiBase } from '@/lib/api';
 
 let API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 if (typeof window !== "undefined") {
@@ -85,10 +86,26 @@ export function useBackendHealth() {
         };
         window.addEventListener('lcp:force-health-check', handleForceCheck);
 
+        let unlistenRestart: (() => void) | null = null;
+        if (typeof window !== 'undefined' && ('__TAURI__' in window || 'rpc' in window)) {
+            import('@tauri-apps/api/event').then(({ listen }) => {
+                listen('backend-restarted', async () => {
+                    console.log('Tauri sidecar restarted, reloading API base port...');
+                    await initApiBase();
+                    checkHealth();
+                }).then(unlisten => {
+                    unlistenRestart = unlisten;
+                }).catch(console.error);
+            }).catch(e => {
+                console.warn("Could not import tauri event listener", e);
+            });
+        }
+
         return () => {
             isSubscribed = false;
             if (timerRef.current) clearTimeout(timerRef.current);
             window.removeEventListener('lcp:force-health-check', handleForceCheck);
+            if (unlistenRestart) unlistenRestart();
         };
     }, [checkHealth]);
 
