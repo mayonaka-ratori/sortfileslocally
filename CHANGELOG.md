@@ -2,7 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Sprint 6] - 2026-03-04 (Current)
+## [1.0.0-beta.1] - 2026-03-04
+
+### Added
+
+- **Release Engineering**: Configured code signing workflows, Tauri updater, Content Security Policy (CSP), and CI smoke tests.
+- **Installer UX**: Branded MSI/DMG installers with privacy agreements.
+- **First-Run Experience**: Dynamic initialization wizard with i18n support and progressive model downloading based on hardware capabilities.
+- **Hardware Diagnostics**: Cross-platform system capability reporting tool and matrix generation.
+- **Beta Framework**: Beta feedback mechanics and mock update server for pipeline validation.
+
+## [Sprint 6] - 2026-03-04
 
 ### Added
 

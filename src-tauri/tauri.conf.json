@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "LocalCurator Prime",
-  "version": "1.0.0",
+  "version": "1.0.0-beta.1",
   "identifier": "com.localcurator.prime",
   "build": {
     "frontendDist": "../web/out",
