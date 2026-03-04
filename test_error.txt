@@ -1,0 +1,94 @@
+============================= test session starts =============================
+platform win32 -- Python 3.14.0, pytest-9.0.2, pluggy-1.6.0 -- C:\Python314\python.exe
+cachedir: .pytest_cache
+rootdir: C:\tools\organizefiles0112\LocalCuratorPrime
+configfile: pytest.ini
+plugins: anyio-4.12.1, cov-7.0.0
+collecting ... collected 3 items
+
+tests/test_scan_api.py::test_resume_scan_by_id_success PASSED            [ 33%]
+tests/test_scan_api.py::test_resume_scan_by_id_not_found ERROR           [ 66%]
+tests/test_scan_api.py::test_resume_scan_by_id_invalid_status ERROR      [100%]
+
+=================================== ERRORS ====================================
+_____________ ERROR at setup of test_resume_scan_by_id_not_found ______________
+tests\test_scan_api.py:24: in mock_jm
+    from server.routers.scan import _get_job_manager
+server\routers\scan.py:10: in <module>
+    from ..dependencies import get_processor, get_db_manager
+server\dependencies.py:10: in <module>
+    from src.data.db_manager import DBManager
+src\data\db_manager.py:2: in <module>
+    import numpy as np
+C:\Users\hosom\AppData\Roaming\Python\Python314\site-packages\numpy\__init__.py:125: in <module>
+    from numpy.__config__ import show_config
+C:\Users\hosom\AppData\Roaming\Python\Python314\site-packages\numpy\__config__.py:4: in <module>
+    from numpy._core._multiarray_umath import (
+C:\Users\hosom\AppData\Roaming\Python\Python314\site-packages\numpy\_core\__init__.py:24: in <module>
+    from . import multiarray
+C:\Users\hosom\AppData\Roaming\Python\Python314\site-packages\numpy\_core\multiarray.py:11: in <module>
+    from . import _multiarray_umath, overrides
+E   ImportError: cannot load module more than once per process
+___________ ERROR at setup of test_resume_scan_by_id_invalid_status ___________
+tests\test_scan_api.py:24: in mock_jm
+    from server.routers.scan import _get_job_manager
+server\routers\scan.py:10: in <module>
+    from ..dependencies import get_processor, get_db_manager
+server\dependencies.py:10: in <module>
+    from src.data.db_manager import DBManager
+src\data\db_manager.py:2: in <module>
+    import numpy as np
+C:\Users\hosom\AppData\Roaming\Python\Python314\site-packages\numpy\__init__.py:125: in <module>
+    from numpy.__config__ import show_config
+C:\Users\hosom\AppData\Roaming\Python\Python314\site-packages\numpy\__config__.py:4: in <module>
+    from numpy._core._multiarray_umath import (
+C:\Users\hosom\AppData\Roaming\Python\Python314\site-packages\numpy\_core\__init__.py:24: in <module>
+    from . import multiarray
+C:\Users\hosom\AppData\Roaming\Python\Python314\site-packages\numpy\_core\multiarray.py:11: in <module>
+    from . import _multiarray_umath, overrides
+E   ImportError: cannot load module more than once per process
+============================== warnings summary ===============================
+tests/test_scan_api.py::test_resume_scan_by_id_success
+  <frozen importlib._bootstrap>:491: DeprecationWarning: builtin type SwigPyPacked has no __module__ attribute
+
+tests/test_scan_api.py::test_resume_scan_by_id_success
+  <frozen importlib._bootstrap>:491: DeprecationWarning: builtin type SwigPyObject has no __module__ attribute
+
+tests/test_scan_api.py::test_resume_scan_by_id_success
+  <frozen importlib._bootstrap>:491: DeprecationWarning: builtin type swigvarlink has no __module__ attribute
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=============================== tests coverage ================================
+_______________ coverage: platform win32, python 3.14.0-final-0 _______________
+
+Name                           Stmts   Miss  Cover   Missing
+------------------------------------------------------------
+server\__init__.py                 0      0   100%
+server\dependencies.py            25      4    84%   22-23, 28-29
+server\main.py                    49     12    76%   8-14, 53, 79, 82-85
+server\routers\__init__.py         0      0   100%
+server\routers\albums.py          81     43    47%   42, 46-55, 59-62, 66-84, 88-91, 99-116, 120-121, 125-126
+server\routers\dedup.py          116     86    26%   66-103, 115-167, 190-255
+server\routers\demo.py            41     23    44%   22-23, 34-58, 63-75
+server\routers\gallery.py        251    184    27%   19-24, 95-147, 161-233, 242-243, 248-249, 254-255, 260-286, 301-337, 354-370, 375-417, 422-425, 435-439, 444, 453-468, 476-482
+server\routers\insights.py        18      5    72%   30-37
+server\routers\media.py          299    245    18%   25-38, 43-114, 128-140, 155-162, 174-203, 215-240, 254-263, 268-277, 288-309, 326-388, 400-409, 414-482, 493-502
+server\routers\privacy.py         38     25    34%   16-49, 54-70
+server\routers\scan.py           168     99    41%   18-50, 100, 131-148, 152-155, 170-189, 203-228, 240, 244, 249, 252, 265-271, 276-302, 307-311, 319-322, 331-334, 343-344, 356-357
+server\routers\scenes.py          83     64    23%   42-72, 77-122, 131-159
+server\routers\setup.py          103     63    39%   17-22, 80, 86-89, 99-110, 116-119, 125-133, 148-151, 157-192, 197-203
+server\state.py                   13      0   100%
+src\check_device.py               36     36     0%   2-54
+src\config.py                     28      9    68%   11-17, 45-47
+src\core\exporter.py              94     76    19%   53-112, 120-150, 165-184
+src\core\model_manager.py        130     88    32%   33-37, 44-49, 53-56, 60-73, 165-167, 187-189, 193-212, 216-219, 223-227, 243-267, 274-277, 280-282, 286-322
+src\data\db_manager.py          1119   1056     6%   16-31, 34-36, 40-254, 258-406, 411-423, 427-429, 434-523, 528-558, 562-572, 576-744, 748-804, 811-998, 1002-1020, 1024-1028, 1032-1041, 1045-1057, 1061-1081, 1085-1103, 1107-1118, 1128-1182, 1186-1193, 1197-1210, 1217-1224, 1226-1235, 1239-1276, 1280-1309, 1313-1368, 1372-1393, 1397-1440, 1450-1479, 1486-1591, 1599-1610, 1614-1621, 1625-1649, 1653-1660, 1664-1672, 1676-1696, 1700-1713, 1717-1758, 1766-1785, 1789-1797, 1801-1807, 1811-1817, 1825-1855, 1859-1886, 1893-1942, 1947-1952, 1955-1976, 1979-1996, 1999-2040, 2044-2068
+src\data\scan_job_manager.py     160    107    33%   33-36, 40-46, 77-78, 82, 85-90, 94-95, 104-118, 121, 124, 127-136, 139-154, 162-170, 174-187, 191-200, 205-218, 226-233, 237-246, 253-264, 268-279, 283-290, 297-305, 309
+src\data\schemas.py               53      6    89%   32, 41, 48-49, 65, 83
+------------------------------------------------------------
+TOTAL                           2905   2231    23%
+Coverage HTML written to dir coverage_html
+=========================== short test summary info ===========================
+ERROR tests/test_scan_api.py::test_resume_scan_by_id_not_found - ImportError:...
+ERROR tests/test_scan_api.py::test_resume_scan_by_id_invalid_status - ImportE...
+=================== 1 passed, 3 warnings, 2 errors in 1.97s ===================

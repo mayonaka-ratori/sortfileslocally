@@ -1,5 +1,19 @@
 let API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+import type {
+    MediaItem, SearchFilters, HybridSearchResponse,
+    ScanStatus, ScanJobInfo, ScanErrorInfo, ModelStatus,
+    ReverseSearchResult, ExportResult, Album, TagSuggestion, BulkTagResponse,
+    UntaggedFilesResponse, InsightItem, InsightsResponse, FaceData
+} from "./api-types-bridge";
+
+export type {
+    MediaItem, SearchFilters, HybridSearchResponse,
+    ScanStatus, ScanJobInfo, ScanErrorInfo, ModelStatus,
+    ReverseSearchResult, ExportResult, Album, TagSuggestion, BulkTagResponse,
+    UntaggedFilesResponse, InsightItem, InsightsResponse, FaceData
+};
+
 export async function initApiBase() {
     if (typeof window !== 'undefined' && ('__TAURI__' in window || ('rpc' in window))) {
         try {
@@ -93,19 +107,9 @@ const safeFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
     }
 };
 
-export interface MediaItem {
-    id: number;
-    file_path: string;
-    media_type: string;
-    width: number | null;
-    height: number | null;
-    tags: string[];
-    character_tags: string[];
-    series_tags: string[];
-    audio_transcription?: { text: string; start: number; end: number }[];
-    frame_descriptions?: { text: string; timestamp: number }[];
-    snippet?: string; // Optional field for holding search match text snippet
-}
+// ------------------------------------------------------------------ //
+// Media & Search APIs
+// ------------------------------------------------------------------ //
 
 export interface Scene {
     id: number;
@@ -126,38 +130,6 @@ export interface SceneSearchResult extends Scene {
     file_id: number;
     filename: string;
     score: number;
-}
-
-export interface SearchFilters {
-    tags?: string[];
-    character_tags?: string[];
-    series_tags?: string[];
-    media_type?: string;
-    extension?: string[];
-}
-
-export interface HybridSearchResponse {
-    results: MediaItem[];
-    total_candidates: number;
-    filters_applied: SearchFilters;
-}
-
-export interface SearchHistoryEntry {
-    id: number;
-    query_text: string;
-    filters_json: string | null;
-    result_count: number;
-    executed_at: string;
-}
-
-export interface ScanStatus {
-    is_active: boolean;
-    progress_percent: number;
-    current_file: string;
-    processed_count: number;
-    total_files: number;
-    eta_seconds: number;
-    error: string | null;
 }
 
 export const fetchMedia = async (
@@ -233,15 +205,6 @@ export const getScanStatus = async (jobId: number): Promise<ScanStatus> => {
     return res.json();
 };
 
-export interface FaceData {
-    id: number;
-    file_id: number;
-    face_index: number;
-    timestamp: number;
-    bbox: number[];
-    person_name: string | null;
-}
-
 export const getFaces = async (fileId: number): Promise<FaceData[]> => {
     const res = await safeFetch(`${API_BASE_URL}/gallery/${fileId}/faces`);
     return res.json();
@@ -268,6 +231,14 @@ export const nameFace = async (faceId: number, personName: string): Promise<{ su
 // Search History APIs
 // ------------------------------------------------------------------ //
 
+export interface SearchHistoryEntry {
+    id: number;
+    query_text: string;
+    filters_json: string | null;
+    result_count: number;
+    executed_at: string;
+}
+
 export const getSearchHistory = async (limit: number = 20): Promise<SearchHistoryEntry[]> => {
     const res = await safeFetch(`${API_BASE_URL}/gallery/search-history?limit=${limit}`);
     return res.json();
@@ -291,30 +262,6 @@ export const clearSearchHistory = async (): Promise<void> => {
 // ------------------------------------------------------------------ //
 // Scan Job & Resume APIs
 // ------------------------------------------------------------------ //
-
-export interface ScanJobInfo {
-    id: number;
-    target_path: string;
-    status: string;
-    total_files: number;
-    processed_count: number;
-    skipped_count: number;
-    error_count: number;
-    progress_percent: number;
-    current_file: string;
-    eta_seconds: number;
-    started_at: number;
-    updated_at: number;
-    completed_at: number;
-}
-
-export interface ScanErrorInfo {
-    id: number;
-    job_id: number;
-    file_path: string;
-    error_message: string;
-    occurred_at: number;
-}
 
 export const resumeScan = async (jobId?: number): Promise<{ message: string; job: ScanJobInfo }> => {
     const url = jobId ? `${API_BASE_URL}/scan/resume/${jobId}` : `${API_BASE_URL}/scan/resume`;
@@ -341,17 +288,6 @@ export const listScanJobs = async (limit: number = 20): Promise<ScanJobInfo[]> =
 // ------------------------------------------------------------------ //
 // Model Manager APIs
 // ------------------------------------------------------------------ //
-
-export interface ModelStatus {
-    key: string;
-    name: string;
-    source: string;
-    repo_id: string;
-    is_downloaded: boolean;
-    local_size_mb: number;
-    estimated_size_mb: number;
-    local_dir: string;
-}
 
 export const getModelStatuses = async (): Promise<ModelStatus[]> => {
     const res = await safeFetch(`${API_BASE_URL}/setup/models`);
@@ -435,15 +371,6 @@ export interface DuplicatePair {
     reason: string;
 }
 
-export interface ReverseSearchResult {
-    id: number;
-    file_path: string;
-    media_type: string;
-    width: number | null;
-    height: number | null;
-    similarity: number;
-}
-
 export const findDuplicates = async (
     thresholdImg: number = 0.95,
     thresholdVid: number = 0.98,
@@ -487,12 +414,6 @@ export const reverseImageSearch = async (
 // Metadata Export APIs
 // ------------------------------------------------------------------ //
 
-export interface ExportResult {
-    success: number;
-    failed: number;
-    errors: string[];
-}
-
 export const exportMetadata = async (
     fileIds: number[],
     mode: "xmp" | "exif" = "xmp",
@@ -519,17 +440,6 @@ export const exportAllMetadata = async (
 // ------------------------------------------------------------------ //
 // Album APIs
 // ------------------------------------------------------------------ //
-
-export interface Album {
-    id: number;
-    name: string;
-    is_dynamic: boolean;
-    query_json?: string;
-    cover_file_id?: number | null;
-    item_count: number;
-    created_at: string;
-    updated_at: string;
-}
 
 export const fetchAlbums = async (): Promise<Album[]> => {
     const res = await safeFetch(`${API_BASE_URL}/albums/`);
@@ -602,11 +512,6 @@ export const browseFolder = async (): Promise<{ path: string | null; cancelled: 
 // Tag Editor APIs
 // ------------------------------------------------------------------ #
 
-export interface TagSuggestion {
-    tag: string;
-    count: number;
-}
-
 export type TagCategory = "general" | "character" | "series";
 
 export const addTags = async (fileId: number, tags: string[], category: TagCategory = "general"): Promise<{ tags: string[]; updated_count: number }> => {
@@ -633,13 +538,6 @@ export const suggestTags = async (query: string, category?: TagCategory, limit: 
     const res = await safeFetch(`${API_BASE_URL}/gallery/tags/suggest?${params.toString()}`);
     return res.json();
 };
-
-export interface BulkTagResponse {
-    affected_count: number;
-    action: string;
-    tags: string[];
-    errors: { file_id: number; error: string }[];
-}
 
 export const bulkUpdateTags = async (
     fileIds: number[],
@@ -670,11 +568,6 @@ export interface TagStats {
     series: TagStat[];
     total_tags: number;
     untagged_count: number;
-}
-
-export interface UntaggedFilesResponse {
-    files: MediaItem[];
-    total_count: number;
 }
 
 export const getTagStats = async (): Promise<TagStats> => {
@@ -723,23 +616,6 @@ export const bulkRescan = async (fileIds: number[], mode: RescanMode = "append")
 // ------------------------------------------------------------------ #
 // Insights APIs
 // ------------------------------------------------------------------ #
-
-export interface InsightItem {
-    type: "duplicate_found" | "untagged_files" | "album_suggestion" | "low_quality_tags";
-    title: string;
-    message: string;
-    action_url: string;
-    action_label: string;
-    priority: "high" | "medium" | "low";
-    count: number;
-    tag?: string;
-    query_json?: string;
-}
-
-export interface InsightsResponse {
-    insights: InsightItem[];
-    generated_at: string;
-}
 
 export const getInsights = async (): Promise<InsightsResponse> => {
     const res = await safeFetch(`${API_BASE_URL}/insights`);
