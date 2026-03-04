@@ -1,9 +1,11 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState } from "react"
 import { useTranslations } from "next-intl"
 import { X, Loader2, AlertCircle, RefreshCw, CheckCircle2 } from "lucide-react"
-import { MediaItem, RescanMode, bulkRescan, getScanStatus, ScanStatus } from "@/lib/api"
+import { MediaItem, RescanMode, bulkRescan } from "@/lib/api"
+import { useScanProgress } from "@/hooks/useScanProgress"
+import type { ScanSSEEvent } from "@/lib/sse-types"
 
 interface BulkRescanModalProps {
     selectedItems: MediaItem[]
@@ -17,30 +19,14 @@ export function BulkRescanModal({ selectedItems, onClose, onSuccess }: BulkResca
     const [mode, setMode] = useState<RescanMode>("append")
     const [isStarting, setIsStarting] = useState(false)
     const [jobId, setJobId] = useState<number | null>(null)
-    const [status, setStatus] = useState<ScanStatus | null>(null)
     const [error, setError] = useState<string | null>(null)
 
     const count = selectedItems.length
     const fileIds = selectedItems.map(item => item.id)
 
-    // Polling for status if job is running
-    useEffect(() => {
-        let interval: NodeJS.Timeout
-        if (jobId && !status?.error && (status?.progress_percent ?? 0) < 100) {
-            interval = setInterval(async () => {
-                try {
-                    const s = await getScanStatus(jobId)
-                    setStatus(s)
-                    if (s.progress_percent >= 100 && !s.is_active) {
-                        clearInterval(interval)
-                    }
-                } catch (err) {
-                    console.error("Status check failed", err)
-                }
-            }, 1000)
-        }
-        return () => clearInterval(interval)
-    }, [jobId, status])
+    // SSE-based progress — replaces setInterval polling
+    const { status: rawStatus } = useScanProgress(jobId);
+    const status = rawStatus as ScanSSEEvent | null;
 
     const handleStart = async () => {
         setIsStarting(true)

@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
-    startScan, resumeScan, getScanStatus, getLatestScanJob,
-    browseFolder, ScanStatus, ScanJobInfo,
+    startScan, resumeScan, getLatestScanJob,
+    browseFolder, ScanJobInfo,
 } from "@/lib/api";
+import { useScanProgress } from "@/hooks/useScanProgress";
+import type { ScanSSEEvent } from "@/lib/sse-types";
 import {
     FolderSearch, AlertTriangle, AlertCircle, Play,
     Loader2, RefreshCw, RotateCcw, CheckCircle2,
@@ -24,7 +26,6 @@ export function ScanUI({ initialPath, onComplete }: ScanUIProps) {
 
     const [path, setPath] = useState(initialPath ?? "");
     const [forceReprocess, setForceReprocess] = useState(false);
-    const [status, setStatus] = useState<ScanStatus | null>(null);
     const [error, setError] = useState("");
     const [starting, setStarting] = useState(false);
     const [jobId, setJobId] = useState<number | null>(null);
@@ -55,51 +56,35 @@ export function ScanUI({ initialPath, onComplete }: ScanUIProps) {
             });
     }, []);
 
-    // Poll scan status
-    useEffect(() => {
-        let timer: NodeJS.Timeout;
-
-        const fetchStatus = async () => {
-            if (!jobId) {
-                timer = setTimeout(fetchStatus, 8000);
-                return;
+    // SSE-based scan progress (replaces 1s polling)
+    const handleScanComplete = useCallback(async () => {
+        try {
+            const fullJob = await getLatestScanJob();
+            if (fullJob && fullJob.id === jobId) {
+                setCompletedJob(fullJob);
+                onComplete?.(fullJob);
             }
-            try {
-                const data = await getScanStatus(jobId);
-                setStatus(data);
-
-                // Update recent-files log when filename changes
-                if (data?.current_file && data.current_file !== prevFileRef.current) {
-                    prevFileRef.current = data.current_file;
-                    const basename = data.current_file.split(/[/\\]/).pop() || data.current_file;
-                    setRecentFiles((prev) => [basename, ...prev].slice(0, 8));
-                }
-
-                if (!data?.is_active) {
-                    // Scan finished: fetch the full job info for summary
-                    try {
-                        const fullJob = await getLatestScanJob();
-                        if (fullJob && fullJob.id === jobId) {
-                            setCompletedJob(fullJob);
-                            onComplete?.(fullJob);
-                        }
-                    } catch (err) {
-                        console.error("Failed to fetch completed job detail", err);
-                        toast.error(commonT("actionFailed"));
-                    }
-                    timer = setTimeout(fetchStatus, 8000);
-                } else {
-                    timer = setTimeout(fetchStatus, 1000);
-                }
-            } catch (err) {
-                console.error("Failed to fetch scan status", err);
-                timer = setTimeout(fetchStatus, 5000);
-            }
-        };
-
-        fetchStatus();
-        return () => clearTimeout(timer);
+        } catch (err) {
+            console.error("Failed to fetch completed job detail", err);
+            toast.error(commonT("actionFailed"));
+        }
     }, [jobId, onComplete, commonT]);
+
+    const { status, isConnected, error: sseError, connectionMode } = useScanProgress(
+        jobId,
+        handleScanComplete
+    );
+
+    // Update recent-files log when current_file changes
+    useEffect(() => {
+        if (!status) return;
+        const s = status as { current_file?: string; is_active?: boolean };
+        if (s.current_file && s.current_file !== prevFileRef.current) {
+            prevFileRef.current = s.current_file;
+            const basename = s.current_file.split(/[/\\]/).pop() || s.current_file;
+            setRecentFiles((prev) => [basename, ...prev].slice(0, 8));
+        }
+    }, [status]);
 
     const handleStart = async () => {
         if (!path.trim()) return;
@@ -147,7 +132,7 @@ export function ScanUI({ initialPath, onComplete }: ScanUIProps) {
         setCompletedJob(null);
         setRecentFiles([]);
         setJobId(null);
-        setStatus(null);
+        // status resets automatically when jobId becomes null (useScanProgress hook)
         prevFileRef.current = "";
     };
 
@@ -167,7 +152,11 @@ export function ScanUI({ initialPath, onComplete }: ScanUIProps) {
         );
     }
 
-    const isActive = status?.is_active ?? false;
+    // Narrow the union type: ScanSSEPayload = ScanSSEEvent | ScanSSEUnknown
+    // ScanSSEEvent has all progress fields; ScanSSEUnknown only has status/is_active
+    const scanStatus = (status && 'current_file' in status) ? (status as ScanSSEEvent) : null;
+
+    const isActive = scanStatus?.is_active ?? false;
 
     return (
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex flex-col gap-4 text-sm text-zinc-300 shadow-md">
@@ -234,10 +223,11 @@ export function ScanUI({ initialPath, onComplete }: ScanUIProps) {
                     <span>{error}</span>
                 </div>
             )}
-            {status?.error && (
-                <div className="bg-red-500/10 text-red-400 p-2 rounded flex items-start gap-2 text-xs">
+            {/* SSE error banner */}
+            {sseError && (
+                <div className="bg-amber-500/10 text-amber-400 p-2 rounded flex items-start gap-2 text-xs">
                     <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                    <span>{t("bgError", { error: status.error })}</span>
+                    <span>{sseError}</span>
                 </div>
             )}
 
@@ -271,33 +261,45 @@ export function ScanUI({ initialPath, onComplete }: ScanUIProps) {
                 </button>
             ) : (
                 <div className="mt-2 flex flex-col gap-3 bg-zinc-950 rounded-lg p-3 border border-indigo-900/50 relative overflow-hidden" aria-live="polite">
+                    {/* Connection mode badge */}
+                    <div className="absolute top-2 right-2 flex items-center gap-1">
+                        {connectionMode === "sse" && isConnected && (
+                            <span className="flex items-center gap-1 text-[9px] text-emerald-500 font-mono">
+                                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                                LIVE
+                            </span>
+                        )}
+                        {connectionMode === "poll" && (
+                            <span className="text-[9px] text-amber-500 font-mono">POLLING</span>
+                        )}
+                    </div>
                     {/* Current file + percent */}
                     <div className="flex items-center justify-between text-xs text-indigo-300 font-medium">
                         <div className="flex items-center gap-1.5 flex-1 min-w-0">
                             <RefreshCw className="w-3.5 h-3.5 animate-spin shrink-0" />
                             <span className="truncate">
                                 {t("scanning", {
-                                    file: status?.current_file
-                                        ? (status.current_file.split(/[/\\]/).pop() || "")
+                                    file: scanStatus?.current_file
+                                        ? (scanStatus.current_file.split(/[/\\]/).pop() || "")
                                         : t("preparing"),
                                 })}
                             </span>
                         </div>
-                        <span className="shrink-0 pl-2">{status?.progress_percent?.toFixed(1) || 0}%</span>
+                        <span className="shrink-0 pl-2">{scanStatus?.progress_percent?.toFixed(1) ?? 0}%</span>
                     </div>
 
                     {/* Progress bar */}
                     <div className="w-full bg-zinc-900 rounded-full h-1.5 overflow-hidden">
                         <div
                             className="bg-indigo-500 h-1.5 rounded-full transition-all duration-300 ease-out shadow-[0_0_8px_rgba(99,102,241,0.5)]"
-                            style={{ width: `${Math.min(100, Math.max(0, status?.progress_percent || 0))}%` }}
+                            style={{ width: `${Math.min(100, Math.max(0, scanStatus?.progress_percent || 0))}%` }}
                         />
                     </div>
 
                     {/* Count + ETA row */}
                     <div className="flex justify-between items-center text-[10px] text-zinc-500 font-mono">
-                        <span>{t("fileCount", { count: status?.processed_count || 0, total: status?.total_files || 0 })}</span>
-                        <span>{formatHumanEta(status?.eta_seconds ?? 0)}</span>
+                        <span>{t("fileCount", { count: scanStatus?.processed_count || 0, total: scanStatus?.total_files || 0 })}</span>
+                        <span>{formatHumanEta(scanStatus?.eta_seconds ?? 0)}</span>
                     </div>
 
                     {/* Per-file recent log */}
