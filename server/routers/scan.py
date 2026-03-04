@@ -1,5 +1,7 @@
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi.responses import StreamingResponse
+import json
 from pydantic import BaseModel
 from typing import Optional, List
 import asyncio
@@ -10,6 +12,42 @@ from ..state import active_scans, ScanStatus
 import time
 from src.core.processor import Processor
 from src.data.scan_job_manager import ScanJobManager, ScanJob
+
+def is_safe_scan_path(target_path: str) -> bool:
+    """Check if the provided path is safe to scan (prevents scanning system directories)."""
+    try:
+        abs_path = os.path.abspath(target_path).lower()
+    except Exception:
+        return False
+        
+    if os.name == 'nt':
+        unsafe_dirs = [
+            os.environ.get('WINDIR', 'c:\\windows').lower(),
+            os.environ.get('PROGRAMFILES', 'c:\\program files').lower(),
+            os.environ.get('PROGRAMFILES(X86)', 'c:\\program files (x86)').lower(),
+            os.environ.get('PROGRAMDATA', 'c:\\programdata').lower(),
+            "c:\\$recycle.bin",
+            "c:\\system volume information",
+            "c:\\recovery",
+            "c:\\boot",
+            "c:\\efi"
+        ]
+        if len(abs_path) <= 3 and abs_path.endswith(':' + os.sep):
+            return False
+    else:
+        unsafe_dirs = [
+            "/bin", "/sbin", "/usr/bin", "/usr/sbin", "/usr/lib", "/usr/libexec",
+            "/etc", "/dev", "/proc", "/sys", "/var", "/boot", "/system", 
+            "/root", "/run", "/tmp"
+        ]
+        if abs_path == '/':
+            return False
+
+    for unsafe in unsafe_dirs:
+        if abs_path == unsafe or abs_path.startswith(unsafe + os.sep):
+            return False
+            
+    return True
 
 router = APIRouter(prefix="/scan", tags=["scan"])
 
@@ -137,6 +175,9 @@ async def start_scan(
     if not os.path.exists(req.target_path):
         raise HTTPException(status_code=400, detail="Path does not exist")
 
+    if not is_safe_scan_path(req.target_path):
+        raise HTTPException(status_code=400, detail="Scanning restricted system directories is not allowed")
+
     # Create a new persistent job
     job = job_manager.create_job(req.target_path, force_reprocess=req.force_reprocess)
 
@@ -228,6 +269,37 @@ def _cleanup_scans():
             to_remove.append(j_id)
     for j_id in to_remove:
         del active_scans[j_id]
+
+@router.get("/status/stream/{job_id}")
+async def stream_scan_status(job_id: int):
+    """Server-Sent Events endpoint for real-time scan progress."""
+    async def event_generator():
+        while True:
+            _cleanup_scans()
+            status = active_scans.get(job_id)
+            
+            if not status:
+                # Job not found in active memory (completed/failed/not started)
+                yield f"data: {json.dumps({'status': 'unknown', 'is_active': False})}\n\n"
+                break
+                
+            dict_data = {"is_active": status.is_active, 
+                         "error": status.error, 
+                         "current_file": status.current_file, 
+                         "processed_count": status.processed_count, 
+                         "total_files": status.total_files,
+                         "progress_percent": status.progress_percent,
+                         "eta_seconds": status.eta_seconds,
+                         "last_updated": status.last_updated}
+                         
+            yield f"data: {json.dumps(dict_data)}\n\n"
+            
+            if not status.is_active:
+                break
+                
+            await asyncio.sleep(0.5)
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 @router.get("/status/{job_id}", response_model=ScanStatus)
 def get_status(job_id: int):
