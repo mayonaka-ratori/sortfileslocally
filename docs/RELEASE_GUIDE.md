@@ -21,10 +21,32 @@ Without code signing, Windows SmartScreen blocks the installer, and macOS Gateke
 
 Configure the following secrets in the GitHub repository (`Settings -> Secrets and variables -> Actions`):
 
-#### Updater Secrets (Tauri v1/v2)
+#### Updater Configuration and Secrets
 
-- `TAURI_PRIVATE_KEY`: Private Ed25519 key for the Tauri updater signing.
-- `TAURI_KEY_PASSWORD`: Password for the updater private key (if it's encrypted).
+Tauri requires an Ed25519 keypair for securely delivering auto-updates.
+
+**To generate a new Updater Keypair:**
+
+1. Run `powershell ./scripts/generate_updater_key.ps1`
+   - Alternatively, use the Tauri CLI: `cargo tauri signer generate -w ~/.tauri/localcurator.key`
+2. Open the generated `~/.tauri/localcurator.key.pub` and copy the public key string.
+3. Paste the string into `src-tauri/tauri.conf.json` -> `plugins.updater.pubkey`.
+
+**GitHub Secrets for the Updater:**
+
+- `TAURI_PRIVATE_KEY`: Private Ed25519 key (contents of `~/.tauri/localcurator.key`).
+- `TAURI_KEY_PASSWORD`: Password you set during generation (if any).
+
+### Content Security Policy (CSP)
+
+Our application enforces a strict Content Security Policy defined in `tauri.conf.json`.
+
+- `default-src 'self' tauri: https://tauri.localhost`: Default context restricting to local and Tauri protocol.
+- `style-src 'self' 'unsafe-inline'`: Allows Tailwind CSS runtime injection.
+- `connect-src 'self' http://localhost:* https://tauri.localhost tauri:`: Allows frontend connections to the Python backend on localhost ports.
+- `img-src 'self' blob: data: http://localhost:* https://tauri.localhost`: Allows data URIs, blob URLs (for dynamically loaded images), and backend image serving.
+- `font-src 'self' data:`: Local font loading.
+- `script-src 'self' 'unsafe-inline'`: Required for React execution via Next.js exports.
 
 #### Windows Authenticode
 

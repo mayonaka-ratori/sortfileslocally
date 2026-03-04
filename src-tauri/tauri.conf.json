@@ -20,7 +20,7 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self' tauri: https://tauri.localhost; style-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:* https://tauri.localhost tauri:; img-src 'self' blob: data: http://localhost:* https://tauri.localhost; font-src 'self' data:; script-src 'self' 'unsafe-inline'"
     }
   },
   "plugins": {
@@ -44,6 +44,7 @@
     "externalBin": [
       "binaries/localcurator-backend"
     ],
+    "licenseFile": "../installer/windows/license.rtf",
     "macOS": {
       "signingIdentity": "PLACEHOLDER_APPLE_SIGNING_IDENTITY",
       "entitlements": "Entitlements.mac.plist",
@@ -62,7 +63,6 @@
     "windows": {
       "certificateThumbprint": "PLACEHOLDER_WINDOWS_CERT_THUMBPRINT",
       "wix": {
-        "license": "../installer/windows/license.rtf",
         "bannerPath": "../installer/windows/banner.bmp",
         "dialogImagePath": "../installer/windows/dialog.bmp"
       }
