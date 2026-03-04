@@ -119,12 +119,17 @@ def get_thumbnail(file_id: int, size: int = 300, db: DBManager = Depends(get_db_
 
 class SceneResponse(BaseModel):
     id: int
+    scene_index: int = 0
     start_time: float
     end_time: float
+    start_frame: int = 0
+    end_frame: int = 0
+    thumbnail_url: Optional[str] = None
     caption: Optional[str] = None
     tags: List[str]
     character_tags: List[str]
     series_tags: List[str]
+    duration: float = 0.0
 
 @router.get("/{file_id}/scenes", response_model=List[SceneResponse])
 def get_media_scenes(file_id: int, db: DBManager = Depends(get_db_manager)):

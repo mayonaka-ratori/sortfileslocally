@@ -4,14 +4,18 @@ import type {
     MediaItem, SearchFilters, HybridSearchResponse,
     ScanStatus, ScanJobInfo, ScanErrorInfo, ModelStatus,
     ReverseSearchResult, ExportResult, Album, TagSuggestion, BulkTagResponse,
-    UntaggedFilesResponse, InsightItem, InsightsResponse, FaceData
+    UntaggedFilesResponse, InsightItem, InsightsResponse, FaceData,
+    SceneInfo, SceneSearchInfo, DuplicateItemInfo, DuplicatePairInfo, TagStatsInfo
 } from "./api-types-bridge";
 
 export type {
     MediaItem, SearchFilters, HybridSearchResponse,
     ScanStatus, ScanJobInfo, ScanErrorInfo, ModelStatus,
     ReverseSearchResult, ExportResult, Album, TagSuggestion, BulkTagResponse,
-    UntaggedFilesResponse, InsightItem, InsightsResponse, FaceData
+    UntaggedFilesResponse, InsightItem, InsightsResponse, FaceData,
+    SceneInfo as Scene, SceneSearchInfo as SceneSearchResult,
+    DuplicateItemInfo as DuplicateItem, DuplicatePairInfo as DuplicatePair,
+    TagStatsInfo as TagStats
 };
 
 export async function initApiBase() {
@@ -111,26 +115,7 @@ const safeFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
 // Media & Search APIs
 // ------------------------------------------------------------------ //
 
-export interface Scene {
-    id: number;
-    scene_index: number;
-    start_time: number;
-    end_time: number;
-    start_frame: number;
-    end_frame: number;
-    thumbnail_url: string;
-    caption: string;
-    tags: string[];
-    character_tags: string[];
-    series_tags: string[];
-    duration: number;
-}
-
-export interface SceneSearchResult extends Scene {
-    file_id: number;
-    filename: string;
-    score: number;
-}
+// Scene type is now generated from the backend — re-exported from api-types-bridge as SceneInfo → Scene
 
 export const fetchMedia = async (
     options: {
@@ -353,28 +338,13 @@ export const updateAppSetting = async (key: string, value: string): Promise<{ st
 // Deduplication & Reverse Search APIs
 // ------------------------------------------------------------------ //
 
-export interface DuplicateItem {
-    file_path: string;
-    file_hash: string;
-    file_size: number;
-    media_type: string;
-    width: number | null;
-    height: number | null;
-    duration: number | null;
-}
+// DuplicateItem and DuplicatePair are now generated — re-exported from api-types-bridge
 
-export interface DuplicatePair {
-    file_a: DuplicateItem;
-    file_b: DuplicateItem;
-    similarity: number;
-    recommended_action: string;
-    reason: string;
-}
 
 export const findDuplicates = async (
     thresholdImg: number = 0.95,
     thresholdVid: number = 0.98,
-): Promise<DuplicatePair[]> => {
+): Promise<DuplicatePairInfo[]> => {
     const res = await safeFetch(`${API_BASE_URL}/dedup/candidates`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -557,20 +527,9 @@ export const bulkUpdateTags = async (
 // Tag Dashboard APIs
 // ------------------------------------------------------------------ #
 
-export interface TagStat {
-    tag: string;
-    count: number;
-}
+// TagStat and TagStats are now generated — re-exported from api-types-bridge as TagStatsInfo → TagStats
 
-export interface TagStats {
-    general: TagStat[];
-    character: TagStat[];
-    series: TagStat[];
-    total_tags: number;
-    untagged_count: number;
-}
-
-export const getTagStats = async (): Promise<TagStats> => {
+export const getTagStats = async (): Promise<TagStatsInfo> => {
     const res = await safeFetch(`${API_BASE_URL}/gallery/tags/stats`);
     return res.json();
 };
@@ -635,7 +594,7 @@ export const detectScenes = async (fileId: number, force: boolean = false): Prom
     return res.json();
 };
 
-export const getScenes = async (fileId: number): Promise<Scene[]> => {
+export const getScenes = async (fileId: number): Promise<SceneInfo[]> => {
     const res = await safeFetch(`${API_BASE_URL}/media/${fileId}/scenes`);
     return res.json();
 };
@@ -648,7 +607,7 @@ export const deleteScenes = async (fileId: number): Promise<{ success: boolean; 
     return res.json();
 };
 
-export const searchScenes = async (query: string, topK: number = 20): Promise<SceneSearchResult[]> => {
+export const searchScenes = async (query: string, topK: number = 20): Promise<SceneSearchInfo[]> => {
     const params = new URLSearchParams({ query, top_k: topK.toString() });
     const res = await fetch(`${API_BASE_URL}/scenes/search?${params.toString()}`);
     if (!res.ok) throw new Error("Scene search failed");

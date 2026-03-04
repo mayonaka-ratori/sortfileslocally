@@ -8,7 +8,9 @@ test.describe('Onboarding Tour', () => {
         // Verify tour appears
         const tour = page.locator('[data-testid="onboarding-tour"]');
         await expect(tour).toBeVisible();
-        await expect(tour).toContainText(/Welcome|Search/i);
+
+        // Accept either "Welcome" or "Search" text in the tour heading
+        await expect(tour.getByText(/Welcome/i).or(tour.getByText(/Search/i)).first()).toBeVisible();
 
         // Navigate through steps
         const nextButton = tour.getByRole('button', { name: /next/i });

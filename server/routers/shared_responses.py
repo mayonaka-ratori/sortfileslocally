@@ -3,7 +3,10 @@ Shared Pydantic response models used across multiple routers.
 Import from here to keep response schemas consistent and DRY.
 """
 from pydantic import BaseModel
-from typing import List, Optional, Any, Dict
+from typing import List, Optional, Any, Dict, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .scan import ScanJobResponse
 
 
 class SuccessResponse(BaseModel):
@@ -85,4 +88,4 @@ class BackupResponse(BaseModel):
 
 class ScanStartResponse(BaseModel):
     message: str
-    job: Any  # ScanJobResponse — imported in scan.py to avoid circular
+    job: "ScanJobResponse"

@@ -26,7 +26,7 @@ export function SceneCard({ scene, isActive, onClick }: SceneCardProps) {
         >
             <div className="relative aspect-video w-full overflow-hidden">
                 <Image
-                    src={scene.thumbnail_url}
+                    src={scene.thumbnail_url || ''}
                     alt={scene.caption || t("sceneIndex", { index: scene.scene_index })}
                     fill
                     className="object-cover"
