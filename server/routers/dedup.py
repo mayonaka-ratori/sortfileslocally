@@ -8,6 +8,7 @@ import numpy as np
 from ..dependencies import get_db_manager, get_ai_engine
 from src.data.db_manager import DBManager
 from src.core.ai_models import AIEngine
+from .shared_responses import DeleteResultResponse
 # from src.core.deduplication import Deduplicator, DuplicatePair  # Moved to endpoints to avoid startup crash
 
 router = APIRouter(prefix="/dedup", tags=["deduplication"])
@@ -103,7 +104,7 @@ def find_duplicate_candidates(
     return results
 
 
-@router.post("/apply")
+@router.post("/apply", response_model=DeleteResultResponse)
 def apply_deduplication(
     req: DeleteRequest,
     db: DBManager = Depends(get_db_manager),

@@ -16,6 +16,10 @@ from src.data.db_manager import DBManager
 from src.core.exporter import MetadataExporter, ExportableMetadata
 from src.core.processor import Processor
 from src.data.scan_job_manager import ScanJobManager
+from .shared_responses import (
+    ExportResultResponse, TagUpdateResponse, BulkTagResponse,
+    JobStartResponse, BulkRescanStartResponse
+)
 
 router = APIRouter(prefix="/media", tags=["media"])
 
@@ -162,7 +166,7 @@ def _safe_parse(val) -> list:
         return []
 
 
-@router.post("/export-metadata")
+@router.post("/export-metadata", response_model=ExportResultResponse)
 def export_metadata(
     req: ExportRequest,
     db: DBManager = Depends(get_db_manager),
@@ -203,7 +207,7 @@ def export_metadata(
     return result
 
 
-@router.post("/export-all")
+@router.post("/export-all", response_model=ExportResultResponse)
 def export_all_metadata(
     req: ExportAllRequest,
     db: DBManager = Depends(get_db_manager),
@@ -248,7 +252,7 @@ class TagRequest(BaseModel):
     tags: List[str]
     category: str = "general" # "general" | "character" | "series"
 
-@router.post("/{file_id}/tags")
+@router.post("/{file_id}/tags", response_model=TagUpdateResponse)
 def add_media_tags(file_id: int, req: TagRequest, db: DBManager = Depends(get_db_manager)):
     """Append tags to a specific media item."""
     try:
@@ -262,7 +266,7 @@ def add_media_tags(file_id: int, req: TagRequest, db: DBManager = Depends(get_db
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.delete("/{file_id}/tags")
+@router.delete("/{file_id}/tags", response_model=TagUpdateResponse)
 def remove_media_tags(file_id: int, req: TagRequest, db: DBManager = Depends(get_db_manager)):
     """Remove tags from a specific media item."""
     try:
@@ -282,7 +286,7 @@ class BulkTagRequest(BaseModel):
     tags: List[str]
     category: str = "general" # "general" | "character" | "series"
 
-@router.post("/bulk-tags")
+@router.post("/bulk-tags", response_model=BulkTagResponse)
 def bulk_update_media_tags(req: BulkTagRequest, db: DBManager = Depends(get_db_manager)):
     """Bulk update tags for multiple media items."""
     if len(req.file_ids) > 500:
@@ -387,10 +391,10 @@ def _rescan_file_worker(file_id: int, mode: str, db: DBManager, processor: Proce
         status.is_active = False
         status.last_updated = time.time()
 
-@router.post("/{file_id}/rescan")
+@router.post("/{file_id}/rescan", response_model=JobStartResponse)
 def rescan_media_endpoint(
-    file_id: int, 
-    req: RescanRequest, 
+    file_id: int,
+    req: RescanRequest,
     background_tasks: BackgroundTasks,
     db: DBManager = Depends(get_db_manager),
     processor: Processor = Depends(get_processor)
@@ -482,7 +486,7 @@ def _bulk_rescan_worker(file_ids: List[int], mode: str, db: DBManager, processor
         status.last_updated = time.time()
 
 
-@router.post("/bulk-rescan")
+@router.post("/bulk-rescan", response_model=BulkRescanStartResponse)
 def bulk_rescan_endpoint(
     req: BulkRescanRequest,
     background_tasks: BackgroundTasks,

@@ -11,6 +11,7 @@ from ..dependencies import get_db_manager, get_ai_engine
 from src.data.db_manager import DBManager
 from src.core.ai_models import AIEngine
 from .gallery import MediaItemResponse, safe_parse_json, HybridSearchRequest
+from .shared_responses import SuccessResponse
 
 router = APIRouter(prefix="/albums", tags=["albums"])
 
@@ -61,7 +62,7 @@ def get_album(id: int, db: DBManager = Depends(get_db_manager)):
         raise HTTPException(status_code=404, detail="Album not found")
     return album
 
-@router.put("/{id}")
+@router.put("/{id}", response_model=SuccessResponse)
 def update_album(id: int, request: AlbumUpdateRequest, db: DBManager = Depends(get_db_manager)):
     album = db.get_album(id)
     if not album:
@@ -83,7 +84,7 @@ def update_album(id: int, request: AlbumUpdateRequest, db: DBManager = Depends(g
     db.update_album(id, name=request.name, query_json=request.query_json, cover_file_id=request.cover_file_id)
     return {"success": True}
 
-@router.delete("/{id}")
+@router.delete("/{id}", response_model=SuccessResponse)
 def delete_album(id: int, db: DBManager = Depends(get_db_manager)):
     success = db.delete_album(id)
     if not success:
@@ -115,12 +116,12 @@ def get_album_media(
         ))
     return results
 
-@router.post("/{id}/items")
+@router.post("/{id}/items", response_model=SuccessResponse)
 def add_to_album(id: int, request: AddItemsRequest, db: DBManager = Depends(get_db_manager)):
     db.add_to_album(id, request.file_ids)
     return {"success": True}
 
-@router.delete("/{id}/items")
+@router.delete("/{id}/items", response_model=SuccessResponse)
 def remove_from_album(id: int, request: AddItemsRequest, db: DBManager = Depends(get_db_manager)):
     db.remove_from_album(id, request.file_ids)
     return {"success": True}

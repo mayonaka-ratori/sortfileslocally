@@ -5,6 +5,7 @@ from typing import List, Optional
 import os
 
 from src.core.model_manager import ModelManager
+from .shared_responses import DownloadStartResponse, SuccessResponse, BackupResponse
 
 router = APIRouter(prefix="/setup", tags=["setup"])
 
@@ -89,7 +90,7 @@ def get_model(key: str, mm: ModelManager = Depends(get_model_manager)):
     return status
 
 
-@router.post("/models/download")
+@router.post("/models/download", response_model=DownloadStartResponse)
 async def download_model(
     req: DownloadRequest,
     background_tasks: BackgroundTasks,
@@ -142,7 +143,7 @@ def get_settings():
         "auto_check_updates": db.get_setting("auto_check_updates", "true")
     }
 
-@router.post("/complete")
+@router.post("/complete", response_model=SuccessResponse)
 def complete_setup():
     """Mark setup as completed."""
     from server.dependencies import get_db_manager
@@ -191,7 +192,7 @@ def update_setting(req: SettingItem):
 
     return {"status": "success", "key": req.key, "value": req.value, "requires_restart": False}
 
-@router.post("/backup")
+@router.post("/backup", response_model=BackupResponse)
 def create_backup():
     """Trigger a manual database backup."""
     from server.dependencies import get_db_manager

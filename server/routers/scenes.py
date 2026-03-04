@@ -10,6 +10,7 @@ import os
 router = APIRouter(prefix="/scenes", tags=["scenes"])
 
 from server.dependencies import get_db_manager, get_processor
+from .shared_responses import JobStartResponse, SceneDeleteResponse
 
 router = APIRouter(prefix="/scenes", tags=["scenes"])
 
@@ -30,7 +31,7 @@ class SceneSearchResponse(BaseModel):
 class DetectRequest(BaseModel):
     force: bool = False
 
-@router.post("/{file_id}/detect")
+@router.post("/{file_id}/detect", response_model=JobStartResponse)
 async def detect_scenes(
     file_id: int, 
     background_tasks: BackgroundTasks,
@@ -71,7 +72,7 @@ async def detect_scenes(
     
     return {"status": "processing", "message": "Scene detection started in background"}
 
-@router.delete("/{file_id}")
+@router.delete("/{file_id}", response_model=SceneDeleteResponse)
 async def delete_scenes(file_id: int, db: DBManager = Depends(get_db_manager)):
     """Delete all scenes and thumbnails for a video."""
     conn = db._connect()

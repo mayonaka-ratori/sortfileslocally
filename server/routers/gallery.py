@@ -11,6 +11,9 @@ logger = logging.getLogger(__name__)
 from ..dependencies import get_db_manager, get_ai_engine
 from src.data.db_manager import DBManager
 from src.core.ai_models import AIEngine
+from .shared_responses import (
+    ChatResponse, FiltersResponse, TagSuggestion, RenameTagResponse, SuccessResponse
+)
 
 router = APIRouter(prefix="/gallery", tags=["gallery"])
 
@@ -254,7 +257,7 @@ def clear_search_history(db: DBManager = Depends(get_db_manager)):
     db.clear_search_history()
     return
 
-@router.get("/filters")
+@router.get("/filters", response_model=FiltersResponse)
 def get_filters(db: DBManager = Depends(get_db_manager)):
     """Get unique lists of characters and series for filtering."""
     import sqlite3
@@ -289,7 +292,7 @@ class ChatRequest(BaseModel):
     file_path: str
     prompt: str
 
-@router.post("/chat")
+@router.post("/chat", response_model=ChatResponse)
 def chat_with_gallery(
     request: ChatRequest,
     background_tasks: BackgroundTasks,
@@ -416,7 +419,7 @@ def search_by_face(face_id: int, top_k: int = Query(default=50), db: DBManager =
     results.sort(key=lambda x: x.score or 0.0, reverse=True)
     return results
 
-@router.post("/faces/{face_id}/name")
+@router.post("/faces/{face_id}/name", response_model=SuccessResponse)
 def name_face(face_id: int, request: NameFaceRequest, db: DBManager = Depends(get_db_manager)):
     """Give a name to a specific face."""
     success = db.update_face_person(face_id, request.person_name)
@@ -424,7 +427,7 @@ def name_face(face_id: int, request: NameFaceRequest, db: DBManager = Depends(ge
          raise HTTPException(status_code=500, detail="Failed to update name")
     return {"success": True}
 
-@router.get("/tags/suggest")
+@router.get("/tags/suggest", response_model=List[TagSuggestion])
 def suggest_tags(
     q: str = Query(..., min_length=1),
     category: str = "general",
@@ -470,7 +473,7 @@ def get_untagged_files(
         "total_count": res['total_count']
     }
 
-@router.post("/tags/rename")
+@router.post("/tags/rename", response_model=RenameTagResponse)
 def rename_tag(request: RenameTagRequest, db: DBManager = Depends(get_db_manager)):
     """Rename or delete a tag across all files."""
     try:
