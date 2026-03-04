@@ -43,6 +43,13 @@
     ],
     "externalBin": [
       "binaries/localcurator-backend"
-    ]
+    ],
+    "macOS": {
+      "signingIdentity": "PLACEHOLDER_APPLE_SIGNING_IDENTITY",
+      "entitlements": "Entitlements.mac.plist"
+    },
+    "windows": {
+      "certificateThumbprint": "PLACEHOLDER_WINDOWS_CERT_THUMBPRINT"
+    }
   }
 }
