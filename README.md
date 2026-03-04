@@ -1,17 +1,14 @@
-<div align="center">
-  <h1>Local Curator Prime</h1>
-  <p><strong>AI-Powered Offline Media Manager & Semantic Search</strong></p>
-</div>
+# Local Curator Prime
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Python-3.11-blue" alt="Python Version">
-  <img src="https://img.shields.io/badge/Next.js-16.1.6-black" alt="Next.js">
-  <img src="https://img.shields.io/badge/FastAPI-0.129-009688" alt="FastAPI">
-  <img src="https://img.shields.io/badge/PyTorch-2.5.1-ee4c2c" alt="PyTorch">
-  <img src="https://img.shields.io/badge/Tauri-v2-38bdf8" alt="Tauri">
-  <img src="https://img.shields.io/badge/License-MIT-green" alt="License">
-  <img src="https://github.com/mayonaka-ratori/sortfileslocally/actions/workflows/ci.yml/badge.svg" alt="CI">
-</p>
+## AI-Powered Offline Media Manager & Semantic Search
+
+![Python Version](https://img.shields.io/badge/Python-3.11-blue)
+![Next.js](https://img.shields.io/badge/Next.js-16.1.6-black)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.129-009688)
+![PyTorch](https://img.shields.io/badge/PyTorch-2.5.1-ee4c2c)
+![Tauri](https://img.shields.io/badge/Tauri-v2-38bdf8)
+![License](https://img.shields.io/badge/License-MIT-green)
+![CI](https://github.com/mayonaka-ratori/sortfileslocally/actions/workflows/ci.yml/badge.svg)
 
 ---
 
@@ -80,12 +77,12 @@ graph TD
 
 ## Prerequisites
 
-| Dependency    | Version            | Install                                                              | Notes                                        |
-| :------------ | :----------------- | :------------------------------------------------------------------- | :------------------------------------------- |
-| **Python**    | 3.11.x             | [python.org](https://www.python.org/downloads/release/python-3119/)  | **Not** 3.12+ — numpy C extension incompatibility |
-| **Node.js**   | 20.x LTS           | `winget install OpenJS.NodeJS.LTS` or [nodejs.org](https://nodejs.org/) | Required for frontend dev server           |
-| **Rust**      | stable (≥ 1.84)    | `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \| sh`   | Desktop build only                           |
-| **CUDA**      | 11.8 (optional)    | [NVIDIA CUDA Toolkit](https://developer.nvidia.com/cuda-11-8-0-download-archive) | GPU acceleration for AI models |
+| Dependency | Version         | Install                                                                           | Notes                                            |
+| :--------- | :-------------- | :-------------------------------------------------------------------------------- | :----------------------------------------------- |
+| **Python** | 3.11.x          | [python.org](https://www.python.org/downloads/release/python-3119/)               | **Not** 3.12+ — numpy C extension incompatibility |
+| **Node.js**| 20.x LTS        | `winget install OpenJS.NodeJS.LTS` or [nodejs.org](https://nodejs.org/)            | Required for frontend dev server                 |
+| **Rust**   | stable (≥ 1.84) | `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \| sh`                | Desktop build only                               |
+| **CUDA**   | 11.8 (optional) | [NVIDIA CUDA Toolkit](https://developer.nvidia.com/cuda-11-8-0-download-archive) | GPU acceleration for AI models                   |
 
 ---
 
@@ -168,7 +165,7 @@ The installer is generated in `src-tauri/target/release/bundle/`.
 
 ## Project Structure
 
-```
+```text
 LocalCuratorPrime/
 ├── server/                   # FastAPI app
 │   ├── main.py               #   App factory, CORS, router registration
@@ -263,44 +260,44 @@ cargo check
 
 ## API Endpoints
 
-| Method   | Path                             | Description                                | Response Model             |
-| :------- | :------------------------------- | :----------------------------------------- | :------------------------- |
-| `GET`    | `/health`                        | Health check                               | `{"status": "ok"}`         |
-| `GET`    | `/gallery/media`                 | List media with filters                    | `List[MediaItemResponse]`  |
-| `POST`   | `/gallery/search`                | Hybrid semantic + SQL search               | `HybridSearchResponse`     |
-| `GET`    | `/gallery/search/history`        | Recent search history                      | `List[SearchHistoryResponse]` |
-| `GET`    | `/gallery/filters`               | Available filter values                    | `FiltersResponse`          |
-| `POST`   | `/gallery/chat`                  | VLM question answering                     | `ChatResponse`             |
-| `GET`    | `/gallery/{id}/faces`            | Detected faces for a file                  | `List[FaceResponse]`       |
-| `GET`    | `/gallery/faces/{id}/search`     | Search by face                             | `List[MediaItemResponse]`  |
-| `GET`    | `/gallery/tags/suggest`          | Tag autocomplete                           | `List[TagSuggestion]`      |
-| `GET`    | `/gallery/tags/stats`            | Tag usage statistics                       | `TagStatsResponse`         |
-| `GET`    | `/media/{id}/original`           | Serve original file                        | File stream                |
-| `GET`    | `/media/{id}/thumbnail`          | Serve resized thumbnail                    | JPEG stream                |
-| `POST`   | `/media/{id}/tags`               | Add tags                                   | `TagUpdateResponse`        |
-| `DELETE` | `/media/{id}/tags`               | Remove tags                                | `TagUpdateResponse`        |
-| `POST`   | `/media/tags/bulk`               | Bulk tag operations                        | `BulkTagResponse`          |
-| `POST`   | `/media/{id}/rescan`             | AI re-process a file                       | `JobStartResponse`         |
-| `POST`   | `/media/export`                  | Export metadata (XMP/EXIF)                 | `ExportResultResponse`     |
-| `POST`   | `/scan/start`                    | Start directory scan                       | `ScanStartResponse`        |
-| `POST`   | `/scan/resume`                   | Resume interrupted scan                    | `ScanStartResponse`        |
-| `GET`    | `/scan/status/stream/{job_id}`   | SSE scan progress stream                   | `text/event-stream`        |
-| `GET`    | `/scan/jobs`                     | List recent scan jobs                      | `List[ScanJobResponse]`    |
-| `GET`    | `/albums/`                       | List albums                                | `List[AlbumResponse]`      |
-| `POST`   | `/albums/`                       | Create album                               | `int`                      |
-| `GET`    | `/albums/{id}/media`             | Get album media                            | `List[MediaItemResponse]`  |
-| `POST`   | `/dedup/find`                    | Find duplicate candidates                  | `List[DuplicatePairResponse]` |
-| `POST`   | `/dedup/apply`                   | Apply dedup (delete files)                 | `DeleteResultResponse`     |
-| `POST`   | `/dedup/reverse-search`          | Reverse image search (upload)              | `List[ReverseSearchResponse]` |
-| `POST`   | `/scenes/{id}/detect`            | Trigger scene detection                    | `JobStartResponse`         |
-| `GET`    | `/scenes/search`                 | Scene semantic search                      | `List[SceneSearchResponse]` |
-| `GET`    | `/setup/models`                  | AI model statuses                          | `List[ModelStatusResponse]` |
-| `POST`   | `/setup/models/download`         | Download a model                           | `DownloadStartResponse`    |
-| `GET`    | `/setup/settings`                | Application settings                       | `AppSettingsResponse`      |
-| `POST`   | `/setup/settings`                | Update a setting                           | `SettingUpdateResponse`    |
-| `GET`    | `/insights`                      | Library analysis suggestions               | `InsightsResponse`         |
-| `GET`    | `/privacy/audit`                 | Run static privacy audit                   | JSON report                |
-| `GET`    | `/demo/status`                   | Demo mode status                           | `DemoStatusResponse`       |
+| Method   | Path                           | Description                               | Response Model                |
+| :------- | :----------------------------- | :---------------------------------------- | :---------------------------- |
+| `GET`    | `/health`                      | Health check                              | `{"status": "ok"}`            |
+| `GET`    | `/gallery/media`               | List media with filters                   | `List[MediaItemResponse]`     |
+| `POST`   | `/gallery/search`              | Hybrid semantic + SQL search              | `HybridSearchResponse`        |
+| `GET`    | `/gallery/search/history`      | Recent search history                     | `List[SearchHistoryResponse]` |
+| `GET`    | `/gallery/filters`             | Available filter values                   | `FiltersResponse`             |
+| `POST`   | `/gallery/chat`                | VLM question answering                    | `ChatResponse`                |
+| `GET`    | `/gallery/{id}/faces`          | Detected faces for a file                 | `List[FaceResponse]`          |
+| `GET`    | `/gallery/faces/{id}/search`   | Search by face                            | `List[MediaItemResponse]`     |
+| `GET`    | `/gallery/tags/suggest`        | Tag autocomplete                          | `List[TagSuggestion]`         |
+| `GET`    | `/gallery/tags/stats`          | Tag usage statistics                      | `TagStatsResponse`            |
+| `GET`    | `/media/{id}/original`         | Serve original file                       | File stream                   |
+| `GET`    | `/media/{id}/thumbnail`        | Serve resized thumbnail                   | JPEG stream                   |
+| `POST`   | `/media/{id}/tags`             | Add tags                                  | `TagUpdateResponse`           |
+| `DELETE` | `/media/{id}/tags`             | Remove tags                               | `TagUpdateResponse`           |
+| `POST`   | `/media/tags/bulk`             | Bulk tag operations                       | `BulkTagResponse`             |
+| `POST`   | `/media/{id}/rescan`           | AI re-process a file                      | `JobStartResponse`            |
+| `POST`   | `/media/export`                | Export metadata (XMP/EXIF)                | `ExportResultResponse`        |
+| `POST`   | `/scan/start`                  | Start directory scan                      | `ScanStartResponse`           |
+| `POST`   | `/scan/resume`                 | Resume interrupted scan                   | `ScanStartResponse`           |
+| `GET`    | `/scan/status/stream/{job_id}` | SSE scan progress stream                  | `text/event-stream`           |
+| `GET`    | `/scan/jobs`                   | List recent scan jobs                     | `List[ScanJobResponse]`       |
+| `GET`    | `/albums/`                     | List albums                               | `List[AlbumResponse]`         |
+| `POST`   | `/albums/`                     | Create album                              | `int`                         |
+| `GET`    | `/albums/{id}/media`           | Get album media                           | `List[MediaItemResponse]`     |
+| `POST`   | `/dedup/find`                  | Find duplicate candidates                 | `List[DuplicatePairResponse]` |
+| `POST`   | `/dedup/apply`                 | Apply dedup (delete files)                | `DeleteResultResponse`        |
+| `POST`   | `/dedup/reverse-search`        | Reverse image search (upload)             | `List[ReverseSearchResponse]` |
+| `POST`   | `/scenes/{id}/detect`          | Trigger scene detection                   | `JobStartResponse`            |
+| `GET`    | `/scenes/search`               | Scene semantic search                     | `List[SceneSearchResponse]`   |
+| `GET`    | `/setup/models`                | AI model statuses                         | `List[ModelStatusResponse]`   |
+| `POST`   | `/setup/models/download`       | Download a model                          | `DownloadStartResponse`       |
+| `GET`    | `/setup/settings`              | Application settings                      | `AppSettingsResponse`         |
+| `POST`   | `/setup/settings`              | Update a setting                          | `SettingUpdateResponse`       |
+| `GET`    | `/insights`                    | Library analysis suggestions              | `InsightsResponse`            |
+| `GET`    | `/privacy/audit`               | Run static privacy audit                  | JSON report                   |
+| `GET`    | `/demo/status`                 | Demo mode status                          | `DemoStatusResponse`          |
 
 Full OpenAPI specification: **[docs/api.md](docs/api.md)** or `http://localhost:8000/docs` (Swagger UI).
 
@@ -310,18 +307,18 @@ Full OpenAPI specification: **[docs/api.md](docs/api.md)** or `http://localhost:
 
 ### Environment Variables
 
-| Variable              | Default                 | Description                                          |
-| :-------------------- | :---------------------- | :--------------------------------------------------- |
-| `CORS_ORIGINS`        | (empty)                 | Comma-separated additional CORS origins              |
-| `CUDA_VISIBLE_DEVICES`| (all)                   | Restrict GPU devices for PyTorch                     |
+| Variable               | Default  | Description                              |
+| :--------------------- | :------- | :--------------------------------------- |
+| `CORS_ORIGINS`         | (empty)  | Comma-separated additional CORS origins  |
+| `CUDA_VISIBLE_DEVICES` | (all)    | Restrict GPU devices for PyTorch         |
 
 ### Files
 
-| File                   | Purpose                                                       |
-| :--------------------- | :------------------------------------------------------------ |
-| `pyproject.toml`       | pytest markers (`gpu`, `ai_models`, `slow`, `e2e`) and paths  |
-| `src-tauri/tauri.conf.json` | Window size, CSP, updater endpoint, sidecar path         |
-| `web/next.config.mjs`  | Static export, image optimization settings                    |
+| File                       | Purpose                                                      |
+| :------------------------- | :----------------------------------------------------------- |
+| `pyproject.toml`           | pytest markers (`gpu`, `ai_models`, `slow`, `e2e`) and paths |
+| `src-tauri/tauri.conf.json` | Window size, CSP, updater endpoint, sidecar path             |
+| `web/next.config.mjs`      | Static export, image optimization settings                   |
 
 ---
 
@@ -329,29 +326,29 @@ Full OpenAPI specification: **[docs/api.md](docs/api.md)** or `http://localhost:
 
 The GitHub Actions pipeline (`.github/workflows/ci.yml`) runs on every push/PR to `main` and contains four jobs:
 
-| Job               | Runner           | What it validates                                          | Timeout |
-| :---------------- | :--------------- | :--------------------------------------------------------- | :------ |
-| `backend-test`    | ubuntu-latest    | `pytest` (excluding `gpu`, `ai_models`, `slow` markers)    | 15 min  |
-| `frontend-check`  | ubuntu-latest    | `tsc --noEmit` + `npm run lint`                            | 15 min  |
-| `i18n-check`      | ubuntu-latest    | `python scripts/check_i18n_completeness.py`                | 5 min   |
-| `rust-check`      | ubuntu-latest    | `cargo check` (with GTK dev dependencies)                  | 20 min  |
-| `type-gen-verify`  | ubuntu-latest   | Regenerate OpenAPI types and diff against committed version | 10 min  |
+| Job               | Runner        | What it validates                                           | Timeout |
+| :---------------- | :------------ | :---------------------------------------------------------- | :------ |
+| `backend-test`    | ubuntu-latest | `pytest` (excluding `gpu`, `ai_models`, `slow` markers)     | 15 min  |
+| `frontend-check`  | ubuntu-latest | `tsc --noEmit` + `npm run lint`                             | 15 min  |
+| `i18n-check`      | ubuntu-latest | `python scripts/check_i18n_completeness.py`                 | 5 min   |
+| `rust-check`      | ubuntu-latest | `cargo check` (with GTK dev dependencies)                   | 20 min  |
+| `type-gen-verify` | ubuntu-latest | Regenerate OpenAPI types and diff against committed version | 10 min  |
 
 ---
 
 ## Scripts Reference
 
-| Script                            | Purpose                                         | Usage                                  |
-| :-------------------------------- | :---------------------------------------------- | :------------------------------------- |
-| `scripts/build_production.ps1`    | Windows production build orchestrator           | `./scripts/build_production.ps1 --cpu-only` |
-| `scripts/build_production.sh`     | macOS/Linux production build orchestrator       | `./scripts/build_production.sh --cpu-only`  |
-| `scripts/build_backend.py`        | PyInstaller backend compilation                 | `python scripts/build_backend.py`      |
-| `scripts/build_desktop.py`        | Tauri desktop bundle                            | `python scripts/build_desktop.py`      |
-| `scripts/generate_types.ps1`      | OpenAPI → TypeScript type generation (Windows)  | `./scripts/generate_types.ps1`         |
-| `scripts/generate_types.sh`       | OpenAPI → TypeScript type generation (Unix)     | `./scripts/generate_types.sh`          |
-| `scripts/benchmark_scan.py`       | Scan pipeline performance benchmark             | `python scripts/benchmark_scan.py`     |
-| `scripts/check_i18n_completeness.py` | Verify en/ja locale file parity              | `python scripts/check_i18n_completeness.py` |
-| `scripts/privacy_audit.py`        | Static analysis for external network calls      | `python scripts/privacy_audit.py`      |
+| Script                               | Purpose                                    | Usage                                       |
+| :----------------------------------- | :----------------------------------------- | :------------------------------------------ |
+| `scripts/build_production.ps1`       | Windows production build orchestrator      | `./scripts/build_production.ps1 --cpu-only` |
+| `scripts/build_production.sh`        | macOS/Linux production build orchestrator  | `./scripts/build_production.sh --cpu-only`  |
+| `scripts/build_backend.py`           | PyInstaller backend compilation            | `python scripts/build_backend.py`           |
+| `scripts/build_desktop.py`           | Tauri desktop bundle                       | `python scripts/build_desktop.py`           |
+| `scripts/generate_types.ps1`         | OpenAPI → TypeScript type generation (Win) | `./scripts/generate_types.ps1`              |
+| `scripts/generate_types.sh`          | OpenAPI → TypeScript type generation (Uni) | `./scripts/generate_types.sh`               |
+| `scripts/benchmark_scan.py`          | Scan pipeline performance benchmark        | `python scripts/benchmark_scan.py`          |
+| `scripts/check_i18n_completeness.py` | Verify en/ja locale file parity            | `python scripts/check_i18n_completeness.py` |
+| `scripts/privacy_audit.py`           | Static analysis for external network calls | `python scripts/privacy_audit.py`           |
 
 ---
 
@@ -376,18 +373,18 @@ See **[ROADMAP.md](ROADMAP.md#known-issues--tech-debt)** for the full issue trac
 
 ## Documentation Index
 
-| Document                                                                 | Description                                           |
-| :----------------------------------------------------------------------- | :---------------------------------------------------- |
-| [ROADMAP.md](ROADMAP.md)                                                 | Sprint history, release blockers, future roadmap, ADRs |
-| [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md)                             | IEEE 830-style functional/non-functional spec         |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)                             | System architecture with mermaid diagram              |
-| [docs/api.md](docs/api.md)                                               | API endpoint documentation                            |
-| [docs/i18n.md](docs/i18n.md)                                             | Internationalization guide                            |
-| [docs/USER_MANUAL_EN.md](docs/USER_MANUAL_EN.md)                         | English user manual                                   |
-| [docs/USER_MANUAL_JP.md](docs/USER_MANUAL_JP.md)                         | Japanese user manual                                  |
-| [docs/dependency-audit-2026-03-04.md](docs/dependency-audit-2026-03-04.md) | Security audit findings                             |
-| [CHANGELOG.md](CHANGELOG.md)                                             | Sprint 1–6 changelog                                  |
-| [PACKAGING_STRATEGY.md](PACKAGING_STRATEGY.md)                           | Tauri + PyInstaller analysis                          |
+| Document                                | Description                                           |
+| :-------------------------------------- | :---------------------------------------------------- |
+| [ROADMAP.md](ROADMAP.md)                | Sprint history, release blockers, future roadmap, ADRs |
+| [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) | IEEE 830-style functional/non-functional spec         |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System architecture with mermaid diagram              |
+| [docs/api.md](docs/api.md)              | API endpoint documentation                            |
+| [docs/i18n.md](docs/i18n.md)            | Internationalization guide                            |
+| [docs/USER_MANUAL_EN.md](docs/USER_MANUAL_EN.md) | English user manual                                   |
+| [docs/USER_MANUAL_JP.md](docs/USER_MANUAL_JP.md) | Japanese user manual                                  |
+| [docs/dependency-audit-2026-03-04.md](docs/dependency-audit-2026-03-04.md) | Security audit findings                               |
+| [CHANGELOG.md](CHANGELOG.md)            | Sprint 1–6 changelog                                  |
+| [PACKAGING_STRATEGY.md](PACKAGING_STRATEGY.md) | Tauri + PyInstaller analysis                          |
 
 ---
 
