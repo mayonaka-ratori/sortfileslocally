@@ -5,6 +5,8 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { SetupGuard } from "@/components/SetupGuard";
 import { GlobalShortcuts } from "@/components/GlobalShortcuts";
 import { NetworkStatus } from "@/components/NetworkStatus";
+import { BackendStatusBanner } from "@/components/BackendStatusBanner";
+import { GlobalErrorBoundary } from "@/components/GlobalErrorBoundary";
 import I18nProvider from "@/components/I18nProvider";
 import { NetworkLogProvider } from "@/stores/networkLogStore";
 
@@ -40,13 +42,16 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            <NetworkLogProvider>
-              <SetupGuard>
-                <NetworkStatus />
-                {children}
-                <GlobalShortcuts />
-              </SetupGuard>
-            </NetworkLogProvider>
+            <GlobalErrorBoundary>
+              <NetworkLogProvider>
+                <SetupGuard>
+                  <NetworkStatus />
+                  <BackendStatusBanner />
+                  {children}
+                  <GlobalShortcuts />
+                </SetupGuard>
+              </NetworkLogProvider>
+            </GlobalErrorBoundary>
           </ThemeProvider>
         </I18nProvider>
       </body>

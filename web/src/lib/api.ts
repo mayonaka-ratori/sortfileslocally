@@ -83,6 +83,12 @@ const safeFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<
             console.warn('Request failed while offline:', url);
             throw { status: 503, detail: 'You are offline. This request will retry when connection is restored.' };
         }
+
+        // Dispatch a global event to force the backend health polling to wake up
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('lcp:force-health-check'));
+        }
+
         throw { status: 500, detail: err.message || String(error) };
     }
 };
