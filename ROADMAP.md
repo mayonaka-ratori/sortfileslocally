@@ -1,141 +1,70 @@
-# Project Status: v1.0.0 Release Candidate
+# ROADMAP — Local Curator Prime
 
-All 5 sections complete. Final audits passed. Pending CI green.
+## Project Status
 
-# 🚀 Local Curator Prime - Future Update Plan (Roadmap)
-
-Local Curator Primeをさらに洗練されたプロフェッショナルなツール・アプリケーションへと引き上げるための、今後のアップデートと改善計画をまとめました。
-完全ローカル・プライバシー保護の原則を維持したまま、「自分のための最高のツール」から「同じニーズを持つ人に届けられるプロダクト」への成長を段階的に計画しています。
+Local Curator Prime is an offline-first, AI-powered local media manager that has completed six sprints of development. The codebase is functional with a FastAPI backend, a Next.js frontend, and a Tauri desktop shell. CI passes on all four pipelines (backend tests, frontend type/lint, i18n parity, Rust cargo check, and type-gen verification). The remote HEAD is [`6213e56`](https://github.com/mayonaka-ratori/sortfileslocally/commit/6213e56). The application can scan a user-selected directory, generate AI embeddings (CLIP, JoyTag, InsightFace, Whisper), perform sub-millisecond semantic search via FAISS, and manage tags/albums through a masonry gallery UI. Desktop packaging via Tauri + PyInstaller sidecar is implemented but pending final release hardening.
 
 ---
 
-## ✅ 完了済みセクション (Completed)
+## Completed Milestones
 
-以下のセクションは実装・テスト・レビュー・ドキュメント更新がすべて完了しています。
+| Sprint | Date       | Theme                                      | Key Deliverables                                                                                                   | Commit Range             |
+| :----: | :--------- | :----------------------------------------- | :----------------------------------------------------------------------------------------------------------------- | :----------------------- |
+| 1      | 2026-03-01 | Foundation Hardening                        | PyInstaller onedir migration, FAISS-SQLite self-healing integrity repair, persistent Whisper worker with Queue IPC  | `0bfa7d3`..`ff05fbf`     |
+| 2      | 2026-03-02 | Backend Safety & Performance               | VRAM-aware lazy model loading with LRU eviction, SSE scan progress + path safety validation                        | `c5ab0dd`..`379a43e`     |
+| 3      | 2026-03-02 | Production Networking & Frontend Resilience | CORS hardening for Tauri origins, frontend SSE integration, SQLite WAL stress tests, error boundaries              | `d527102`..`2b88578`     |
+| 4      | 2026-03-03 | Type Safety & Monitoring                   | OpenAPI type generation infra, Tauri sidecar health monitoring + auto-restart, inference accuracy tests, dep audit  | `e469766`..`c164883`     |
+| 5      | 2026-03-04 | Tech Debt Cleanup                          | Circular import fix (`shared_responses.py` via `TYPE_CHECKING`), API type alignment, E2E test fix, diskcache docs  | `5071703`..`6016d92`     |
+| 6      | 2026-03-04 | CI/CD & Build Infrastructure               | GitHub Actions CI pipeline, production build scripts (`build_production.ps1/.sh`), benchmark infra, i18n checker, architecture docs | `99c333c`..`6213e56` |
 
-### 📦 5. 公開・配布の準備 (Distribution Preparation)
+---
 
-#### [✅] 5.1 パッケージング (Packaging)
+## v1.0.0 Release Blockers
 
-- Tauri v2 + PyInstaller 統合。Next.js静的書き出し対応。
-- バックエンドサイドカー同期起動、ポート自動発見機能。
-- `scripts/build_desktop.py` による自動ビルドライン。
+The following items **must** be resolved before distributing a v1.0.0 installer to end users:
 
-#### [✅] 5.2 初回起動体験 (First-Run Experience)
+1. **Code Signing** — Windows Authenticode certificate and macOS notarization via Apple Developer ID are not configured. Users will see SmartScreen/Gatekeeper warnings on unsigned binaries.
+2. **First-Run Model Download UX** — The model download API exists (`POST /setup/models/download`) but requires the onboarding wizard to call it automatically. End users must not need to run CLI commands to download AI models.
+3. **Installer Smoke Test on Clean Machine** — No verified install-from-scratch run on a fresh Windows 10/11 VM or macOS 12+ machine. The PyInstaller binary may have missing hidden imports or incorrect path resolution in production (see `server/main.py:get_app_data_dir()`).
+4. **CSP Policy in `tauri.conf.json`** — Currently `"csp": null` ([`src-tauri/tauri.conf.json:23`](src-tauri/tauri.conf.json)). Must be set to at minimum `default-src 'self'; connect-src 'self' http://localhost:*` to prevent XSS in the webview.
+5. **Updater Public Key** — Currently `"pubkey": "PLACEHOLDER_PUBLIC_KEY"` ([`src-tauri/tauri.conf.json:31`](src-tauri/tauri.conf.json)). Must be replaced with a real Ed25519 public key for Tauri's built-in updater to verify signatures.
 
-- 5ステップのセットアップウィザード、テーマ切替、Demoモードの実装。
-- インタラクティブなオンボーディングツアー。
+---
 
-#### [✅] 5.3 多言語対応 (i18n)
+## Post-v1.0.0 Roadmap
 
-- next-intl による日英完全対応。
-- UI/UX全域のキー抽出、`en.json` / `ja.json` の同期。
+| Priority | Feature                          | Rationale                                                        | Complexity | Dependencies                  |
+| :------: | :------------------------------- | :--------------------------------------------------------------- | :--------: | :---------------------------- |
+| P0       | GPU VRAM profiling dashboard     | Users need visibility into model memory footprint vs. free VRAM  | Medium     | `src/core/ai_models.py`       |
+| P1       | Multi-user face album galleries  | Group photos by identified person for quick browsing              | Medium     | `server/routers/gallery.py`   |
+| P1       | Batch import from cloud storage  | Allow offline import of pre-downloaded cloud archives             | Medium     | `server/routers/scan.py`      |
+| P2       | Plugin system for AI models      | Enable community-contributed model adapters                      | High       | `src/core/model_manager.py`   |
+| P2       | Mobile companion (read-only)     | Serve the gallery on LAN for phone/tablet browsing               | Medium     | CORS, static export           |
+| P3       | Federated search across devices  | Merge indices from multiple machines via mDNS                    | High       | FAISS merge, networking       |
+| P3       | Custom training for face clusters | Fine-tune ArcFace on user-specific face data                     | Very High  | InsightFace, training loop    |
 
-#### [✅] 5.4 プライバシー透明性 (Privacy Transparency)
+---
 
-- メインUIおよび設定画面でのローカル動作明示。
-- 起動時ネットワーク通信の監視とユーザー検証ログの実装。
-- 静的解析によるプライバシー監査（scripts/privacy_audit.py）。
+## Known Issues & Tech Debt
 
-#### [✅] 5.5 自動アップデート (Auto-Update)
+| Issue                                         | Severity | File(s)                                           | Workaround                                                      | Resolution Status        |
+| :-------------------------------------------- | :------: | :------------------------------------------------ | :-------------------------------------------------------------- | :----------------------- |
+| `diskcache` CVE-2025-69872 (pickle RCE)       | Low      | `requirements.txt`                                | Cache dir restricted to current user; no external import feature | Waiting for upstream fix |
+| `time` crate RUSTSEC-2026-0009                | Low      | `src-tauri/Cargo.lock`                            | Cannot update due to `edition2024` requiring rustc ≥ 1.85        | Blocked on toolchain     |
+| `test_scan_api` fails on Python 3.14 (numpy)  | Medium   | `tests/test_scan_api.py`                          | Pin Python to 3.11; exclude via `markers`                       | Will not fix (3.11 only) |
+| `cargo audit` cannot run (rustc 1.84.1)       | Low      | `src-tauri/`                                      | Skipped; Rust deps not audited                                  | Upgrade rustc to ≥ 1.85  |
+| GTK warnings in CI `cargo check`              | Low      | `.github/workflows/ci.yml`                        | `apt-get install libgtk-3-dev` suppresses most warnings         | Cosmetic only            |
+| CSP policy is `null`                          | High     | `src-tauri/tauri.conf.json`                       | None — webview is effectively unrestricted                      | v1.0.0 blocker           |
+| Updater pubkey is placeholder                 | High     | `src-tauri/tauri.conf.json`                       | Auto-update is non-functional                                   | v1.0.0 blocker           |
 
-- Tauri Updater プラグイン統合。GitHub Releases連動。
-- フロントエンド通知バナーおよび設定画面での更新UI。
+---
 
-#### [✅] 5.6 テスト基盤 (Test Infrastructure)
+## Architecture Decision Records
 
-- pytest-cov によるバックエンドカバレッジ計測。
-- Playwright によるE2Eテストスイートの構築。
-- GitHub Actions によるCI自動実行基盤。
-
-### 🏷 4. タグ管理・検索体験の深化 (Tag Management & Search Experience)
-
-#### [✅] 4.1 検索履歴機能 (Search History)
-
-- UPSERT方式の履歴保存（100件限度）と検索バー連動ドロップダウン実装。
-
-#### [✅] 4.2 タグダッシュボード (Tag Dashboard)
-
-- 使用統計・未タグ抽出・一括リネーム機能の実装。
-
-#### [✅] 4.3 インラインタグ編集 (Inline Tag Editor)
-
-- 詳細ビューでの即時編集、オートコンプリート、カテゴリ切替対応。
-
-#### [✅] 4.4 一括タグ操作 (Bulk Tag Operations)
-
-- 複数選択からのタグ追加/削除/置換。トランザクションによる整合性確保.
-
-#### [✅] 4.5 AIタグ再生成 (AI Tag Regeneration)
-
-- 単一/複数ファイルへのAI再スキャン（上書き・追記モード選択可能）。
-
-#### [✅] 4.6 AI提案型インテリジェンス (AI-Powered Insights)
-
-- 整理提案（重複・未タグ等）のカード表示とワンクリック遷移。
-
-#### [✅] 4.7 動画シーン分割 (Video Scene Segmentation)
-
-- シーン単位のCLIP検索・タイムライン表示・メモリ最適化済み。
-
-#### [✅] 4.8 キーボードショートカット (Keyboard Shortcuts)
-
-- ギャラリー・詳細ビュー全域の操作。useRef + EventListenerによる最適化実装。
-
-#### [✅] 4.9 オフライン動作保証 (Offline Guarantee)
-
-- ネットワーク監視UIおよびオフライン時のAPIエラーハンドリング強化。
-
-### 🛠 1. エンジニアリング & アーキテクチャ強化 (Engineering & Architecture)
-
-#### [✅] 1.1 デプロイメントと起動プロセスの統合 (Desktop App Launcher)
-
-- `start.bat` (Windows) / `start.sh` (Linux/Mac) でバックエンド＋フロントエンド一括起動。
-
-#### [✅] 1.2 高度なモデル管理システム (Model Manager)
-
-- ModelManagerクラス、ダウンロードAPI・UI、プログレス表示、カスタム保存先設定、再起動通知UX。
-
-#### [✅] 1.3 スキャン非同期ジョブキューとレジューム機能 (Async Job Queue & Resume)
-
-- SQLiteベースジョブ管理、レジューム機能、エラースキップログ。
-
-#### [✅] 1.4 重複排除・類似画像検索 (Deduplication & Reverse Search)
-
-- 重複検出エンジン、逆画像検索、クリーナーUI、メタデータマージ、XMPサイドカー連動削除。
-
-#### [✅] 1.5 メタデータ書き戻し機能 (EXIF/IPTC Write-back)
-
-- XMP/EXIF書き込み、フォーマット選択UI、バルクエクスポート（500件上限）、EXIFフォールバック。
-
-### 🧠 2. AIモデル・推論エンジンの進化 (AI Models & Inference)
-
-#### [✅] 2.1 高精度イラストタグ付け (Advanced Illustration Tagging)
-
-- JoyTag導入。ポーズ・服装・背景要素の正確なタグ抽出。
-
-#### [✅] 2.2 小規模VLMによるキャプション強化 (Enhanced Captioning)
-
-- Florence-2導入. 実写・イラスト両対応の詳細キャプション生成。
-
-#### [✅] 2.3 顔認識と検索 (Face Retrieval Search)
-
-- InsightFace (RetinaFace + ArcFace) による顔認識・登録・検索機能。
-
-### 🎨 3. UI/UX・デザイン体験の向上 (Design & User Experience)
-
-#### [✅] 3.1 オンボーディングの洗練 (Premium Setup Experience)
-
-- 5ステップウィザード、next-themesテーマ切替、実行プロファイル（Performance/Balanced/Lightweight）、フォルダピッカー。
-
-#### [✅] 3.2 ハイブリッドクエリビルダー (Advanced Hybrid Search UI)
-
-- FAISS+SQLiteのTiered検索、フィルタチップUI、JSON body API、スコア閾値フィルタリング。
-
-#### [✅] 3.3 スマートアルバム機能 (Smart Dynamic Albums)
-
-- 静的/動的アルバム、検索条件JSON保存、アルバムCRUD、Pydanticバリデーション。
-
-#### [✅] 3.4 没入感のあるギャラリーUX (Immersive Masonry Gallery)
-
-- Pinterest風Masonryレイアウト、動画ホバープレビュー。
+| Decision                                | Rationale                                                                                                                 |
+| :-------------------------------------- | :------------------------------------------------------------------------------------------------------------------------ |
+| **PyInstaller over Nuitka**             | Nuitka compilation times are 10-30× slower; PyInstaller onedir mode produces acceptable bundle sizes (~400 MB CPU-only). |
+| **Subprocess IPC for Whisper**          | `ctranslate2` (used by `faster-whisper`) ships its own `libcudnn` that conflicts with PyTorch's when loaded in-process. A persistent worker subprocess (`src/core/whisper_worker.py`) avoids the DLL clash entirely. |
+| **openapi-typescript over orval**       | orval generates runtime fetch wrappers and Axios clients. `openapi-typescript` generates only TypeScript type definitions, keeping the frontend lean and avoiding an additional runtime dependency. |
+| **Vanilla pub/sub over Zustand for backend health** | The `useBackendHealth` hook (`web/src/hooks/useBackendHealth.ts`) uses `setInterval` polling + native EventSource for SSE. Introducing Zustand for a single boolean flag would over-engineer state management at this stage. |
+| **FAISS over ChromaDB**                 | ChromaDB requires a running server process and uses hnswlib under the hood. FAISS-CPU is a single pip install, requires zero configuration, and delivers sub-millisecond search for up to 10M vectors. |
