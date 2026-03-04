@@ -568,5 +568,30 @@
         "installing": "Installing update...",
         "restartRequired": "Restart to complete update",
         "releaseNotes": "Release Notes"
+    },
+    "firstRun": {
+        "welcome": {
+            "title": "Welcome to LocalCurator Prime",
+            "description": "Your media, organized locally. No cloud, no analytics, 100% private.",
+            "next": "Next"
+        },
+        "modelSelect": {
+            "title": "Select AI Profile",
+            "lightweight": "Lightweight",
+            "lightweightDesc": "Basic Whisper text search (~39MB download)",
+            "balanced": "Balanced (Recommended)",
+            "balancedDesc": "Semantic Image Search + Whisper Base (~424MB download)",
+            "full": "Full Features",
+            "fullDesc": "Large Models (+ InsightFace) (~1.3GB download)",
+            "download": "Download Models"
+        },
+        "download": {
+            "title": "Downloading Models..."
+        },
+        "ready": {
+            "title": "Ready to go!",
+            "description": "All models downloaded successfully. You can now start using LocalCurator Prime.",
+            "startScan": "Start Scanning"
+        }
     }
 }

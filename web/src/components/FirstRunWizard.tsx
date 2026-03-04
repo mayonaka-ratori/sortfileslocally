@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 
 type Profile = 'lightweight' | 'balanced' | 'full';
 
 export default function FirstRunWizard() {
+    const t = useTranslations('firstRun');
     const [step, setStep] = useState(1);
     const [profile, setProfile] = useState<Profile>('lightweight');
     const [progress, setProgress] = useState<Record<string, number>>({});
@@ -45,44 +47,44 @@ export default function FirstRunWizard() {
             <div className="max-w-xl w-full bg-neutral-800 p-8 rounded-xl shadow-2xl">
                 {step === 1 && (
                     <div className="space-y-4">
-                        <h1 className="text-3xl font-bold">Welcome to LocalCurator Prime</h1>
+                        <h1 className="text-3xl font-bold">{t('welcome.title')}</h1>
                         <p className="text-neutral-300">
-                            Your media, organized locally. No cloud, no analytics, 100% private.
+                            {t('welcome.description')}
                         </p>
                         <button
                             className="mt-4 px-6 py-2 bg-blue-600 hover:bg-blue-500 rounded font-semibold transition"
                             onClick={() => setStep(2)}
                         >
-                            Next
+                            {t('welcome.next')}
                         </button>
                     </div>
                 )}
 
                 {step === 2 && (
                     <div className="space-y-4">
-                        <h1 className="text-2xl font-bold">Select AI Profile</h1>
+                        <h1 className="text-2xl font-bold">{t('modelSelect.title')}</h1>
                         <div className="space-y-2">
                             <label className="flex items-center space-x-3 p-3 bg-neutral-700 rounded cursor-pointer">
                                 <input type="radio" name="profile" checked={profile === 'lightweight'} onChange={() => setProfile('lightweight')} />
                                 <div>
-                                    <div className="font-bold">Lightweight</div>
-                                    <div className="text-sm text-neutral-400">Basic Whisper text search (~39MB download)</div>
+                                    <div className="font-bold">{t('modelSelect.lightweight')}</div>
+                                    <div className="text-sm text-neutral-400">{t('modelSelect.lightweightDesc')}</div>
                                 </div>
                             </label>
 
                             <label className="flex items-center space-x-3 p-3 bg-neutral-700 rounded cursor-pointer">
                                 <input type="radio" name="profile" checked={profile === 'balanced'} onChange={() => setProfile('balanced')} />
                                 <div>
-                                    <div className="font-bold">Balanced (Recommended)</div>
-                                    <div className="text-sm text-neutral-400">Semantic Image Search + Whisper Base (~424MB download)</div>
+                                    <div className="font-bold">{t('modelSelect.balanced')}</div>
+                                    <div className="text-sm text-neutral-400">{t('modelSelect.balancedDesc')}</div>
                                 </div>
                             </label>
 
                             <label className="flex items-center space-x-3 p-3 bg-neutral-700 rounded cursor-pointer">
                                 <input type="radio" name="profile" checked={profile === 'full'} onChange={() => setProfile('full')} />
                                 <div>
-                                    <div className="font-bold">Full Features</div>
-                                    <div className="text-sm text-neutral-400">Large Models (+ InsightFace) (~1.3GB download)</div>
+                                    <div className="font-bold">{t('modelSelect.full')}</div>
+                                    <div className="text-sm text-neutral-400">{t('modelSelect.fullDesc')}</div>
                                 </div>
                             </label>
                         </div>
@@ -91,14 +93,14 @@ export default function FirstRunWizard() {
                             className="mt-4 px-6 py-2 bg-blue-600 hover:bg-blue-500 rounded font-semibold transition"
                             onClick={() => setStep(3)}
                         >
-                            Download Models
+                            {t('modelSelect.download')}
                         </button>
                     </div>
                 )}
 
                 {step === 3 && (
                     <div className="space-y-4">
-                        <h1 className="text-2xl font-bold">Downloading Models...</h1>
+                        <h1 className="text-2xl font-bold">{t('download.title')}</h1>
                         <div className="space-y-4">
                             {Object.entries(progress).map(([name, pct]) => (
                                 <div key={name}>
@@ -117,15 +119,15 @@ export default function FirstRunWizard() {
 
                 {step === 4 && (
                     <div className="space-y-4">
-                        <h1 className="text-3xl font-bold text-green-400">Ready to go!</h1>
+                        <h1 className="text-3xl font-bold text-green-400">{t('ready.title')}</h1>
                         <p className="text-neutral-300">
-                            All models downloaded successfully. You can now start using LocalCurator Prime.
+                            {t('ready.description')}
                         </p>
                         <button
                             className="mt-4 px-6 py-2 bg-green-600 hover:bg-green-500 rounded font-semibold transition"
                             onClick={() => window.location.reload()}
                         >
-                            Start Scanning
+                            {t('ready.startScan')}
                         </button>
                     </div>
                 )}

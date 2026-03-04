@@ -568,5 +568,30 @@
         "installing": "アップデートをインストール中...",
         "restartRequired": "更新を完了するには再起動してください",
         "releaseNotes": "リリースノート"
+    },
+    "firstRun": {
+        "welcome": {
+            "title": "LocalCurator Primeへようこそ",
+            "description": "あなたのメディアをローカルで整理します。クラウドなし、分析なし、100%プライベート。",
+            "next": "次へ"
+        },
+        "modelSelect": {
+            "title": "AIプロファイルを選択",
+            "lightweight": "軽量",
+            "lightweightDesc": "基本的なWhisperテキスト検索 (約39MBのダウンロード)",
+            "balanced": "バランス (推奨)",
+            "balancedDesc": "セマンティック画像検索 + Whisper Base (約424MBのダウンロード)",
+            "full": "フル機能",
+            "fullDesc": "大規模モデル (+ InsightFace) (約1.3GBのダウンロード)",
+            "download": "モデルをダウンロード"
+        },
+        "download": {
+            "title": "モデルをダウンロード中..."
+        },
+        "ready": {
+            "title": "準備完了！",
+            "description": "すべてのモデルが正常にダウンロードされました。LocalCurator Primeを使用する準備が整いました。",
+            "startScan": "スキャンを開始"
+        }
     }
 }
