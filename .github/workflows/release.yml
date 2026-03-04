@@ -73,3 +73,35 @@ jobs:
           releaseDraft: true
           prerelease: false
           args: --target ${{ matrix.target }}
+
+  smoke-test:
+    needs: release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows
+          - os: macos-latest
+            platform: macos
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download release assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release download ${{ github.event.inputs.version || github.ref_name }} --dir installers
+        
+      - name: Run Windows Smoke Test
+        if: matrix.platform == 'windows'
+        run: |
+          $msi = Get-ChildItem -Path installers -Filter "*.msi" | Select-Object -First 1
+          .\scripts\smoke_test_installer.ps1 -InstallerPath $msi.FullName
+          
+      - name: Run macOS Smoke Test
+        if: matrix.platform == 'macos'
+        run: |
+          dmg=$(ls installers/*.dmg | head -n 1)
+          chmod +x scripts/smoke_test_installer.sh
+          ./scripts/smoke_test_installer.sh "$dmg"
