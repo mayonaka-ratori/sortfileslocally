@@ -34,10 +34,29 @@ SCENES_THUMBNAILS_DIR = os.path.join(APP_DATA_DIR, ".thumbnails/scenes")
 os.makedirs(SCENES_THUMBNAILS_DIR, exist_ok=True)
 app.mount("/thumbnails/scenes", StaticFiles(directory=SCENES_THUMBNAILS_DIR), name="scene_thumbnails")
 
-# CORS
+# CORS Configuration
+def get_cors_origins():
+    """Determine allowed CORS origins based on environment."""
+    # Base origins always allowed for Tauri production build
+    origins = [
+        "tauri://localhost",
+        "https://tauri.localhost",
+    ]
+
+    # Auto-detect development mode
+    if not getattr(sys, 'frozen', False):
+        origins.append("http://localhost:3000")
+
+    # Allow overriding/appending via environment variable (comma-separated)
+    cors_env = os.environ.get("CORS_ORIGINS", "")
+    if cors_env:
+        origins.extend([o.strip() for o in cors_env.split(",") if o.strip()])
+        
+    return origins
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[os.environ.get("CORS_ORIGIN", "http://localhost:3000")], # Secure by default
+    allow_origins=get_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

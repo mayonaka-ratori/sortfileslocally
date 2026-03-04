@@ -1,6 +1,14 @@
 import pytest
 import sys
 from unittest.mock import MagicMock
+try:
+    import numpy
+except ImportError:
+    pass
+try:
+    import torch
+except ImportError:
+    pass
 
 def pytest_configure(config):
     config.addinivalue_line("markers", "gpu: requires GPU and CUDA")
