@@ -38,66 +38,36 @@ class AIEngine:
         # Force CPU if lightweight profile is chosen? User said "CPU-friendly", but if CUDA is available, we can still use it.
         # User explicitly mentioned fp32 for lightweight.
         
-        print(f"AIEngine initializing with profile: {self.profile} on device: {self.device}")
+        # GPU/VRAM-aware memory management
+        self.total_vram_gb = 0
+        if self.device == "cuda":
+            props = torch.cuda.get_device_properties(0)
+            self.total_vram_gb = props.total_memory / (1024 ** 3)
+            
+        print(f"AIEngine initializing with profile: {self.profile} on device: {self.device} (VRAM: {self.total_vram_gb:.2f}GB)")
         
         if self.device == "cpu":
             print("WARNING: CUDA is not available. Performance will be significantly degraded.")
 
         self.use_fp16 = self.profile != "lightweight" and self.device == "cuda"
 
-        # --- 1. Load CLIP Model ---
-        print(f"Loading CLIP model (ViT-L-14 / laion2b_s32b_b82k) [FP16={self.use_fp16}]...")
-        try:
-            self.clip_model, _, self.clip_preprocess = open_clip.create_model_and_transforms(
-                'ViT-L-14', 
-                pretrained='laion2b_s32b_b82k', 
-                device=self.device,
-                precision='fp16' if self.use_fp16 else 'fp32'
-            )
-            self.clip_tokenizer = open_clip.get_tokenizer('ViT-L-14')
-            self.clip_model.eval() # Inference mode
-            print("CLIP model loaded successfully.")
-        except Exception as e:
-            print(f"Failed to load CLIP model: {e}")
-            raise e
-
-        # --- 2. Load InsightFace Model (BuffaloL) ---
-        if self.profile != "lightweight":
-            print("Loading InsightFace model (buffalo_l)...")
-            try:
-                # providers: CUDAExecutionProvider if available, else CPUExecutionProvider
-                providers = ['CUDAExecutionProvider'] if self.device == "cuda" else ['CPUExecutionProvider']
-                
-                self.face_app = FaceAnalysis(name='buffalo_l', providers=providers)
-                # ctx_id=0 for GPU 0, det_size=(640, 640) can be adjusted if needed
-                self.face_app.prepare(ctx_id=0, det_size=(640, 640))
-                print("InsightFace model loaded successfully.")
-            except Exception as e:
-                print(f"Failed to load InsightFace model: {e}")
-                # We can proceed without faces in some cases, but better to fail if profile expects them
-                raise e
-        else:
-            print("Skipping InsightFace (lightweight profile)")
-            self.face_app = None
-
-        # --- 3. Pre-compute Text Features for Style Classification ---
-        # "Anime" vs "Photo"
-        self.style_prompts = ["anime illustration", "digital art", "sketch", "manga", "comic", "monochrome illustration", "lineart", "japanese comic"]
-        self.photo_prompts = ["photo", "realistic", "live action", "color photograph", "real world photo", "realistic photo", "live action movie frame"]
+        # Strict memory limit (<8GB VRAM or lightweight profile) -> max 1 heavy model active at a time
+        self.use_strict_memory = (self.device == "cuda" and self.total_vram_gb > 0 and self.total_vram_gb < 8.0) or (self.profile == "lightweight")
+        self.max_loaded_models = 1 if self.use_strict_memory else 2
         
-        with torch.no_grad():
-             style_tokens = open_clip.tokenize(self.style_prompts).to(self.device)
-             photo_tokens = open_clip.tokenize(self.photo_prompts).to(self.device)
-             
-             self.style_embs = self.clip_model.encode_text(style_tokens)
-             self.style_embs /= self.style_embs.norm(dim=-1, keepdim=True)
-             self.style_mean = self.style_embs.mean(dim=0, keepdim=True)
-             self.style_mean /= self.style_mean.norm(dim=-1, keepdim=True)
+        self._loaded_models = set()
+        self._last_accessed = {}
 
-             self.photo_embs = self.clip_model.encode_text(photo_tokens)
-             self.photo_embs /= self.photo_embs.norm(dim=-1, keepdim=True)
-             self.photo_mean = self.photo_embs.mean(dim=0, keepdim=True)
-             self.photo_mean /= self.photo_mean.norm(dim=-1, keepdim=True)
+        # Lazy loading state
+        self._clip_loaded = False
+        self.clip_model = None
+        self.clip_preprocess = None
+        self.clip_tokenizer = None
+        self.style_mean = None
+        self.photo_mean = None
+
+        self._face_loaded = False
+        self.face_app = None
 
         # --- 4. Whisper Model ---
         # NOTE: Whisper (ctranslate2) is run in a subprocess to avoid DLL conflicts
@@ -140,10 +110,112 @@ class AIEngine:
                 except Exception as e:
                     print(f"Error waiting for Whisper worker initialization: {e}")
 
+    def _touch_model(self, model_name: str):
+        import time
+        self._last_accessed[model_name] = time.time()
+
+    def _evict_lru_models(self):
+        while len(self._loaded_models) >= self.max_loaded_models and self.max_loaded_models > 0:
+            # Find least recently used
+            oldest = min(self._last_accessed.keys(), key=lambda k: self._last_accessed[k])
+            print(f"Memory limit reached (max_loaded={self.max_loaded_models}). Evicting LRU model: {oldest}")
+            
+            if oldest == 'clip':
+                self.clip_model = None
+                self.clip_preprocess = None
+                self.clip_tokenizer = None
+                self.style_mean = None
+                self.photo_mean = None
+                self._clip_loaded = False
+            elif oldest == 'face':
+                self.face_app = None
+                self._face_loaded = False
+                
+            self._loaded_models.remove(oldest)
+            del self._last_accessed[oldest]
+            
+            if self.device == 'cuda':
+                import gc
+                gc.collect()
+                torch.cuda.empty_cache()
+
+    def _ensure_clip_loaded(self):
+        if self._clip_loaded:
+            self._touch_model('clip')
+            return
+            
+        self._evict_lru_models()
+        
+        print(f"Lazy loading CLIP model (ViT-L-14 / laion2b_s32b_b82k) [FP16={self.use_fp16}]...")
+        try:
+            self.clip_model, _, self.clip_preprocess = open_clip.create_model_and_transforms(
+                'ViT-L-14', 
+                pretrained='laion2b_s32b_b82k', 
+                device=self.device,
+                precision='fp16' if self.use_fp16 else 'fp32'
+            )
+            self.clip_tokenizer = open_clip.get_tokenizer('ViT-L-14')
+            self.clip_model.eval() # Inference mode
+
+            # Pre-compute Text Features
+            self.style_prompts = ["anime illustration", "digital art", "sketch", "manga", "comic", "monochrome illustration", "lineart", "japanese comic"]
+            self.photo_prompts = ["photo", "realistic", "live action", "color photograph", "real world photo", "realistic photo", "live action movie frame"]
+            
+            with torch.no_grad():
+                style_tokens = open_clip.tokenize(self.style_prompts).to(self.device).to(torch.long)
+                photo_tokens = open_clip.tokenize(self.photo_prompts).to(self.device).to(torch.long)
+                
+                self.style_embs = self.clip_model.encode_text(style_tokens)
+                self.style_embs /= self.style_embs.norm(dim=-1, keepdim=True)
+                self.style_mean = self.style_embs.mean(dim=0, keepdim=True)
+                self.style_mean /= self.style_mean.norm(dim=-1, keepdim=True)
+
+                self.photo_embs = self.clip_model.encode_text(photo_tokens)
+                self.photo_embs /= self.photo_embs.norm(dim=-1, keepdim=True)
+                self.photo_mean = self.photo_embs.mean(dim=0, keepdim=True)
+                self.photo_mean /= self.photo_mean.norm(dim=-1, keepdim=True)
+                
+            self._clip_loaded = True
+            self._loaded_models.add('clip')
+            self._touch_model('clip')
+            print("CLIP model loaded successfully.")
+        except Exception as e:
+            print(f"Failed to lazy load CLIP model: {e}")
+            raise e
+
+    def _ensure_face_loaded(self):
+        if self._face_loaded:
+            self._touch_model('face')
+            return
+            
+        if self.profile == "lightweight":
+            print("Skipping InsightFace lazy load (lightweight profile)")
+            return
+
+        self._evict_lru_models()
+        
+        print("Lazy loading InsightFace model (buffalo_l)...")
+        try:
+            providers = ['CUDAExecutionProvider'] if self.device == "cuda" else ['CPUExecutionProvider']
+            self.face_app = FaceAnalysis(name='buffalo_l', providers=providers)
+            
+            # Use negative ctx_id for CPU processing, 0 for first GPU
+            ctx_id = 0 if self.device == "cuda" else -1
+            self.face_app.prepare(ctx_id=ctx_id, det_size=(640, 640))
+            
+            self._face_loaded = True
+            self._loaded_models.add('face')
+            self._touch_model('face')
+            print("InsightFace model loaded successfully.")
+        except Exception as e:
+            print(f"Failed to lazy load InsightFace model: {e}")
+            raise e
+
     def classify_style(self, image: Image.Image) -> str:
         """
         Returns 'illustration' or 'photo' using zero-shot classification.
         """
+        self._ensure_clip_loaded()
         img_features = self.extract_clip_feature(image) # Returns numpy (1, dim)
         img_vec = torch.from_numpy(img_features).to(self.device).to(self.style_mean.dtype)
         
@@ -161,6 +233,7 @@ class AIEngine:
         Extract CLIP image embedding.
         Returns a normalized numpy array of shape (768,).
         """
+        self._ensure_clip_loaded()
         try:
             # Preprocess and move to device
             image_tensor = self.clip_preprocess(image).unsqueeze(0).to(self.device)
@@ -179,6 +252,7 @@ class AIEngine:
         Extract CLIP text embedding for search queries.
         Returns a normalized numpy array of shape (768,).
         """
+        self._ensure_clip_loaded()
         try:
             text_tensor = self.clip_tokenizer([text]).to(self.device)
 
@@ -201,6 +275,10 @@ class AIEngine:
         
         Returns: List of dicts containing 'bbox', 'kps', 'det_score', 'embedding' (512,).
         """
+        self._ensure_face_loaded()
+        if not self.face_app:
+            return []
+            
         try:
             # InsightFace expects BGR images.
             # If the input appears to be RGB (e.g. from PIL), we might need to swap channels if strictly required.
@@ -230,6 +308,7 @@ class AIEngine:
         if not images:
             return np.empty((0, 768), dtype=np.float32)
 
+        self._ensure_clip_loaded()
         try:
             # Preprocess all images and stack into a tensor
             # self.clip_preprocess returns (3, 224, 224)
