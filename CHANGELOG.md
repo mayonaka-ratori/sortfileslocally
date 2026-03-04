@@ -2,38 +2,64 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.0.0] - 2026-02-28
+## [Sprint 6] - 2026-03-04 (Current)
 
 ### Added
 
-- **AI-powered local media management**: Automated organization and tagging of local images and videos.
-- **Advanced Model Integration**:
-  - **CLIP**: Semantic image/video search.
-  - **JoyTag**: High-precision tagging for illustrations and general content.
-  - **InsightFace**: Face detection and recognition for people grouping.
-  - **Whisper**: Audio transcription and video search via speech.
-- **Semantic Search**: Natural language querying for your entire media library.
-- **Video Scene Detection**: Automatic segmentation of videos into searchable scenes with individual thumbnails and captions.
-- **Album Management**: Support for static and dynamic (search-based) albums.
-- **Tag System**: Hierarchical tagging with bulk add/remove/rename operations.
-- **First-run Setup Wizard**: Guided experience with hardware profile selection and demo mode.
-- **Demo Mode**: Instant "Try with demo images" functionality that populates a sample library.
-- **Onboarding Tour**: Interactive UI guide for new users.
-- **I18n Support**: Full localization in English and Japanese (500+ translation keys).
-- **Privacy Transparency**: Integrated dashboard with realtime network logging and static audit verification.
-- **Auto-update System**: Built-in update mechanism powered by Tauri's cross-platform updater.
-- **Tauri v2 Shell**: High-performance Rust-based desktop shell wrapping a Next.js 16 frontend.
-- **CI/CD**: Automated GitHub Actions pipeline with cross-platform linting and testing.
+- **CI/CD Pipeline**: GitHub Actions for backend (pytest), frontend (tsc/eslint), Rust (cargo check), and API type-gen verification.
+- **Build Pipeline**: `build_production.ps1` and `build_production.sh` for orchestrated PyInstaller + Tauri bundling.
+- **Performance Infrastructure**: `scripts/benchmark_scan.py` for measuring stage-by-stage wall-clock, RSS, and VRAM usage.
+- **i18n Checker**: `scripts/check_i18n_completeness.py` to ensure Japanese/English parity.
+- **Architecture Docs**: Added `docs/ARCHITECTURE.md` with high-level system diagrams.
 
-### Security
+## [Sprint 5] - 2026-03-04
 
-- **Local-only Processing**: All AI inference (CLIP, JoyTag, etc.) runs entirely on the user's machine.
-- **Privacy Enforcement**: Hard-coded blocks on external trackers; verified via static code analysis.
-- **Privacy Audit**: Built-in audit script (`scripts/privacy_audit.py`) that users can run to verify no data leaves their system.
+### Fixed
 
-### Infrastructure
+- **Circular Imports**: Resolved `shared_responses.py` dependency loop via `TYPE_CHECKING` and `model_rebuild()`.
+- **API Type Debt**: Full alignment of manual interface in `api.ts` with generated OpenAPI types.
+- **E2E Tests**: Fixed Playwright selector fragility in onboarding tour.
+- **Security**: Added mitigation documentation for `diskcache` deserialization vulnerability.
 
-- **Test Suite**: 86 backend pytest tests and 13 Playwright E2E tests.
-- **Coverage Reporting**: Integrated coverage tracking for all backend modules.
-- **Model Isolation**: Comprehensive mocking and isolation for AI dependencies in test environments.
-- **Packaging**: Ready for PyInstaller bundling and Tauri app build.
+## [Sprint 4] - 2026-03-03
+
+### Added
+
+- **Tauri Sidecar Health**: Realtime monitoring and auto-restart for the Python backend sidecar.
+- **Inference Accuracy Tests**: Dedicated test suite for CLIP, Whisper, and Face detection precision.
+- **Type Generation Phase 2**: Automated OpenAPI to TypeScript conversion.
+- **Security Audit**: Completed dependency vulnerability scan and update (Rust 1.93.1, NPM audit).
+
+## [Sprint 3] - 2026-03-02
+
+### Added
+
+- **CORS Production Config**: Strict allow-listed origins for Tauri communication.
+- **Frontend SSE Integration**: Real-time scan progress stream in the UI.
+- **SQLite WAL Stress Test**: Verified database integrity under high-concurrency write loads.
+- **Error Boundaries**: Enhanced frontend resilience with component-level error catching.
+
+## [Sprint 2] - 2026-03-02
+
+### Added
+
+- **Whisper Integration**: Persistent AI model loading for fast video transcription.
+- **Gpu/VRAM Adaptive Lifecycle**: Dynamic model loading/offloading based on available VRAM.
+- **Safe Path Validation**: Security checks for scan directories to prevent escape.
+
+## [Sprint 1] - 2026-03-01
+
+### Added
+
+- **PyInstaller Bundling**: Initial "onedir" structure for sidecar backend.
+- **FAISS-SQLite Self-heal**: Automatic repair of vector index in-sync with metadata database.
+- **Whisper Worker**: Queue-based IPC for background transcription.
+
+## [1.0.0] - 2026-02-28
+
+### Initial Release
+
+- **AI-powered local media management**: Automated organization and tagging.
+- **Semantic Search**: Natural language querying.
+- **Video Scene Detection**: Automatic segmentation.
+- **Privacy Transparency**: Integrated network log and dashboard.
