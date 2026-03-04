@@ -1695,10 +1695,27 @@ export interface components {
         SceneResponse: {
             /** Id */
             id: number;
+            /**
+             * Scene Index
+             * @default 0
+             */
+            scene_index: number;
             /** Start Time */
             start_time: number;
             /** End Time */
             end_time: number;
+            /**
+             * Start Frame
+             * @default 0
+             */
+            start_frame: number;
+            /**
+             * End Frame
+             * @default 0
+             */
+            end_frame: number;
+            /** Thumbnail Url */
+            thumbnail_url?: string | null;
             /** Caption */
             caption?: string | null;
             /** Tags */
@@ -1707,7 +1724,13 @@ export interface components {
             character_tags: string[];
             /** Series Tags */
             series_tags: string[];
+            /**
+             * Duration
+             * @default 0.0
+             */
+            duration: number;
         };
+
         /** SceneSearchResponse */
         SceneSearchResponse: {
             /** Scene Id */

@@ -18,3 +18,10 @@ export type UntaggedFilesResponse = components["schemas"]["UntaggedFilesResponse
 export type InsightItem = components["schemas"]["InsightItem"];
 export type InsightsResponse = components["schemas"]["InsightsResponse"];
 export type FaceData = components["schemas"]["FaceResponse"];
+
+// Task 2: Generated equivalents for formerly manual types in api.ts
+export type SceneInfo = components["schemas"]["SceneResponse"];
+export type SceneSearchInfo = components["schemas"]["SceneSearchResponse"];
+export type DuplicateItemInfo = components["schemas"]["DuplicateItemResponse"];
+export type DuplicatePairInfo = components["schemas"]["DuplicatePairResponse"];
+export type TagStatsInfo = components["schemas"]["TagStatsResponse"];

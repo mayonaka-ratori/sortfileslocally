@@ -22,7 +22,7 @@ export function SceneSearchResultComponent({ result, onPlay }: SceneSearchResult
                 onClick={() => onPlay?.(result.file_id, result.start_time)}
             >
                 <Image
-                    src={result.thumbnail_url}
+                    src={result.thumbnail_path || ''}
                     alt={result.caption || t("scenePreview")}
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-500"
@@ -50,7 +50,7 @@ export function SceneSearchResultComponent({ result, onPlay }: SceneSearchResult
                     <div className="flex items-center gap-1.5 min-w-0">
                         <Film className="w-3.5 h-3.5 text-zinc-500 flex-none" />
                         <h3 className="text-sm font-semibold text-zinc-200 truncate">
-                            {result.filename}
+                            {result.file_path.split(/[\/\\]/).pop() ?? result.file_path}
                         </h3>
                     </div>
                 </div>

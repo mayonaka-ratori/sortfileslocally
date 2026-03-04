@@ -176,8 +176,8 @@ export function CleanerUI() {
                                                     {pair.file_a.file_path.split(/[\\/]/).pop()}
                                                 </div>
                                                 <div className="text-xs text-zinc-500 flex gap-3">
-                                                    <span>{formatBytes(pair.file_a.file_size)}</span>
-                                                    <span>{formatDims(pair.file_a.width, pair.file_a.height)}</span>
+                                                    <span>{formatBytes(pair.file_a.file_size ?? 0)}</span>
+                                                    <span>{formatDims(pair.file_a.width ?? null, pair.file_a.height ?? null)}</span>
                                                 </div>
                                                 <div className="text-[10px] text-zinc-600 truncate mt-1">{pair.file_a.file_path}</div>
                                             </div>
@@ -197,8 +197,8 @@ export function CleanerUI() {
                                                     {pair.file_b.file_path.split(/[\\/]/).pop()}
                                                 </div>
                                                 <div className="text-xs text-zinc-500 flex gap-3">
-                                                    <span>{formatBytes(pair.file_b.file_size)}</span>
-                                                    <span>{formatDims(pair.file_b.width, pair.file_b.height)}</span>
+                                                    <span>{formatBytes(pair.file_b.file_size ?? 0)}</span>
+                                                    <span>{formatDims(pair.file_b.width ?? null, pair.file_b.height ?? null)}</span>
                                                 </div>
                                                 <div className="text-[10px] text-zinc-600 truncate mt-1">{pair.file_b.file_path}</div>
                                             </div>

@@ -12,6 +12,7 @@ from ..state import active_scans, ScanStatus
 import time
 from src.core.processor import Processor
 from src.data.scan_job_manager import ScanJobManager, ScanJob
+from .shared_responses import ScanStartResponse
 
 def is_safe_scan_path(target_path: str) -> bool:
     """Check if the provided path is safe to scan (prevents scanning system directories)."""
@@ -159,7 +160,7 @@ async def run_scan_task(target_path: str, force_reprocess: bool,
         print("Scan finished.")
 
 
-@router.post("/start")
+@router.post("/start", response_model=ScanStartResponse)
 async def start_scan(
     req: ScanRequest, 
     background_tasks: BackgroundTasks,
@@ -192,7 +193,7 @@ async def start_scan(
 class ResumeRequest(BaseModel):
     target_path: Optional[str] = None
 
-@router.post("/resume")
+@router.post("/resume", response_model=ScanStartResponse)
 async def resume_scan(
     req: Optional[ResumeRequest] = None,
     background_tasks: BackgroundTasks = None,
@@ -228,7 +229,7 @@ async def resume_scan(
     return {"message": "Scan resumed", "job": _job_to_response(job)}
 
 
-@router.post("/resume/{job_id}")
+@router.post("/resume/{job_id}", response_model=ScanStartResponse)
 async def resume_scan_by_id(
     job_id: int,
     background_tasks: BackgroundTasks,
@@ -355,3 +356,5 @@ def list_jobs(
     """List recent scan jobs."""
     jobs = job_manager.get_all_jobs(limit=limit)
     return [_job_to_response(j) for j in jobs]
+
+ScanStartResponse.model_rebuild()

@@ -4,13 +4,19 @@ import React, { useState, useEffect, useMemo } from "react"
 import {
     getTagStats,
     TagStats,
-    TagStat,
     TagCategory,
     renameTag,
     getUntaggedFiles,
     MediaItem,
     getThumbnailUrl
 } from "@/lib/api"
+
+// TagStat items arrive as Dict[str, unknown] from the generated schema;
+// we cast them to this locally for type-safe access.
+interface TagStatItem {
+    tag: string;
+    count: number;
+}
 import {
     Tag as TagIcon,
     TrendingUp,
@@ -109,15 +115,15 @@ export default function TagDashboardPage() {
 
     const allTags = useMemo(() => {
         if (!stats) return []
-        const combined: (TagStat & { category: TagCategory })[] = []
+        const combined: (TagStatItem & { category: TagCategory })[] = []
         if (activeTab === "all" || activeTab === "general") {
-            stats.general.forEach(t => combined.push({ ...t, category: "general" }))
+            stats.general.forEach(t => combined.push({ ...(t as unknown as TagStatItem), category: "general" }))
         }
         if (activeTab === "all" || activeTab === "character") {
-            stats.character.forEach(t => combined.push({ ...t, category: "character" }))
+            stats.character.forEach(t => combined.push({ ...(t as unknown as TagStatItem), category: "character" }))
         }
         if (activeTab === "all" || activeTab === "series") {
-            stats.series.forEach(t => combined.push({ ...t, category: "series" }))
+            stats.series.forEach(t => combined.push({ ...(t as unknown as TagStatItem), category: "series" }))
         }
 
         const filtered = combined.filter(t => t.tag.toLowerCase().includes(search.toLowerCase()))
@@ -135,7 +141,11 @@ export default function TagDashboardPage() {
 
     const topTags = useMemo(() => {
         if (!stats) return []
-        const combined: TagStat[] = [...stats.general, ...stats.character, ...stats.series]
+        const combined: TagStatItem[] = [
+            ...stats.general.map(t => t as unknown as TagStatItem),
+            ...stats.character.map(t => t as unknown as TagStatItem),
+            ...stats.series.map(t => t as unknown as TagStatItem),
+        ]
         return combined.sort((a, b) => b.count - a.count).slice(0, 3)
     }, [stats])
 
