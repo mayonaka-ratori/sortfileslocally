@@ -9,6 +9,18 @@ from .shared_responses import DownloadStartResponse, SuccessResponse, BackupResp
 
 router = APIRouter(prefix="/setup", tags=["setup"])
 
+import json
+import asyncio
+from fastapi.responses import StreamingResponse
+from fastapi import Request
+from src.core.first_run import check_model_status, get_download_plan, download_model_with_progress
+
+# Global state to track download progress per model
+progress_state = {}
+
+class ProfileDownloadRequest(BaseModel):
+    profile: str
+
 
 # Singleton
 _model_manager: Optional[ModelManager] = None
@@ -202,3 +214,39 @@ def create_backup():
         return {"status": "success", "backup_path": path}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/model-status")
+async def get_model_status_first_run():
+    return check_model_status()
+
+async def execute_download_plan(profile: str):
+    plan = get_download_plan(profile)
+    for model_name in plan:
+        progress_state[model_name] = 0.0
+        
+        def callback(pct: float):
+            progress_state[model_name] = pct
+            
+        await download_model_with_progress(model_name, callback)
+        progress_state[model_name] = 100.0
+
+@router.post("/download-model")
+async def trigger_download_profile(req: ProfileDownloadRequest, bg_tasks: BackgroundTasks):
+    bg_tasks.add_task(execute_download_plan, req.profile)
+    return {"message": f"Started download for profile: {req.profile}", "plan": get_download_plan(req.profile)}
+
+@router.get("/download-progress/stream")
+async def stream_download_progress(request: Request):
+    """SSE endpoint for download progress."""
+    async def event_generator():
+        try:
+            while True:
+                if await request.is_disconnected():
+                    break
+                # Yield current state as JSON
+                yield f"data: {json.dumps(progress_state)}\n\n"
+                await asyncio.sleep(0.5)
+        except Exception:
+            pass
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
