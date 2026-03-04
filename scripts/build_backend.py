@@ -59,13 +59,45 @@ def main():
         print("ERROR: PyInstaller build failed")
         sys.exit(1)
     
-    # Copy to Tauri binaries directory
-    src = os.path.join('dist', f'localcurator-backend{ext}')
-    dst = os.path.join(args.output_dir, output_name)
-    os.makedirs(args.output_dir, exist_ok=True)
-    shutil.copy2(src, dst)
-    print(f"Backend binary copied to: {dst}")
-    print(f"Size: {os.path.getsize(dst) / (1024*1024):.1f} MB")
+    # Copy to Tauri binaries directory (onedir builds create a directory, not a single file)
+    src_dir = os.path.join('dist', 'localcurator-backend')
+    
+    # Target directory structure:
+    # src-tauri/binaries/
+    #   localcurator-backend-<triple>.cmd    (Wrapper for Windows)
+    #   localcurator-backend-<triple>        (Wrapper for Mac/Linux)
+    #   localcurator-backend-dir/            (The actual onedir build)
+    
+    bin_dir = args.output_dir
+    target_bundle_dir = os.path.join(bin_dir, 'localcurator-backend-dir')
+    
+    if os.path.exists(target_bundle_dir):
+        shutil.rmtree(target_bundle_dir)
+        
+    os.makedirs(target_bundle_dir, exist_ok=True)
+    
+    print(f"Copying onedir output to: {target_bundle_dir}")
+    shutil.copytree(src_dir, target_bundle_dir, dirs_exist_ok=True)
+    
+    # Generate thin wrapper scripts for Tauri externalBin
+    wrapper_path_sh = os.path.join(bin_dir, f"localcurator-backend-{triple}")
+    wrapper_path_cmd = os.path.join(bin_dir, f"localcurator-backend-{triple}.cmd")
+    
+    # Linux/Mac bash wrapper
+    with open(wrapper_path_sh, 'w', encoding='utf-8') as f:
+        f.write("#!/bin/sh\n")
+        f.write('exec "$(dirname "$0")/localcurator-backend-dir/localcurator-backend" "$@"\n')
+    
+    # Windows cmd wrapper
+    with open(wrapper_path_cmd, 'w', encoding='utf-8') as f:
+        f.write("@echo off\r\n")
+        f.write('"%~dp0localcurator-backend-dir\\localcurator-backend.exe" %*\r\n')
+    
+    # Make shell script executable
+    if platform.system() != 'Windows':
+        os.chmod(wrapper_path_sh, 0o755)
+
+    print(f"Wrapper scripts generated: {wrapper_path_cmd} and {wrapper_path_sh}")
 
 if __name__ == '__main__':
     main()
