@@ -373,18 +373,18 @@ See **[ROADMAP.md](ROADMAP.md#known-issues--tech-debt)** for the full issue trac
 
 ## Documentation Index
 
-| Document                                                                    | Description                                            |
-| :-------------------------------------------------------------------------- | :----------------------------------------------------- |
-| [ROADMAP.md](ROADMAP.md)                                                    | Sprint history, release blockers, future roadmap, ADRs |
-| [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md)                                | IEEE 830-style functional/non-functional spec          |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)                                | System architecture with mermaid diagram               |
-| [docs/api.md](docs/api.md)                                                  | API endpoint documentation                             |
-| [docs/i18n.md](docs/i18n.md)                                                | Internationalization guide                             |
-| [docs/USER_MANUAL_EN.md](docs/USER_MANUAL_EN.md)                            | English user manual                                    |
-| [docs/USER_MANUAL_JP.md](docs/USER_MANUAL_JP.md)                            | Japanese user manual                                   |
-| [docs/dependency-audit-2026-03-04.md](docs/dependency-audit-2026-03-04.md)   | Security audit findings                                |
-| [CHANGELOG.md](CHANGELOG.md)                                                | Sprint 1-6 changelog                                   |
-| [PACKAGING_STRATEGY.md](PACKAGING_STRATEGY.md)                              | Tauri + PyInstaller analysis                           |
+| Document                                                                   | Description                                            |
+| :------------------------------------------------------------------------- | :----------------------------------------------------- |
+| [ROADMAP.md](ROADMAP.md)                                                   | Sprint history, release blockers, future roadmap, ADRs |
+| [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md)                               | IEEE 830-style functional/non-functional spec          |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)                               | System architecture with mermaid diagram               |
+| [docs/api.md](docs/api.md)                                                 | API endpoint documentation                             |
+| [docs/i18n.md](docs/i18n.md)                                               | Internationalization guide                             |
+| [docs/USER_MANUAL_EN.md](docs/USER_MANUAL_EN.md)                           | English user manual                                    |
+| [docs/USER_MANUAL_JP.md](docs/USER_MANUAL_JP.md)                           | Japanese user manual                                   |
+| [docs/dependency-audit-2026-03-04.md](docs/dependency-audit-2026-03-04.md)  | Security audit findings                                |
+| [CHANGELOG.md](CHANGELOG.md)                                               | Sprint 1-6 changelog                                   |
+| [PACKAGING_STRATEGY.md](PACKAGING_STRATEGY.md)                             | Tauri + PyInstaller analysis                           |
 
 ---
 
