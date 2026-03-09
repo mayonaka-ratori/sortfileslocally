@@ -2,7 +2,12 @@ import type { components } from "@/generated/api-types";
 
 // Explicit mappings from generated types back to manual interface names
 
-export type MediaItem = components["schemas"]["MediaItemResponse"];
+export type MediaItem = components["schemas"]["MediaItemResponse"] & {
+    favorite?: boolean;
+    duration?: number | null;
+    processed_at?: string;
+    created_at?: string;
+};
 export type SearchFilters = components["schemas"]["SearchFilters"];
 export type HybridSearchResponse = components["schemas"]["HybridSearchResponse"];
 export type ScanStatus = components["schemas"]["ScanStatus"];

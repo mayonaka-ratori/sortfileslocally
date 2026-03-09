@@ -15,11 +15,12 @@ import { useTranslations } from "next-intl"
 import { WelcomeBackBanner } from "@/components/WelcomeBackBanner"
 import { OnboardingTour } from "@/components/OnboardingTour"
 import { UpdateBanner } from "@/components/UpdateBanner"
+import { useMediaStore } from "@/stores/mediaStore"
 
 export default function Home() {
   const t = useTranslations("gallery")
   const [media, setMedia] = useState<MediaItem[]>([])
-  const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null)
+  const { selectedItem, setSelectedItem } = useMediaStore()
   const [focusedIndex, setFocusedIndex] = useState(-1)
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [loading, setLoading] = useState(true)
@@ -228,6 +229,7 @@ export default function Home() {
       <Sidebar
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
+        className="glass-panel border-r"
       />
 
       {/* Main Content Area */}
@@ -298,18 +300,8 @@ export default function Home() {
                             // Find the media item for this scene
                             // If not in current media list, we might need to fetch it
                             const item = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/gallery/${fileId}`).then(r => r.json())
+                            // The sync is now handled via useMediaStore and CustomEvents in ChatPanel
                             setSelectedItem(item)
-                            // The seek logic is handled in ChatPanel when it mounts with the item
-                            // We can use a small delay to ensure video element is ready
-                            setTimeout(() => {
-                              const video = document.querySelector('video')
-                              if (video) {
-                                video.currentTime = startTime
-                                video.play().catch((err) => {
-                                  console.warn("Auto-play failed on scene selection", err);
-                                })
-                              }
-                            }, 500)
                           }}
                         />
                       ))}

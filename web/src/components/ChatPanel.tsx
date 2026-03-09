@@ -10,6 +10,7 @@ import { TagEditorPanel } from "./TagEditorPanel"
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
+import { useMediaStore } from "@/stores/mediaStore"
 
 interface ChatPanelProps {
     item: MediaItem | null
@@ -40,6 +41,8 @@ export function ChatPanel({ item, onClose, onFaceSearch, onItemUpdate }: ChatPan
     const [isRescanning, setIsRescanning] = useState(false)
     const [showRescanOptions, setShowRescanOptions] = useState(false)
 
+    const { seekTo, play } = useMediaStore()
+
     // Reset chat and faces when item changes
     useEffect(() => {
         setMessages([])
@@ -68,13 +71,11 @@ export function ChatPanel({ item, onClose, onFaceSearch, onItemUpdate }: ChatPan
     useKeyboardShortcuts({
         'f': () => {
             if (!item) return
-            // Toggle favorite - if no API, just UI feedback for now
+            // Toggle favorite 
             console.log("Toggle favorite for item", item.id)
-            // If onItemUpdate is available, we could update it
             if (onItemUpdate) {
                 onItemUpdate({
                     ...item,
-                    // @ts-expect-error - favorite might not be in type but requested
                     favorite: !item.favorite
                 })
             }
@@ -198,17 +199,12 @@ export function ChatPanel({ item, onClose, onFaceSearch, onItemUpdate }: ChatPan
     }
 
     const handleSeek = (time: number) => {
-        const video = document.querySelector('video')
-        if (video) {
-            video.currentTime = time
-            video.play().catch((err) => {
-                console.warn("Auto-play failed after seek", err);
-            })
-        }
+        seekTo(time)
+        play()
     }
 
     return (
-        <div className="w-96 flex flex-col h-full bg-zinc-900 border-l border-zinc-800 shadow-2xl overflow-hidden flex-shrink-0 relative">
+        <div className="w-96 flex flex-col h-full glass-panel border-l shadow-2xl overflow-hidden flex-shrink-0 relative z-30">
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-900/50 px-4 shrink-0">
                 <div className="flex gap-4">
@@ -245,21 +241,16 @@ export function ChatPanel({ item, onClose, onFaceSearch, onItemUpdate }: ChatPan
                             if (item && onItemUpdate) {
                                 onItemUpdate({
                                     ...item,
-                                    // @ts-expect-error - favorite may not be in type
                                     favorite: !item.favorite
                                 })
                             }
                         }}
-                        className={`p-1.5 rounded-md transition-colors ${
-                            // @ts-expect-error - favorite may not be in type
-                            item?.favorite ? 'text-red-500 bg-red-500/10' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+                        className={`p-1.5 rounded-md transition-colors ${item?.favorite ? 'text-red-500 bg-red-500/10' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
                             }`}
                         title={t("toggleFavorite")}
                         aria-label={t("toggleFavorite")}
                     >
-                        <Heart className={`w-4 h-4 ${
-                            // @ts-expect-error - favorite may not be in type
-                            item?.favorite ? 'fill-current' : ''
+                        <Heart className={`w-4 h-4 ${item?.favorite ? 'fill-current' : ''
                             }`} />
                     </button>
                     <button

@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [1.0.0-beta.1] - 2026-03-04
 
-### Added
+### Added <!-- v1.0.0-beta.1 -->
 
 - **Release Engineering**: Configured code signing workflows, Tauri updater, Content Security Policy (CSP), and CI smoke tests.
 - **Installer UX**: Branded MSI/DMG installers with privacy agreements.
@@ -14,7 +14,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Sprint 6] - 2026-03-04
 
-### Added
+### Added <!-- Sprint 6 -->
 
 - **CI/CD Pipeline**: GitHub Actions for backend (pytest), frontend (tsc/eslint), Rust (cargo check), and API type-gen verification.
 - **Build Pipeline**: `build_production.ps1` and `build_production.sh` for orchestrated PyInstaller + Tauri bundling.
@@ -24,7 +24,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Sprint 5] - 2026-03-04
 
-### Fixed
+### Fixed <!-- Sprint 5 -->
 
 - **Circular Imports**: Resolved `shared_responses.py` dependency loop via `TYPE_CHECKING` and `model_rebuild()`.
 - **API Type Debt**: Full alignment of manual interface in `api.ts` with generated OpenAPI types.
@@ -33,7 +33,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Sprint 4] - 2026-03-03
 
-### Added
+### Added <!-- Sprint 4 -->
 
 - **Tauri Sidecar Health**: Realtime monitoring and auto-restart for the Python backend sidecar.
 - **Inference Accuracy Tests**: Dedicated test suite for CLIP, Whisper, and Face detection precision.
@@ -42,7 +42,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Sprint 3] - 2026-03-02
 
-### Added
+### Added <!-- Sprint 3 -->
 
 - **CORS Production Config**: Strict allow-listed origins for Tauri communication.
 - **Frontend SSE Integration**: Real-time scan progress stream in the UI.
@@ -51,7 +51,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Sprint 2] - 2026-03-02
 
-### Added
+### Added <!-- Sprint 2 -->
 
 - **Whisper Integration**: Persistent AI model loading for fast video transcription.
 - **Gpu/VRAM Adaptive Lifecycle**: Dynamic model loading/offloading based on available VRAM.
@@ -59,7 +59,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Sprint 1] - 2026-03-01
 
-### Added
+### Added <!-- Sprint 1 -->
 
 - **PyInstaller Bundling**: Initial "onedir" structure for sidecar backend.
 - **FAISS-SQLite Self-heal**: Automatic repair of vector index in-sync with metadata database.

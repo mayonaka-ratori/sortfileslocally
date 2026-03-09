@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react"
 import { MediaItem, getThumbnailUrl, getOriginalUrl } from "@/lib/api"
 import { Search, Loader2, Menu, PlayCircle, FileText, CheckCircle2, Download, X, AlertCircle } from "lucide-react"
 import { useInView } from "react-intersection-observer"
+import { useMediaStore } from "@/stores/mediaStore"
 import Image from "next/image"
 import { BulkExportModal } from "./BulkExportModal"
 import { BulkTagModal } from "./BulkTagModal"
@@ -31,6 +32,7 @@ const MediaCard = ({
     const cardRef = useRef<HTMLDivElement>(null);
     const [isHovered, setIsHovered] = useState(false);
     const hoverTimeout = useRef<NodeJS.Timeout | null>(null);
+    const { isPlaying, setSelectedItem } = useMediaStore()
 
     useEffect(() => {
         if (isFocused && cardRef.current) {
@@ -57,6 +59,7 @@ const MediaCard = ({
             e.stopPropagation();
             onToggleSelect(item.id);
         } else {
+            setSelectedItem(item);
             onSelect(item);
         }
     };
@@ -67,7 +70,7 @@ const MediaCard = ({
             onClick={handleClick}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
-            className={`relative group cursor-pointer overflow-hidden rounded-xl bg-zinc-900 border transition-all duration-300 break-inside-avoid shadow-lg flex flex-col ${isSelected ? 'border-indigo-500 ring-2 ring-indigo-500/50' : isFocused ? 'border-indigo-400 ring-1 ring-indigo-400/30' : 'border-zinc-800 hover:border-zinc-700'}`}
+            className={`relative group cursor-pointer overflow-hidden rounded-xl bg-zinc-900/50 backdrop-blur-sm border transition-all duration-500 break-inside-avoid shadow-lg flex flex-col hover:shadow-2xl hover:-translate-y-1 ${isSelected ? 'border-indigo-500 ring-2 ring-indigo-500/50' : isFocused ? 'border-indigo-400 ring-1 ring-indigo-400/30' : 'border-white/5 hover:border-white/20'}`}
         >
             <div className="relative w-full aspect-auto bg-zinc-900">
                 <Image
@@ -249,9 +252,9 @@ export function GalleryGrid({
     const selectedItems = media.filter(item => selectedIds.has(item.id))
 
     return (
-        <div className="flex flex-col h-full w-full bg-zinc-950 text-zinc-100 relative" data-testid="gallery-grid">
+        <div className="flex flex-col h-full w-full bg-black text-zinc-100 relative" data-testid="gallery-grid">
             {/* Search Header */}
-            <div className="sticky top-0 z-10 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800 p-4 flex items-center gap-3">
+            <div className="sticky top-0 z-20 bg-black/60 backdrop-blur-xl border-b border-white/5 p-4 flex items-center gap-3">
                 {onMenuClick && (
                     <button
                         onClick={onMenuClick}
@@ -273,7 +276,7 @@ export function GalleryGrid({
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                         placeholder={t("searchPlaceholder")}
-                        className={`w-full bg-zinc-900 border ${isDragging ? 'border-indigo-500' : 'border-zinc-800'} rounded-full py-3 px-12 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all`}
+                        className={`w-full bg-white/5 border ${isDragging ? 'border-indigo-500' : 'border-white/10'} rounded-full py-3 px-12 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all backdrop-blur-md`}
                     />
                     <Search className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${isDragging ? 'text-indigo-400' : 'text-zinc-500'}`} />
                     <button

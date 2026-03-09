@@ -21,6 +21,8 @@ Local Curator Prime is a standalone desktop application that uses AI models to a
 ## Features
 
 - **Semantic Search** — Find images by describing them in natural language ([`server/routers/gallery.py`](server/routers/gallery.py))
+- **Synchronized Playback Engine** — Zero-friction video sync between Gallery, Detail view, and Scene search ([`web/src/stores/mediaStore.ts`](web/src/stores/mediaStore.ts)) [2026 Upgrade]
+- **Automated AI Tagging** — CLIP, JoyTag, InsightFace, and VLM-based tag extraction ([`src/core/ai_models.py`](src/core/ai_models.py), [`src/core/joytag_inference.py`](src/core/joytag_inference.py))
 - **Automated AI Tagging** — CLIP, JoyTag, InsightFace, and VLM-based tag extraction ([`src/core/ai_models.py`](src/core/ai_models.py), [`src/core/joytag_inference.py`](src/core/joytag_inference.py))
 - **Video Understanding** — Scene detection, keyframe extraction, and Whisper transcription ([`src/core/video_processor.py`](src/core/video_processor.py), [`src/core/whisper_worker.py`](src/core/whisper_worker.py))
 - **Face Recognition** — Detect, name, and search by face across your library ([`src/core/ai_models.py`](src/core/ai_models.py))
@@ -46,6 +48,7 @@ graph TD
 
     subgraph "Frontend — Next.js 16 (React 19)"
         UI["Masonry Gallery / Search UI"]
+        Store["Shared Media Store (Zustand)"]
         SSE["SSE Client"]
         Health["Backend Health Hook"]
     end
@@ -63,6 +66,7 @@ graph TD
         Files["Media Files"]
     end
 
+    UI <-->|Sync| Store
     UI <-->|HTTP| API
     SSE <-->|EventSource| API
     Tauri -->|spawn + monitor| API
@@ -77,12 +81,12 @@ graph TD
 
 ## Prerequisites
 
-| Dependency  | Version          | Install                                                                            | Notes                                             |
-| :---------- | :--------------- | :--------------------------------------------------------------------------------- | :------------------------------------------------ |
-| **Python**  | 3.11.x           | [python.org](https://www.python.org/downloads/release/python-3119/)                | **Not** 3.12+ — numpy C extension incompatibility |
-| **Node.js** | 20.x LTS         | `winget install OpenJS.NodeJS.LTS` or [nodejs.org](https://nodejs.org/)             | Required for frontend dev server                  |
-| **Rust**    | stable (>= 1.84) | `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs / sh`                  | Desktop build only                                |
-| **CUDA**    | 11.8 (optional)  | [NVIDIA CUDA Toolkit](https://developer.nvidia.com/cuda-11-8-0-download-archive)   | GPU acceleration for AI models                    |
+| Dependency | Version | Install | Notes |
+| :--- | :--- | :--- | :--- |
+| **Python** | 3.11.x | [python.org](https://www.python.org/downloads/release/python-3119/) | **Not** 3.12+ — numpy C extension incompatibility |
+| **Node.js** | 20.x LTS | `winget install OpenJS.NodeJS.LTS` or [nodejs.org](https://nodejs.org/) | Required for frontend dev server |
+| **Rust** | stable (>= 1.84) | `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs / sh` | Desktop build only |
+| **CUDA** | 11.8 (optional) | [NVIDIA CUDA Toolkit](https://developer.nvidia.com/cuda-11-8-0-download-archive) | GPU acceleration for AI models |
 
 ---
 
@@ -192,6 +196,7 @@ LocalCuratorPrime/
 ├── web/                      # Next.js 16 frontend
 │   ├── src/lib/api.ts        #   API client (all backend calls)
 │   ├── src/lib/api-types-bridge.ts # Generated type bridge
+│   ├── src/stores/           #   Zustand state (media playback, global sync)
 │   ├── src/hooks/            #   React hooks (useBackendHealth, useScanProgress, useKeyboardShortcuts)
 │   ├── src/generated/        #   Auto-generated OpenAPI types
 │   └── src/messages/         #   i18n locale files (en.json, ja.json)
@@ -303,6 +308,16 @@ Full OpenAPI specification: **[docs/api.md](docs/api.md)** or `http://localhost:
 
 ---
 
+## Design System (2026 Standards)
+
+LocalCurator Prime follows a **Hyper-Fluid** aesthetic:
+
+- **Depth & Blur**: Uses glassmorphism (`backdrop-blur-xl`) with custom `.glass-panel` utilities in `globals.css`.
+- **Typography**: Built on **Geist Variable Fonts** for maximum legibility and premium feel.
+- **Magnetic UX**: State management via **Zustand** ensures that media selection and playback are synchronized across all UI boundaries.
+
+---
+
 ## Configuration
 
 ### Environment Variables
@@ -373,18 +388,18 @@ See **[ROADMAP.md](ROADMAP.md#known-issues--tech-debt)** for the full issue trac
 
 ## Documentation Index
 
-| Document                                                                   | Description                                            |
-| :------------------------------------------------------------------------- | :----------------------------------------------------- |
-| [ROADMAP.md](ROADMAP.md)                                                   | Sprint history, release blockers, future roadmap, ADRs |
-| [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md)                               | IEEE 830-style functional/non-functional spec          |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)                               | System architecture with mermaid diagram               |
-| [docs/api.md](docs/api.md)                                                 | API endpoint documentation                             |
-| [docs/i18n.md](docs/i18n.md)                                               | Internationalization guide                             |
-| [docs/USER_MANUAL_EN.md](docs/USER_MANUAL_EN.md)                           | English user manual                                    |
-| [docs/USER_MANUAL_JP.md](docs/USER_MANUAL_JP.md)                           | Japanese user manual                                   |
-| [docs/dependency-audit-2026-03-04.md](docs/dependency-audit-2026-03-04.md)  | Security audit findings                                |
-| [CHANGELOG.md](CHANGELOG.md)                                               | Sprint 1-6 changelog                                   |
-| [PACKAGING_STRATEGY.md](PACKAGING_STRATEGY.md)                             | Tauri + PyInstaller analysis                           |
+| Document | Description |
+| :--- | :--- |
+| [ROADMAP.md](ROADMAP.md) | Sprint history, release blockers, future roadmap, ADRs |
+| [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) | IEEE 830-style functional/non-functional spec |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System architecture with mermaid diagram |
+| [docs/api.md](docs/api.md) | API endpoint documentation |
+| [docs/i18n.md](docs/i18n.md) | Internationalization guide |
+| [docs/USER_MANUAL_EN.md](docs/USER_MANUAL_EN.md) | English user manual |
+| [docs/USER_MANUAL_JP.md](docs/USER_MANUAL_JP.md) | Japanese user manual |
+| [docs/dependency-audit-2026-03-04.md](docs/dependency-audit-2026-03-04.md) | Security audit findings |
+| [CHANGELOG.md](CHANGELOG.md) | Sprint 1-6 changelog |
+| [PACKAGING_STRATEGY.md](PACKAGING_STRATEGY.md) | Tauri + PyInstaller analysis |
 
 ---
 

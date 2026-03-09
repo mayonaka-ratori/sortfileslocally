@@ -18,9 +18,10 @@ interface SidebarProps {
     onFilterChange?: (filters: FilterState) => void;
     isOpen: boolean;
     onClose: () => void;
+    className?: string;
 }
 
-export function Sidebar({ isOpen, onClose }: Omit<SidebarProps, 'onFilterChange'>) {
+export function Sidebar({ isOpen, onClose, className = "" }: SidebarProps) {
     const t = useTranslations('sidebar');
     const [albums, setAlbums] = useState<Album[]>([])
 
@@ -38,9 +39,9 @@ export function Sidebar({ isOpen, onClose }: Omit<SidebarProps, 'onFilterChange'
                 />
             )}
 
-            <div 
+            <div
                 data-testid="sidebar"
-                className={`fixed inset-y-0 left-0 z-50 transform flex-shrink-0 w-72 h-full bg-zinc-950 border-r border-zinc-800 flex flex-col transition-transform duration-300 ease-in-out md:relative md:translate-x-0 overflow-y-auto ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
+                className={`fixed inset-y-0 left-0 z-50 transform flex-shrink-0 w-72 h-full bg-zinc-950 border-r border-zinc-800 flex flex-col transition-transform duration-300 ease-in-out md:relative md:translate-x-0 overflow-y-auto ${isOpen ? 'translate-x-0' : '-translate-x-full'} ${className}`}
             >
                 {/* Header */}
                 <div className="sticky top-0 bg-zinc-950/80 backdrop-blur z-10 p-5 pb-4">
